@@ -8,7 +8,7 @@
 
 ## ❗ Problem Statement
 
-Building a secure, efficient, and well-governed Databricks Lakehouse requires continuous adherence to WAF principles. However, current manual assessments suffer from:
+Building a secure, efficient, and well-governed Databricks Lakehouse requires continuous adherence to WAF principles. However, the assessments generally suffer from:
 
 - ⏱️ Time-consuming processes  
 - 🔁 Inconsistencies in evaluation  
