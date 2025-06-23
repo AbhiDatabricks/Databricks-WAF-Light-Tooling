@@ -64,21 +64,21 @@ Develop a **lightweight WAF assessment tool** that:
 ---
 
 ## 📦 Getting Started
+### ⚙️ Install Steps for WAF AUTO Tooling
 
 ![image](https://github.com/user-attachments/assets/4ba97a0e-5f03-4264-bd1d-bcf83595de2d)
 
 
-⚙️ Install Steps for WAF AUTO Tooling
-Clone the GitHub Repository
- Get the WAF Automation Tooling code from the official GitHub repo.
 
 
-Run install.ipynb
- Execute the notebook to automatically deploy the “WAF ASSESSMENT” dashboard in your Databricks workspace.
+- **Clone the GitHub Repository**  
+  Get the WAF Automation Tooling code from the official GitHub repo.
 
+- **Run `install.ipynb`**  
+  Execute the notebook to automatically deploy the **“WAF ASSESSMENT”** dashboard in your Databricks workspace.
 
-Open the Dashboard
- Access real-time insights, scores, and recommendations—all at your fingertips.
+- **Open the Dashboard**  
+  Access real-time insights, scores, and recommendations—all at your fingertips.
 
 
 ---
