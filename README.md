@@ -80,6 +80,7 @@ Develop a **lightweight WAF assessment tool** that:
 - **Open the Dashboard**  
   Access real-time insights, scores, and recommendations—all at your fingertips.
 
+![image](assets/waf-dashboard.png?raw=true)
 
 ---
 
