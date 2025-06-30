@@ -82,6 +82,12 @@ Develop a **lightweight WAF assessment tool** that:
 
 ![image](assets/waf-dashboard.png?raw=true)
 
+
+
+https://github.com/user-attachments/assets/0e5a8867-6a06-4f30-ba51-38c5d09b9f57
+
+
+
 ---
 
 ## 🤝 Contributing
