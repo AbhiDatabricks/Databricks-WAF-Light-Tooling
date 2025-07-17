@@ -796,6 +796,14 @@
         "      WHEN waf_id = 'SCP-06-02' AND EXISTS (SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.access.audit%' LIMIT 1) THEN 'Yes'\n",
         "      WHEN waf_id = 'SCP-06-03' AND EXISTS (SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.compute.clusters%' AND lower(statement_text) LIKE '%create_time%'  LIMIT 1) THEN 'Yes'\n",
         "      WHEN waf_id = 'SCP-06-05' AND EXISTS (SELECT 1 FROM system.compute.clusters where cardinality(tags) > 0 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-01' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "      WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-05' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-06' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-02-03' AND EXISTS (SELECT 1 FROM system.information_schema.metastores LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-03-01' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-03-02' AND EXISTS (SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1) THEN 'Yes'\n",
         "      ELSE 'No'\n",
         "    END AS implemented,\n",
         "    CASE \n",
@@ -804,6 +812,7 @@
         "      WHEN waf_id LIKE 'CO-%' THEN 'Cost Optimization'\n",
         "      WHEN waf_id LIKE 'PE-%' THEN 'Performance Efficiency'\n",
         "      WHEN waf_id LIKE 'SCP-%' THEN 'Security, Compliance and Privacy'\n",
+        "      WHEN waf_id LIKE 'R-%'  THEN 'Reliability'\n",
         "    END AS pillar\n",
         "  FROM (\n",
         "    SELECT * FROM VALUES\n",
@@ -821,7 +830,10 @@
         "      ('SCP-01-06'), ('SCP-01-11'),('SCP-01-12'),\n",
         "      ('SCP-02-01'),('SCP-02-03'),\n",
         "      ('SCP-03-03'),\n",
-        "      ('SCP-06-01'),('SCP-06-02'),('SCP-06-03'),('SCP-06-05')\n",
+        "      ('SCP-06-01'),('SCP-06-02'),('SCP-06-03'),('SCP-06-05'),\n",
+        "      ('R-01-01'),('R-01-02'),('R-01-03'),('R-01-05'),('R-01-06'),\n",
+        "      ('R-02-03'),('R-02-04'),\n",
+        "      ('R-03-01'),('R-03-02')\n",
         "    AS waf(waf_id)\n",
         "  )\n",
         ")\n",
@@ -1891,6 +1903,178 @@
         "FROM waf_status\n",
         "GROUP BY principle\n",
         "ORDER BY principle;"
+      ]
+    },
+    {
+      "name": "03babf4f",
+      "displayName": "total_percentage_r",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'R-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.metastores LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "    ('R-01-01'),\n",
+        "    ('R-01-02'),\n",
+        "    ('R-01-03'),\n",
+        "    --('R-01-04'),\n",
+        "    ('R-01-05'),\n",
+        "    ('R-01-06'),\n",
+        "    ('R-02-03'),\n",
+        "    ('R-02-04'),\n",
+        "    ('R-03-01'),\n",
+        "    ('R-03-02')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status;\n"
+      ]
+    },
+    {
+      "name": "011cf80a",
+      "displayName": "waf_principal_percentage_r",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    principle,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'R-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.metastores LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "    ('R-01-01', 'Design for failure'),\n",
+        "    ('R-01-02', 'Design for failure'),\n",
+        "    ('R-01-03', 'Design for failure'),\n",
+        "    --('R-01-04', 'Design for failure'),\n",
+        "    ('R-01-05', 'Design for failure'),\n",
+        "    ('R-01-06', 'Design for failure'),\n",
+        "    ('R-02-03', 'Manage data quality'),\n",
+        "    ('R-02-04', 'Manage data quality'),\n",
+        "    ('R-03-01', 'Design for autoscaling'),\n",
+        "    ('R-03-02', 'Design for autoscaling')\n",
+        "    AS waf(waf_id, principle)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;\n"
+      ]
+    },
+    {
+      "name": "60cfe928",
+      "displayName": "waf_controls_r",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'R-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.metastores LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('R-01-01', 'Design for failure', 'Use a data format that supports ACID transactions'),\n",
+        "    ('R-01-02', 'Design for failure', 'Use an enterprise grade model serving service'),\n",
+        "    ('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data '),\n",
+        "    --('R-01-04', 'Design for failure', 'Configure jobs for automatic retries and termination'),\n",
+        "    ('R-01-05', 'Design for failure', 'Use a scalable and production-grade model serving infrastructure'),\n",
+        "    ('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n",
+        "    ('R-02-03', 'Manage data quality', 'Actively manage schemas'),\n",
+        "    ('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n",
+        "    ('R-03-01', 'Design for autoscaling', 'Enable autoscaling for ETL workloads'),\n",
+        "    ('R-03-02', 'Design for autoscaling', 'Use autoscaling for SQL Warehouses')\n",
+        "    --('R-02-09', 'Design workloads for performance', 'Use compaction'),\n",
+        ") waf(waf_id, principle, best_practice);\n"
       ]
     }
   ],
@@ -6927,6 +7111,290 @@
                 "name": "main_query",
                 "query": {
                   "datasetName": "2003edfa",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "3be344ef",
+      "displayName": "Reliability",
+      "layout": [
+        {
+          "widget": {
+            "name": "e9309306",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Reliability"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "530fa633",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "60cfe928",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "best_practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "best_practice"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "4c6080fc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "011cf80a",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f05f948d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "03babf4f",
                   "fields": [
                     {
                       "name": "avg(completion_percent)",
