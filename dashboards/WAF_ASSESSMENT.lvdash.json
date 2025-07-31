@@ -2078,7 +2078,191 @@
       ]
     },
     {
-      "name": "3673316f",
+      "name": "8486d58c",
+      "displayName": "Count of tables with lineage",
+      "queryLines": [
+        "WITH lineage_tables AS (\n",
+        "  SELECT DISTINCT\n",
+        "    source_table_catalog,\n",
+        "    source_table_schema,\n",
+        "    source_table_name\n",
+        "  FROM\n",
+        "    (\n",
+        "      select distinct\n",
+        "        source_table_catalog,\n",
+        "        source_table_schema,\n",
+        "        source_table_name\n",
+        "      from\n",
+        "        system.access.table_lineage\n",
+        "      union\n",
+        "      select distinct\n",
+        "        target_table_catalog,\n",
+        "        target_table_catalog,\n",
+        "        target_table_name\n",
+        "      from\n",
+        "        system.access.table_lineage\n",
+        "    )\n",
+        "  WHERE\n",
+        "    source_table_catalog IS NOT NULL\n",
+        "),\n",
+        "table_list AS (\n",
+        "  SELECT\n",
+        "    table_catalog,\n",
+        "    table_schema,\n",
+        "    table_name,\n",
+        "    table_type\n",
+        "  from\n",
+        "    system.information_schema.tables\n",
+        " -- where\n",
+        "   -- table_type not in ('FOREIGN')\n",
+        ")\n",
+        "SELECT\n",
+        "  table_list.table_type,\n",
+        "  COUNT(*) AS total_tables,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN lineage_tables.source_table_catalog IS NULL THEN 0\n",
+        "      ELSE 1\n",
+        "    END\n",
+        "  ) AS lineage_tables\n",
+        "FROM\n",
+        "  table_list\n",
+        "    LEFT JOIN lineage_tables\n",
+        "      ON table_list.table_catalog = lineage_tables.source_table_catalog\n",
+        "      AND table_list.table_schema = lineage_tables.source_table_schema\n",
+        "      AND table_list.table_name = lineage_tables.source_table_name\n",
+        "GROUP BY\n",
+        "  table_list.table_type\n"
+      ]
+    },
+    {
+      "name": "16facbed",
+      "displayName": "Count of table formats with table types",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*) AS count_of_tables,\n",
+        "  table_type,\n",
+        "  data_source_format\n",
+        "FROM\n",
+        "  system.information_schema.tables\n",
+        "GROUP BY\n",
+        "  table_type,\n",
+        "  data_source_format"
+      ]
+    },
+    {
+      "name": "f7dd8a02",
+      "displayName": "waf_DG-03-02_lakehouse_monitoring",
+      "queryLines": [
+        "SELECT COUNT(*) as count_tables FROM system.information_schema.tables \n",
+        "WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics'"
+      ]
+    },
+    {
+      "name": "1ab4ec65",
+      "displayName": "waf_DG-02-03_marketplace_listings",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*) AS count_of_events,\n",
+        "  consumer_delta_sharing_recipient_name,\n",
+        "  provider_name,\n",
+        "  listing_name,\n",
+        "  event_type\n",
+        "FROM\n",
+        "  system.marketplace.listing_access_events\n",
+        "where\n",
+        "  event_date between current_date() - 30 and current_date()\n",
+        "GROUP BY\n",
+        "  consumer_delta_sharing_recipient_name,\n",
+        "  provider_name,\n",
+        "  listing_name,\n",
+        "  event_type\n",
+        "ORDER BY\n",
+        "  count_of_events DESC"
+      ]
+    },
+    {
+      "name": "5b3944b6",
+      "displayName": "waf_DG-02-02_audit_events",
+      "queryLines": [
+        "SELECT\n",
+        "  count(*) as count_of_events,\n",
+        "  audit_level,\n",
+        "  workspace_id\n",
+        "from\n",
+        "  system.access.audit\n",
+        "where\n",
+        "  event_date between current_date() - 30 and current_date()\n",
+        "group by\n",
+        "  audit_level,\n",
+        "  workspace_id"
+      ]
+    },
+    {
+      "name": "6b0c95c6",
+      "displayName": "waf_DG-02-01_rbac_col_mask",
+      "queryLines": [
+        "SELECT\n",
+        "  count(distinct table_catalog, table_schema, table_name) AS count,\n",
+        "  'table_with_filters' AS object_type\n",
+        "from\n",
+        "  system.information_schema.row_filters\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(distinct table_catalog, table_schema, table_name),\n",
+        "  'table_with_masks'\n",
+        "from\n",
+        "  system.information_schema.column_masks\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(*),\n",
+        "  'column_masks'\n",
+        "from\n",
+        "  system.information_schema.column_masks\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(*),\n",
+        "  'row_filters'\n",
+        "from\n",
+        "  system.information_schema.row_filters"
+      ]
+    },
+    {
+      "name": "e097b5c1",
+      "displayName": "waf_DG-01-04_comments",
+      "queryLines": [
+        "SELECT *, count_comment/overall_count AS perc_comment\n",
+        "FROM (\n",
+        "select 'Tables' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END) AS count_comment, COUNT(*) AS overall_count FROM system.information_schema.tables \n",
+        "UNION ALL\n",
+        "--select 'Columns' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.columns \n",
+        "--UNION ALL\n",
+        "select 'Volumes' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.volumes \n",
+        "UNION ALL\n",
+        "select 'Catalogs' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.catalogs \n",
+        "UNION ALL\n",
+        "select 'Connections' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.connections \n",
+        "UNION ALL\n",
+        "select 'Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.credentials \n",
+        "UNION ALL\n",
+        "select 'External Locations' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.external_locations \n",
+        "UNION ALL\n",
+        "select 'Providers' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.providers \n",
+        "UNION ALL\n",
+        "select 'Recipients' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.recipients \n",
+        "UNION ALL\n",
+        "select 'Routines' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.routines \n",
+        "UNION ALL\n",
+        "select 'Schemas' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.schemata \n",
+        "UNION ALL\n",
+        "select 'Shares' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.shares \n",
+        "UNION ALL\n",
+        "select 'Storage Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.storage_credentials \n",
+        ")"
+      ]
+    },
+    {
+      "name": "27265888",
       "displayName": "waf_R-03-02_auto_scaling_SQL",
       "queryLines": [
         "SELECT\n",
@@ -2249,7 +2433,7 @@
           },
           "position": {
             "x": 0,
-            "y": 21,
+            "y": 16,
             "width": 2,
             "height": 3
           }
@@ -2304,7 +2488,7 @@
           },
           "position": {
             "x": 2,
-            "y": 21,
+            "y": 16,
             "width": 2,
             "height": 3
           }
@@ -2358,7 +2542,7 @@
           },
           "position": {
             "x": 4,
-            "y": 21,
+            "y": 16,
             "width": 2,
             "height": 3
           }
@@ -2400,7 +2584,7 @@
           },
           "position": {
             "x": 0,
-            "y": 31,
+            "y": 26,
             "width": 2,
             "height": 3
           }
@@ -2456,7 +2640,7 @@
           },
           "position": {
             "x": 2,
-            "y": 31,
+            "y": 26,
             "width": 2,
             "height": 3
           }
@@ -2512,7 +2696,7 @@
           },
           "position": {
             "x": 4,
-            "y": 31,
+            "y": 26,
             "width": 2,
             "height": 3
           }
@@ -2554,7 +2738,7 @@
           },
           "position": {
             "x": 0,
-            "y": 41,
+            "y": 36,
             "width": 3,
             "height": 3
           }
@@ -2596,154 +2780,9 @@
           },
           "position": {
             "x": 3,
-            "y": 41,
+            "y": 36,
             "width": 3,
             "height": 3
-          }
-        },
-        {
-          "widget": {
-            "name": "75d01e2b",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "913b3827",
-                  "fields": [
-                    {
-                      "name": "sum(count)",
-                      "expression": "SUM(`count`)"
-                    },
-                    {
-                      "name": "label",
-                      "expression": "`label`"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "pie",
-              "encodings": {
-                "angle": {
-                  "fieldName": "sum(count)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
-                  "displayName": " "
-                },
-                "color": {
-                  "fieldName": "label",
-                  "scale": {
-                    "type": "categorical",
-                    "mappings": [
-                      {
-                        "value": "Untagged",
-                        "color": "#919191"
-                      },
-                      {
-                        "value": "Tagged",
-                        "color": "#00A972"
-                      }
-                    ]
-                  },
-                  "displayName": "Legend"
-                },
-                "label": {
-                  "show": true
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "Table Tag Usage",
-                "showDescription": false,
-                "description": "See the breakdown of tagged and untagged tables"
-              }
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 44,
-            "width": 2,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "ff45bac8",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "788914b8",
-                  "fields": [
-                    {
-                      "name": "sum(usage_count)",
-                      "expression": "SUM(`usage_count`)"
-                    },
-                    {
-                      "name": "tag_name",
-                      "expression": "`tag_name`"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "bar",
-              "encodings": {
-                "x": {
-                  "fieldName": "sum(usage_count)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
-                  "displayName": "Usage Count"
-                },
-                "y": {
-                  "fieldName": "tag_name",
-                  "scale": {
-                    "type": "categorical",
-                    "sort": {
-                      "by": "x-reversed"
-                    }
-                  },
-                  "displayName": "Tag Name"
-                },
-                "label": {
-                  "show": false
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "Most Popular Table Tags",
-                "showDescription": false,
-                "description": ""
-              },
-              "mark": {
-                "colors": [
-                  "#AB4057",
-                  "#FFAB00",
-                  "#00A972",
-                  "#FF3621",
-                  "#8BCAE7",
-                  "#AB4057",
-                  "#99DDB4",
-                  "#FCA4A1",
-                  "#919191",
-                  "#BF7080"
-                ]
-              }
-            }
-          },
-          "position": {
-            "x": 2,
-            "y": 44,
-            "width": 4,
-            "height": 6
           }
         },
         {
@@ -2803,7 +2842,7 @@
           },
           "position": {
             "x": 0,
-            "y": 34,
+            "y": 29,
             "width": 6,
             "height": 7
           }
@@ -2859,7 +2898,7 @@
           },
           "position": {
             "x": 0,
-            "y": 24,
+            "y": 19,
             "width": 6,
             "height": 7
           }
@@ -3104,6 +3143,1331 @@
             "y": 2,
             "width": 6,
             "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "afce077c",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Principle"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 39,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "5938b707",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Signal"
+              ]
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 39,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "00d40a61",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-01-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Track [data and AI lineage](https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage) to drive visibility of the data**\n",
+                "\n",
+                "1. Are you using unity catalog to access data in order to track lineage?\n",
+                "\n",
+                "2. Are you using unity catalog to register your models?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 40,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e4d9261a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "8486d58c",
+                  "fields": [
+                    {
+                      "name": "sum(total_tables)",
+                      "expression": "SUM(`total_tables`)"
+                    },
+                    {
+                      "name": "sum(lineage_tables)",
+                      "expression": "SUM(`lineage_tables`)"
+                    },
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fields": [
+                    {
+                      "fieldName": "sum(total_tables)",
+                      "displayName": "Sum of total_tables"
+                    },
+                    {
+                      "fieldName": "sum(lineage_tables)",
+                      "displayName": "Sum of lineage_tables"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "table_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "table_type"
+                }
+              },
+              "frame": {
+                "showDescription": true,
+                "description": "Objects with captured lineage information"
+              },
+              "mark": {
+                "layout": "group"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 40,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "320b2a12",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-01-04\n",
+                "&nbsp;\n",
+                "\n",
+                "**Add consistent descriptions to your metadata**\n",
+                "\n",
+                "Are you adding comments to your objects?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 47,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "50d62bb0",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 46,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "71c7137f",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 53,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "b7a1c2ed",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-01-05\n",
+                "&nbsp;\n",
+                "\n",
+                "**Allow easy data discovery for data consumers**\n",
+                "\n",
+                "Are you adding tags to your objects?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 54,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "5373c79b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "913b3827",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    },
+                    {
+                      "name": "label",
+                      "expression": "`label`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": " "
+                },
+                "color": {
+                  "fieldName": "label",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Untagged",
+                        "color": "#919191"
+                      },
+                      {
+                        "value": "Tagged",
+                        "color": "#00A972"
+                      }
+                    ]
+                  },
+                  "displayName": "Legend"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Table Tag Usage",
+                "showDescription": false,
+                "description": "See the breakdown of tagged and untagged tables"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 54,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "59d1606b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "788914b8",
+                  "fields": [
+                    {
+                      "name": "sum(usage_count)",
+                      "expression": "SUM(`usage_count`)"
+                    },
+                    {
+                      "name": "tag_name",
+                      "expression": "`tag_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(usage_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Usage Count"
+                },
+                "y": {
+                  "fieldName": "tag_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Tag Name"
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Most Popular Table Tags",
+                "showDescription": false,
+                "description": ""
+              },
+              "mark": {
+                "colors": [
+                  "#AB4057",
+                  "#FFAB00",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 54,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "c6204dab",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 60,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "764be487",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-02-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Centralize access control for all data and AI assets**\n",
+                "\n",
+                "1. Are you using row level filters?\n",
+                "\n",
+                "2. Are you using column masking?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 61,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f7938519",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 67,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "b2b6be1d",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-02-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Configure audit logging**\n",
+                "\n",
+                "\n",
+                "\n",
+                "Are you aware of how to audit events?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 68,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f1234e40",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 74,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "af95532b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-02-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Audit data platform events**\n",
+                "\n",
+                "1. Do you use delta shares?\n",
+                "2. Are you aware of how to track data requests for your published assets?\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 75,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "6275cccb",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 81,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "7b489f51",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-03-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use data quality tools for profiling, cleansing, validating, and monitoring data**\n",
+                "\n",
+                "1. Are you using expectations in Lakeflow Declarative Pipelines?\n",
+                "\n",
+                "2. Are you leveraging Lakehouse Monitoring?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 82,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "57b77b61",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 88,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3a71edd7",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-03-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Implement and enforce standardized data formats and definitions**\n",
+                "\n",
+                "What type of data formats are you using today?\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 89,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "dfe2f7a1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    },
+                    {
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_tables"
+                },
+                "color": {
+                  "fieldName": "data_source_format",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "data_source_format"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 89,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "1a05ee4a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    },
+                    {
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
+                    },
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    }
+                  ],
+                  "cubeGroupingSets": {
+                    "sets": [
+                      {
+                        "fieldNames": [
+                          "table_type"
+                        ]
+                      },
+                      {
+                        "fieldNames": [
+                          "data_source_format"
+                        ]
+                      }
+                    ]
+                  },
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "ASC",
+                      "expression": "`table_type`"
+                    },
+                    {
+                      "direction": "ASC",
+                      "expression": "`data_source_format`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pivot",
+              "encodings": {
+                "rows": [
+                  {
+                    "fieldName": "table_type",
+                    "displayName": "table_type"
+                  }
+                ],
+                "columns": [
+                  {
+                    "fieldName": "data_source_format",
+                    "displayName": "data_source_format"
+                  }
+                ],
+                "cell": {
+                  "type": "multi-cell",
+                  "fields": [
+                    {
+                      "fieldName": "sum(count_of_tables)",
+                      "cellType": "text",
+                      "displayName": "Sum of count_of_tables"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 89,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "8de06bb7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "count_of_tables",
+                      "expression": "`count_of_tables`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('STREAMING_TABLE')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_of_tables",
+                  "displayName": "count_of_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Streaming Tables",
+                "showDescription": true,
+                "description": "See the count of Streaming Tables"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 82,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b4791872",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "count_of_tables",
+                      "expression": "`count_of_tables`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('MATERIALIZED_VIEW')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_of_tables",
+                  "displayName": "count_of_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Materialized Views",
+                "showDescription": true,
+                "description": "See the count of materialized views"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 85,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b8c4d566",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f7dd8a02",
+                  "fields": [
+                    {
+                      "name": "count_tables",
+                      "expression": "`count_tables`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_tables",
+                  "displayName": "count_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lakehouse Monitoring",
+                "showDescription": true,
+                "description": "See the count of drift metrics or profile metrics tables"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 82,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "6bd69b8f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1ab4ec65",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    },
+                    {
+                      "name": "consumer_delta_sharing_recipient_name",
+                      "expression": "`consumer_delta_sharing_recipient_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_events"
+                },
+                "y": {
+                  "fieldName": "consumer_delta_sharing_recipient_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "consumer_delta_sharing_recipient_name"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Delta share events in the last 30 days"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 75,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "1bef9a9a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1ab4ec65",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    },
+                    {
+                      "name": "event_type",
+                      "expression": "`event_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_events"
+                },
+                "color": {
+                  "fieldName": "event_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "event_type"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "title": "Event Type Distribution",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 75,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "c4b3d045",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5b3944b6",
+                  "fields": [
+                    {
+                      "name": "audit_level",
+                      "expression": "`audit_level`"
+                    },
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "audit_level",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  },
+                  "displayName": "audit_level"
+                },
+                "y": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_events"
+                }
+              },
+              "frame": {
+                "title": "Count of audit events by type (Last 30 days)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 68,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "3a695476",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5b3944b6",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    },
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`workspace_id` NOT IN ('0')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Count of Events"
+                  },
+                  "displayName": "Count of Events"
+                },
+                "y": {
+                  "fieldName": "workspace_id",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "axis": {
+                    "title": "Workspace ID"
+                  },
+                  "displayName": "Workspace ID"
+                }
+              },
+              "frame": {
+                "title": "Most popular workspace (Last 30 days)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 68,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "b21db0e5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6b0c95c6",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`object_type` IN ('row_filters')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Number of total row filters"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 61,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "34358997",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6b0c95c6",
+                  "fields": [
+                    {
+                      "name": "object_type",
+                      "expression": "`object_type`"
+                    },
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`object_type` IN ('column_masks', 'table_with_masks')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "object_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "displayName": "object_type"
+                },
+                "y": {
+                  "fieldName": "sum(count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Count"
+                  },
+                  "displayName": "Count"
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Number of column masks and number of tables with column masks"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 61,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "84d35a18",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e097b5c1",
+                  "fields": [
+                    {
+                      "name": "object_type",
+                      "expression": "`object_type`"
+                    },
+                    {
+                      "name": "count_comment",
+                      "expression": "`count_comment`"
+                    },
+                    {
+                      "name": "overall_count",
+                      "expression": "`overall_count`"
+                    },
+                    {
+                      "name": "perc_comment",
+                      "expression": "`perc_comment`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "object_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Object",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "object_type"
+                  },
+                  {
+                    "fieldName": "count_comment",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "# with comments",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "count_comment"
+                  },
+                  {
+                    "fieldName": "overall_count",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Total count",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "overall_count"
+                  },
+                  {
+                    "fieldName": "perc_comment",
+                    "numberFormat": "0.00%",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "% with comments",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "scalePercentBy100": true,
+                    "displayName": "perc_comment"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": true,
+              "frame": {
+                "showTitle": false
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 47,
+            "width": 5,
+            "height": 6
           }
         }
       ],
@@ -7449,23 +8813,7 @@
         },
         {
           "widget": {
-            "name": "5d90b16c",
-            "multilineTextboxSpec": {
-              "lines": [
-                "### Signal"
-              ]
-            }
-          },
-          "position": {
-            "x": 1,
-            "y": 18,
-            "width": 5,
-            "height": 1
-          }
-        },
-        {
-          "widget": {
-            "name": "4435af7a",
+            "name": "7736691f",
             "multilineTextboxSpec": {
               "lines": [
                 "### Principle"
@@ -7481,7 +8829,23 @@
         },
         {
           "widget": {
-            "name": "8f5442ce",
+            "name": "912b9d1e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Signal"
+              ]
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 18,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "40470a83",
             "multilineTextboxSpec": {
               "lines": [
                 "#### R-01-01\n",
@@ -7504,7 +8868,7 @@
         },
         {
           "widget": {
-            "name": "32870e47",
+            "name": "11a1aa40",
             "queries": [
               {
                 "name": "main_query",
@@ -7533,24 +8897,21 @@
                   "scale": {
                     "type": "quantitative"
                   },
-                  "displayName": "Table formats"
+                  "axis": {
+                    "title": "Table Formats"
+                  },
+                  "displayName": "Table Formats"
                 },
                 "color": {
                   "fieldName": "tables_format",
                   "scale": {
                     "type": "categorical"
                   },
-                  "legend": {
-                    "hideTitle": true
-                  },
                   "displayName": "tables_format"
                 },
                 "label": {
                   "show": true
                 }
-              },
-              "frame": {
-                "showTitle": false
               }
             }
           },
@@ -7563,12 +8924,31 @@
         },
         {
           "widget": {
-            "name": "73b7e16c",
+            "name": "c8ff09f3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-03-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use autoscaling for SQL Warehouses**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "75b3a2e8",
             "queries": [
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "3673316f",
+                  "datasetName": "27265888",
                   "fields": [
                     {
                       "name": "warehouse_id",
@@ -7809,8 +9189,6 @@
               "condensed": true,
               "withRowNumber": false,
               "frame": {
-                "showDescription": false,
-                "description": "",
                 "showTitle": true,
                 "title": "These warehouses do not have autoscaling configured"
               }
@@ -7820,25 +9198,6 @@
             "x": 1,
             "y": 25,
             "width": 5,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "050b57ba",
-            "multilineTextboxSpec": {
-              "lines": [
-                "#### R-03-02\n",
-                "&nbsp;\n",
-                "\n",
-                "**Use autoscaling for SQL Warehouses**"
-              ]
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 25,
-            "width": 1,
             "height": 6
           }
         }
