@@ -2064,13 +2064,13 @@
         "FROM (\n",
         "  SELECT * FROM VALUES\n",
         "    ('R-01-01', 'Design for failure', 'Use a data format that supports ACID transactions'),\n",
-        "    ('R-01-02', 'Design for failure', 'Use an enterprise grade model serving service'),\n",
-        "    ('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data '),\n",
-        "    --('R-01-04', 'Design for failure', 'Configure jobs for automatic retries and termination'),\n",
+        "    --('R-01-02', 'Design for failure', 'Use a resilient distributed data engine for all workloads'),\n",
+        "    --('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data '),\n",
+        "    ('R-01-04', 'Design for failure', 'Configure jobs for automatic retries and termination'),\n",
         "    ('R-01-05', 'Design for failure', 'Use a scalable and production-grade model serving infrastructure'),\n",
-        "    ('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n",
-        "    ('R-02-03', 'Manage data quality', 'Actively manage schemas'),\n",
-        "    ('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n",
+        "    --('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n",
+        "    --('R-02-03', 'Manage data quality', 'Actively manage schemas'),\n",
+        "    --('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n",
         "    ('R-03-01', 'Design for autoscaling', 'Enable autoscaling for ETL workloads'),\n",
         "    ('R-03-02', 'Design for autoscaling', 'Use autoscaling for SQL Warehouses')\n",
         "    --('R-02-09', 'Design workloads for performance', 'Use compaction'),\n",
@@ -2407,6 +2407,51 @@
         "GROUP BY\n",
         "billing_origin_product \n",
         "ORDER BY runs_total DESC;\n"
+      ]
+    },
+    {
+      "name": "95b08392",
+      "displayName": "waf_R-03-01_auto_scaling_ETL",
+      "queryLines": [
+        "select workspace_id, cluster_id, cluster_name, owned_by, worker_count, create_time  \n",
+        "from system.compute.clusters \n",
+        "where cluster_source = 'JOB'\n",
+        "and create_time >= current_timestamp() - interval 7 days\n",
+        "and max_autoscale_workers is null"
+      ]
+    },
+    {
+      "name": "db7bc0c3",
+      "displayName": "waf_R-01-04_auto_termination",
+      "queryLines": [
+        "WITH all_purpose_cluster AS (\n",
+        "  SELECT\n",
+        "    *,\n",
+        "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
+        "  FROM system.compute.clusters\n",
+        "  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n",
+        "  QUALIFY rn=1 AND delete_time is null\n",
+        ")\n",
+        "\n",
+        "\n",
+        "SELECT   \n",
+        "  workspace_id,\n",
+        "  cluster_id,\n",
+        "  cluster_name,\n",
+        "  owned_by\n",
+        "FROM all_purpose_cluster WHERE auto_termination_minutes IS NULL"
+      ]
+    },
+    {
+      "name": "ea93f04e",
+      "displayName": "waf_R-01-05_model_serving",
+      "queryLines": [
+        "select usage_metadata.endpoint_name endpoint_name, billing_origin_product, sum(usage_quantity) usage_dbus from system.billing.usage\n",
+        "WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%'\n",
+        "AND usage_date >= current_timestamp() - interval 7 days\n",
+        "AND usage_metadata.endpoint_name is not null\n",
+        "group by endpoint_name, billing_origin_product\n",
+        "order by usage_dbus desc"
       ]
     }
   ],
@@ -9810,7 +9855,7 @@
           },
           "position": {
             "x": 0,
-            "y": 25,
+            "y": 43,
             "width": 1,
             "height": 6
           }
@@ -9818,6 +9863,189 @@
         {
           "widget": {
             "name": "75b3a2e8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7bc0c3",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "cluster_name",
+                      "expression": "`cluster_name`"
+                    },
+                    {
+                      "name": "owned_by",
+                      "expression": "`owned_by`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "workspace_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "workspace_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "workspace_id"
+                  },
+                  {
+                    "fieldName": "cluster_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_id"
+                  },
+                  {
+                    "fieldName": "cluster_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "cluster_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_name"
+                  },
+                  {
+                    "fieldName": "owned_by",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "owned_by",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "owned_by"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "All purpose cluster which do not have auto-termination configured"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 25,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "1df808a3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-03-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Enable autoscaling for ETL workloads**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 37,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "a90d04b7",
             "queries": [
               {
                 "name": "main_query",
@@ -10070,7 +10298,406 @@
           },
           "position": {
             "x": 1,
+            "y": 31,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f87d77aa",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-01-04\n",
+                "&nbsp;\n",
+                "\n",
+                "**Configure jobs for automatic retries and termination**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
             "y": 25,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "74d18572",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "95b08392",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "cluster_name",
+                      "expression": "`cluster_name`"
+                    },
+                    {
+                      "name": "owned_by",
+                      "expression": "`owned_by`"
+                    },
+                    {
+                      "name": "worker_count",
+                      "expression": "`worker_count`"
+                    },
+                    {
+                      "name": "create_time",
+                      "expression": "`create_time`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "workspace_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "workspace_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "workspace_id"
+                  },
+                  {
+                    "fieldName": "cluster_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_id"
+                  },
+                  {
+                    "fieldName": "cluster_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "cluster_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_name"
+                  },
+                  {
+                    "fieldName": "owned_by",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "owned_by",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "owned_by"
+                  },
+                  {
+                    "fieldName": "worker_count",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "worker_count",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "worker_count"
+                  },
+                  {
+                    "fieldName": "create_time",
+                    "dateTimeFormat": "DD/MM/YYYY HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "create_time",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "create_time"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Job runs from past 7 days which do not have autoscaling configured"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 31,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "261db1e1",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-01-05\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use a scalable and production-grade model serving infrastructure**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 31,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f5746bba",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ea93f04e",
+                  "fields": [
+                    {
+                      "name": "endpoint_name",
+                      "expression": "`endpoint_name`"
+                    },
+                    {
+                      "name": "billing_origin_product",
+                      "expression": "`billing_origin_product`"
+                    },
+                    {
+                      "name": "usage_dbus",
+                      "expression": "`usage_dbus`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "endpoint_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "endpoint_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "endpoint_name"
+                  },
+                  {
+                    "fieldName": "billing_origin_product",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "billing_origin_product",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "billing_origin_product"
+                  },
+                  {
+                    "fieldName": "usage_dbus",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "usage_dbus",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "usage_dbus"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Model Serving DBU usage the last 7 days"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 31,
             "width": 5,
             "height": 6
           }
