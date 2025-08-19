@@ -77,7 +77,7 @@ Develop a **lightweight WAF assessment tool** that:
 - **Run `install.ipynb`**  
   Execute the notebook to automatically deploy the **"WAF ASSESSMENT"** dashboard in your Databricks workspace.
   
-  > **Note**: This tool collects masked email addresses (first 5 characters only) and workspace IDs for usage analytics. To disable telemetry, simply set `ENABLE_TELEMETRY = False` on line 10 in the notebook or comment out that line.
+  > **Note**: This tool collects masked email addresses (first 5 characters only) and workspace IDs for usage analytics during the initial installation only. This is a one-time telemetry collection to understand adoption. To disable telemetry, simply set `ENABLE_TELEMETRY = False` on line 10 in the notebook or comment out that line.
 
 - **Open the Dashboard**  
   Access real-time insights, scores, and recommendations—all at your fingertips.
