@@ -1,0 +1,10727 @@
+-- Databricks notebook source
+{
+  "datasets": [
+    {
+      "name": "303a6758",
+      "displayName": "Count of Tables",
+      "queryLines": [
+        "SELECT COUNT(*) FROM system.information_schema.tables;"
+      ]
+    },
+    {
+      "name": "f5bf425c",
+      "displayName": "Count of Volumes",
+      "queryLines": [
+        "SELECT COUNT(*) FROM system.information_schema.volumes;"
+      ]
+    },
+    {
+      "name": "5fdcd556",
+      "displayName": "Count of Functions",
+      "queryLines": [
+        "SELECT COUNT(*) FROM system.information_schema.routines;"
+      ]
+    },
+    {
+      "name": "a92ace17",
+      "displayName": "Count of Unused Tables",
+      "queryLines": [
+        "SELECT \n",
+        "  COUNT(DISTINCT CONCAT(ist.table_catalog, '.', ist.table_schema, '.', ist.table_name)) AS full_name_count\n",
+        "FROM \n",
+        "  system.information_schema.tables ist\n",
+        "  LEFT JOIN \n",
+        "    (SELECT \n",
+        "       tl.source_table_catalog,\n",
+        "       tl.source_table_schema,\n",
+        "       tl.source_table_name\n",
+        "     FROM \n",
+        "       system.access.table_lineage tl\n",
+        "     WHERE \n",
+        "       tl.event_time BETWEEN :date_range_start AND :date_range_end\n",
+        "       AND tl.source_type IN ('TABLE', 'STREAMING_TABLE')\n",
+        "    ) tl\n",
+        "    ON \n",
+        "      tl.source_table_catalog = ist.table_catalog \n",
+        "      AND tl.source_table_schema = ist.table_schema \n",
+        "      AND tl.source_table_name = ist.table_name\n",
+        "WHERE\n",
+        "  tl.source_table_catalog IS NULL;"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_range_start",
+          "keyword": "date_range_start",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now-30d/d"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "date_range_end",
+          "keyword": "date_range_end",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now/s"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "55e66413",
+      "displayName": "Count of Tables with Usage",
+      "queryLines": [
+        "SELECT \n",
+        "  COUNT(DISTINCT CONCAT(source_table_catalog, '.', source_table_schema, '.', source_table_name)) AS distinct_tables\n",
+        "FROM \n",
+        "  system.access.table_lineage\n",
+        "WHERE \n",
+        "  event_time BETWEEN :date_range_start AND :date_range_end\n",
+        "  AND source_table_full_name IS NOT NULL\n",
+        "  AND source_type IN ('TABLE', 'STREAMING_TABLE');"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_range_start",
+          "keyword": "date_range_start",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now-30d/d"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "date_range_end",
+          "keyword": "date_range_end",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now/s"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "90d7e6f1",
+      "displayName": "Count of Unique Users with Table Read/Write Event",
+      "queryLines": [
+        "SELECT \n",
+        "  COUNT(DISTINCT created_by) AS distinct_users\n",
+        "\n",
+        "FROM \n",
+        "  system.access.table_lineage AS tl\n",
+        "\n",
+        "WHERE \n",
+        "  event_time >= :date_range_start\n",
+        "  AND event_time <= :date_range_end\n",
+        "  AND (source_table_full_name IS NOT NULL);"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_range_start",
+          "keyword": "date_range_start",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now-30d/d"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "date_range_end",
+          "keyword": "date_range_end",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now/s"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "628c2773",
+      "displayName": "Count of Unsecured Tables",
+      "queryLines": [
+        "SELECT \n",
+        "    COUNT(DISTINCT CONCAT(TABLE_CATALOG, '.', TABLE_SCHEMA, '.', TABLE_NAME)) AS full_name_count\n",
+        "FROM \n",
+        "    system.information_schema.table_privileges\n",
+        "WHERE \n",
+        "    grantee = 'account users' \n",
+        "    AND privilege_type = 'SELECT';"
+      ]
+    },
+    {
+      "name": "1f951287",
+      "displayName": "Count of Sensitive Tables",
+      "queryLines": [
+        "SELECT COUNT(DISTINCT CONCAT(table_catalog, '.', table_schema, '.', table_name)) AS distinct_table_count\n",
+        "FROM (\n",
+        "    SELECT \n",
+        "        table_catalog, table_schema, table_name\n",
+        "    FROM \n",
+        "        system.information_schema.column_masks\n",
+        "\n",
+        "    UNION\n",
+        "\n",
+        "    SELECT \n",
+        "        table_catalog, table_schema, table_name\n",
+        "    FROM \n",
+        "        system.information_schema.row_filters\n",
+        ") AS combined;\n"
+      ]
+    },
+    {
+      "name": "913b3827",
+      "displayName": "Pie Chart of Tagged vs. Untagged Tables",
+      "queryLines": [
+        "WITH tagged_count AS (\n",
+        "    SELECT COUNT(*) AS count FROM system.information_schema.table_tags\n",
+        ")\n",
+        "SELECT 'Tagged' AS label, count \n",
+        "FROM tagged_count\n",
+        "UNION ALL\n",
+        "SELECT 'Untagged' AS label, \n",
+        "       (SELECT COUNT(*) FROM system.information_schema.tables) - count \n",
+        "FROM tagged_count;"
+      ]
+    },
+    {
+      "name": "788914b8",
+      "displayName": "Bar Chart of Popular Tags",
+      "queryLines": [
+        "SELECT \n",
+        "  tag_name,\n",
+        "  COUNT(*) AS usage_count\n",
+        "FROM \n",
+        "  system.information_schema.table_tags\n",
+        "WHERE \n",
+        "  tag_name IS NOT NULL\n",
+        "GROUP BY \n",
+        "  tag_name\n",
+        "ORDER BY \n",
+        "  usage_count DESC\n",
+        "LIMIT 10;"
+      ]
+    },
+    {
+      "name": "8d97349c",
+      "displayName": "Usage Over Last Year",
+      "queryLines": [
+        "SELECT \n",
+        "    DATE_TRUNC('month', event_time) AS usage_date,\n",
+        "    COUNT(*) AS usage_count\n",
+        "FROM \n",
+        "    system.access.table_lineage\n",
+        "WHERE \n",
+        "    (event_time >= :date_range_start AND event_time <= :date_range_end )\n",
+        "GROUP BY \n",
+        "    usage_date\n",
+        "ORDER BY\n",
+        "    usage_date;"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_range_start",
+          "keyword": "date_range_start",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now-12M/M"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "date_range_end",
+          "keyword": "date_range_end",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now/s"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "763a2da9",
+      "displayName": "Most Popular Tables with Staleness",
+      "queryLines": [
+        "WITH TableReads AS (\n",
+        "    SELECT\n",
+        "        CONCAT(source_table_catalog, '.', source_table_schema, '.', source_table_name) AS table_full_name,\n",
+        "        COUNT(*) AS read_count\n",
+        "    FROM\n",
+        "        system.access.table_lineage\n",
+        "    WHERE\n",
+        "        source_table_catalog IS NOT NULL\n",
+        "        AND :date_range_start <= event_date AND event_date <= :date_range_end\n",
+        "    GROUP BY\n",
+        "        table_full_name\n",
+        "),\n",
+        "LatestTargetDate AS (\n",
+        "    SELECT\n",
+        "        CONCAT(target_table_catalog, '.', target_table_schema, '.', target_table_name) AS table_full_name,\n",
+        "        MAX(event_date) AS latest_target_date\n",
+        "    FROM\n",
+        "        system.access.table_lineage\n",
+        "    WHERE\n",
+        "        target_table_catalog IS NOT NULL\n",
+        "    GROUP BY\n",
+        "        table_full_name\n",
+        ")\n",
+        "SELECT\n",
+        "    tr.table_full_name,\n",
+        "    tr.read_count,\n",
+        "    COALESCE(ltd.latest_target_date, 'N/A') AS latest_target_date\n",
+        "FROM\n",
+        "    TableReads tr\n",
+        "LEFT JOIN\n",
+        "    LatestTargetDate ltd ON tr.table_full_name = ltd.table_full_name\n",
+        "ORDER BY\n",
+        "    tr.read_count DESC\n",
+        "LIMIT 10;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_range_start",
+          "keyword": "date_range_start",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now-30d/d"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "date_range_end",
+          "keyword": "date_range_end",
+          "dataType": "DATETIME",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATETIME",
+              "values": [
+                {
+                  "value": "now/s"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5ed9b6e5",
+      "displayName": "Score",
+      "queryLines": [
+        "SELECT \n",
+        "  \"RAW Data Governance\",\n",
+        "  CASE \n",
+        "    WHEN (SELECT COUNT(*) FROM system.information_schema.volumes) > 10 \n",
+        "    THEN \"8/10\" \n",
+        "    WHEN (SELECT COUNT(*) FROM system.information_schema.volumes) > 5 \n",
+        "    THEN \"5/10\" \n",
+        "    ELSE \"0\" \n",
+        "  END\n",
+        "  as SCORE\n",
+        "\n",
+        "  UNION\n",
+        "\n",
+        "  SELECT \n",
+        "  \"Procedural Governance\",\n",
+        "  CASE \n",
+        "    WHEN (SELECT COUNT(*) FROM system.information_schema.routines) > 10 \n",
+        "    THEN \"10/10\" \n",
+        "    WHEN (SELECT COUNT(*) FROM system.information_schema.routines) > 5 \n",
+        "    THEN \"5/10\" \n",
+        "    ELSE \"0/10\" \n",
+        "  END\n",
+        "\n",
+        "  UNION\n",
+        "\n",
+        "--    SELECT \n",
+        "--   \"Permission Coverage\",\n",
+        "--   CASE \n",
+        "--     WHEN (SELECT \n",
+        "--     COUNT(DISTINCT CONCAT(TABLE_CATALOG, '.', TABLE_SCHEMA, '.', TABLE_NAME))t\n",
+        "-- FROM \n",
+        "--     system.information_schema.table_privileges \n",
+        "-- WHERE \n",
+        "--     grantee = 'account users' \n",
+        "--     AND privilege_type = 'SELECT' limit 10) > 1\n",
+        "--     THEN\n",
+        "--     0 \n",
+        "\n",
+        "--     ELSE 10 \n",
+        "--   END\n",
+        "\n",
+        "--   UNION \n",
+        "\n",
+        "  SELECT \n",
+        "  \"TAG Governance\",\n",
+        "  CASE \n",
+        "    WHEN (SELECT COUNT(*) FROM system.information_schema.column_tags) > 10 \n",
+        "    THEN \"10/10\" \n",
+        "    WHEN (SELECT COUNT(*) FROM system.information_schema.column_tags) > 5 \n",
+        "    THEN \"5/10\" \n",
+        "    ELSE \"0/10\" \n",
+        "  END\n",
+        "\n",
+        "\n"
+      ]
+    },
+    {
+      "name": "1eab9fe1",
+      "displayName": "waf_controls_g",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  pillar,\n",
+        "  principle,\n",
+        "  description,\n",
+        "  check_type,\n",
+        "  source_object,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.audit LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
+        "      SELECT 1\n",
+        "          FROM system.information_schema.tables\n",
+        "          WHERE table_catalog = 'system'\n",
+        "          AND table_schema = 'marketplace'\n",
+        "          AND table_name = 'listing_access_events'\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables \n",
+        "      WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
+        "      LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables \n",
+        "      WHERE table_type = 'BASE TABLE'\n",
+        "      LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('DG-01-03', 'Data & AI Governance', 'Unify data and AI management', 'Track data and AI lineage', 'AUTO', 'system.access.table_lineage'),\n",
+        "    ('DG-01-04', 'Data & AI Governance', 'Unify data and AI management', 'Add comments to metadata', 'AUTO', 'system.information_schema.columns'),\n",
+        "    ('DG-01-05', 'Data & AI Governance', 'Unify data and AI management', 'Enable easy data discovery', 'AUTO', 'system.information_schema.table_tags'),\n",
+        "    ('DG-02-01', 'Data & AI Governance', 'Unify data and AI security', 'Centralize access control (row/column level)', 'AUTO', 'system.information_schema.row_filters'),\n",
+        "    ('DG-02-02', 'Data & AI Governance', 'Unify data and AI security', 'Configure audit logging', 'AUTO', 'system.access.audit'),\n",
+        "    ('DG-02-03', 'Data & AI Governance', 'Unify data and AI security', 'Audit data platform events', 'AUTO', 'system.marketplace.listing_access_events'),\n",
+        "    ('DG-03-02', 'Data & AI Governance', 'Establish data quality standards', 'Use data quality tools and profiling', 'PATTERN', 'system.information_schema.tables'),\n",
+        "    ('DG-03-03', 'Data & AI Governance', 'Establish data quality standards', 'Enforce standardized data formats', 'AUTO', 'system.information_schema.tables')\n",
+        "  AS waf(waf_id, pillar, principle, description, check_type, source_object)\n",
+        ") waf\n"
+      ]
+    },
+    {
+      "name": "95258030",
+      "displayName": "waf_principal_percentage_g",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    principle,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.access.audit LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
+        "      SELECT 1\n",
+        "          FROM system.information_schema.tables\n",
+        "          WHERE table_catalog = 'system'\n",
+        "          AND table_schema = 'marketplace'\n",
+        "          AND table_name = 'listing_access_events'\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables \n",
+        "        WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
+        "        LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables \n",
+        "        WHERE table_type = 'BASE TABLE'\n",
+        "        LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('DG-01-03', 'Unify data and AI management'),\n",
+        "      ('DG-01-04', 'Unify data and AI management'),\n",
+        "      ('DG-01-05', 'Unify data and AI management'),\n",
+        "      ('DG-02-01', 'Unify data and AI security'),\n",
+        "      ('DG-02-02', 'Unify data and AI security'),\n",
+        "      ('DG-02-03', 'Unify data and AI security'),\n",
+        "      ('DG-03-02', 'Establish data quality standards'),\n",
+        "      ('DG-03-03', 'Establish data quality standards')\n",
+        "    AS waf(waf_id, principle)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle\n"
+      ]
+    },
+    {
+      "name": "920a8759",
+      "displayName": "total_percentage_g",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.access.audit LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
+        "      SELECT 1\n",
+        "          FROM system.information_schema.tables\n",
+        "          WHERE table_catalog = 'system'\n",
+        "          AND table_schema = 'marketplace'\n",
+        "          AND table_name = 'listing_access_events'\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables \n",
+        "        WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
+        "        LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables \n",
+        "        WHERE table_type = 'BASE TABLE'\n",
+        "        LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('DG-01-03'), ('DG-01-04'), ('DG-01-05'),\n",
+        "      ('DG-02-01'), ('DG-02-02'), ('DG-02-03'),\n",
+        "      ('DG-03-02'), ('DG-03-03')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n"
+      ]
+    },
+    {
+      "name": "c19487ca",
+      "displayName": "waf_controls_i",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  practice,\n",
+        "  source_object,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'IU-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage_type = 'API_OPERATION' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-01-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.connections LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-01-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.audit WHERE action_name LIKE '%PartnerConnection%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-02-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-02-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.audit WHERE action_name LIKE '%DeltaSharing%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-02-03' AND EXISTS (\n",
+        "      SELECT 1 --Currently in Private preview -- FROM system.mlflow.experiments_latest LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-03-01' AND EXISTS (\n",
+        "      SELECT catalog_owner, COUNT(*) FROM system.information_schema.catalogs GROUP BY catalog_owner HAVING COUNT(*) > 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-03-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-03-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-03-04' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.assistant_events LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'IU-04-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('IU-01-01', 'Define standards for integration', 'Use standard and reusable integration patterns', 'system.billing.usage'),\n",
+        "    ('IU-01-02', 'Define standards for integration', 'Use optimized connectors to ingest data sources', 'system.information_schema.connections'),\n",
+        "    ('IU-01-03', 'Define standards for integration', 'Use certified partner tools', 'system.access.audit'),\n",
+        "    ('IU-02-01', 'Utilize open interfaces and data formats', 'Use open data formats', 'system.information_schema.tables'),\n",
+        "    ('IU-02-02', 'Utilize open interfaces and data formats', 'Enable secure data sharing', 'system.access.audit'),\n",
+        "    ('IU-02-03', 'Utilize open interfaces and data formats', 'Use open standards for AI workflows', 'system.mlflow.experiments_latest'),\n",
+        "    ('IU-03-01', 'Simplify new use case implementation', 'Provide a self-service experience', 'system.information_schema.catalogs'),\n",
+        "    ('IU-03-02', 'Simplify new use case implementation', 'Use serverless services', 'system.billing.usage'),\n",
+        "    ('IU-03-03', 'Simplify new use case implementation', 'Use pre-defined compute templates', 'system.compute.clusters'),\n",
+        "    ('IU-03-04', 'Simplify new use case implementation', 'Use AI productivity tools', 'system.assistant.usage'),\n",
+        "    ('IU-04-03', 'Ensure data consistency and usability', 'Provide central catalog for discovery and lineage', 'system.access.table_lineage')\n",
+        ") waf(waf_id, principle, practice, source_object);\n"
+      ]
+    },
+    {
+      "name": "83c64453",
+      "displayName": "waf_principal_percentage_i",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    principle,\n",
+        "    practice,\n",
+        "    description,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'IU-01-01' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type = 'API_OPERATION' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-01-02' AND EXISTS (SELECT 1 FROM system.information_schema.connections LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-01-03' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name LIKE '%PartnerConnection%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-02' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name LIKE '%DeltaSharing%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-03' AND EXISTS (SELECT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-01' AND EXISTS (SELECT catalog_owner, COUNT(DISTINCT catalog_owner) FROM system.information_schema.catalogs GROUP BY catalog_owner HAVING COUNT(*) > 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-02' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-03' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-04' AND EXISTS (SELECT 1 FROM system.access.assistant_events LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-04-03' AND EXISTS (SELECT 1 FROM system.access.table_lineage LIMIT 1) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('IU-01-01', 'Define standards for integration', 'Use standard and reusable integration patterns', 'Tracks usage of REST API, SDKs, CLI for external integration'),\n",
+        "      ('IU-01-02', 'Define standards for integration', 'Use optimized connectors to ingest data sources (Federation)', 'Monitors federated connectors to external sources'),\n",
+        "      ('IU-01-03', 'Define standards for integration', 'Use certified partner tools', 'Captures Partner Connect actions from audit logs'),\n",
+        "      ('IU-02-01', 'Utilize open interfaces and data formats', 'Use open data formats (Delta)', 'Verifies use of Delta tables'),\n",
+        "      ('IU-02-02', 'Utilize open interfaces and data formats', 'Enable secure data sharing (Delta Sharing)', 'Detects Delta Sharing usage from audit events'),\n",
+        "      ('IU-02-03', 'Utilize open interfaces and data formats', 'Use open standards for AI workflows (MLflow)', 'Checks MLflow experiments and runs in system tables'),\n",
+        "      ('IU-03-01', 'Simplify new use case implementation', 'Provide a self-service experience across the platform', 'Indicates multi-catalog ownership for self-service structure'),\n",
+        "      ('IU-03-02', 'Simplify new use case implementation', 'Use serverless services', 'Confirms serverless workloads in billing logs'),\n",
+        "      ('IU-03-03', 'Simplify new use case implementation', 'Use pre-defined compute templates (Cluster Policies)', 'Validates cluster policy usage'),\n",
+        "      ('IU-03-04', 'Simplify new use case implementation', 'Use AI productivity tools (Databricks Assistant)', 'Shows Assistant usage through interaction logs'),\n",
+        "      ('IU-04-03', 'Ensure data consistency and usability', 'Provide central catalog for discovery and lineage', 'Validates presence of lineage and shared catalogs')\n",
+        "    AS waf(waf_id, principle, practice, description)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle"
+      ]
+    },
+    {
+      "name": "05c16819",
+      "displayName": "total_percentage_i",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'IU-01-01' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type = 'API_OPERATION' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-01-02' AND EXISTS (SELECT 1 FROM system.information_schema.connections LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-01-03' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name LIKE '%PartnerConnection%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-02' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name LIKE '%DeltaSharing%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-03' AND EXISTS (SELECT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-01' AND EXISTS (SELECT catalog_owner, COUNT(DISTINCT catalog_owner) FROM system.information_schema.catalogs GROUP BY catalog_owner HAVING COUNT(*) > 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-02' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-03' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-04' AND EXISTS (SELECT 1 FROM system.access.assistant_events LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-04-03' AND EXISTS (SELECT 1 FROM system.access.table_lineage LIMIT 1) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('IU-01-01'), ('IU-01-02'), ('IU-01-03'),\n",
+        "      ('IU-02-01'), ('IU-02-02'), ('IU-02-03'),\n",
+        "      ('IU-03-01'), ('IU-03-02'), ('IU-03-03'), ('IU-03-04'),\n",
+        "      ('IU-04-03')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status;"
+      ]
+    },
+    {
+      "name": "b39d7f91",
+      "displayName": "total_percentage_across_pillars",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'IU-01-01' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type = 'API_OPERATION' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-01-02' AND EXISTS (SELECT 1 FROM system.information_schema.connections LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-01-03' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name LIKE '%PartnerConnection%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-02' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name LIKE '%DeltaSharing%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-02-03' AND EXISTS (SELECT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-01' AND EXISTS (SELECT catalog_owner, COUNT(DISTINCT catalog_owner) FROM system.information_schema.catalogs GROUP BY catalog_owner HAVING COUNT(*) > 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-02' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-03' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-03-04' AND EXISTS (SELECT 1 FROM system.access.assistant_events LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'IU-04-03' AND EXISTS (SELECT 1 FROM system.access.table_lineage LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-03' AND EXISTS (SELECT 1 FROM system.access.table_lineage LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-04' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-05' AND EXISTS (SELECT 1 FROM system.information_schema.table_tags LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.row_filters LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-02' AND EXISTS (SELECT 1 FROM system.access.audit LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-03' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE table_catalog = 'system' AND table_schema = 'marketplace' AND table_name = 'listing_access_events')THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-02' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-03' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE table_type = 'BASE TABLE' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-01' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-03' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-04' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE dbr_version IS NOT NULL LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-06' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-09' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE product_features.is_photon = true LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-02-03' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-01' AND EXISTS (SELECT 1 FROM system.billing.usage LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-02' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE size(map_keys(tags)) > 0 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-03' AND EXISTS (SELECT 1 FROM system.billing.usage LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-01-01' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%JOBS_SERVERLESS_COMPUTE%' OR usage.sku_name LIKE '%SERVERLESS_SQL%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-01-02' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1 ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-02-02' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE worker_count > 1 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-02-04' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE worker_count > 3 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-02-05' AND NOT EXISTS (SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-02-06' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE billing_origin_product IN ('ALL_PURPOSE','JOBS','DLT') AND product_features.is_photon = true LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'PE-02-07' AND EXISTS (SELECT 1 FROM system.compute.clusters HAVING COUNT(DISTINCT split(worker_node_type,'[.]')[0])/COUNT(1) >= 0.05) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-01-06' AND EXISTS (SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-01-11' AND EXISTS (SELECT 1 FROM FROM system.access.audit WHERE action_name IN ('workspaceInHouseOAuthClientAuthentication', 'mintOAuthAuthorizationCode') LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-01-12' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE data_security_mode = \"USER_ISOLATION\" LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-02-01' AND NOT EXISTS (SELECT 1 FROM system.information_schema.tables WHERE storage_path LIKE 'dbfs:/%' OR storage_path LIKE '/dbfs/%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id IN ('SCP-02-03', 'SCP-03-03') AND EXISTS (SELECT 1 FROM system.access.outbound_network LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-06-01' AND EXISTS (SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-06-02' AND EXISTS (SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.access.audit%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-06-03' AND EXISTS (SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.compute.clusters%' AND lower(statement_text) LIKE '%create_time%'  LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'SCP-06-05' AND EXISTS (SELECT 1 FROM system.compute.clusters where cardinality(tags) > 0 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-01' AND EXISTS (SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "      WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-05' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-01-06' AND EXISTS (SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-02-03' AND EXISTS (SELECT 1 FROM system.information_schema.metastores LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-03-01' AND EXISTS (SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1) THEN 'Yes'\n",
+        "      WHEN waf_id = 'R-03-02' AND EXISTS (SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented,\n",
+        "    CASE \n",
+        "      WHEN waf_id LIKE 'IU-%' THEN 'Interoperability & Usability'\n",
+        "      WHEN waf_id LIKE 'DG-%' THEN 'Data & AI Governance'\n",
+        "      WHEN waf_id LIKE 'CO-%' THEN 'Cost Optimization'\n",
+        "      WHEN waf_id LIKE 'PE-%' THEN 'Performance Efficiency'\n",
+        "      WHEN waf_id LIKE 'SCP-%' THEN 'Security, Compliance and Privacy'\n",
+        "      WHEN waf_id LIKE 'R-%'  THEN 'Reliability'\n",
+        "    END AS pillar\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('IU-01-01'), ('IU-01-02'), ('IU-01-03'),\n",
+        "      ('IU-02-01'), ('IU-02-02'), ('IU-02-03'),\n",
+        "      ('IU-03-01'), ('IU-03-02'), ('IU-03-03'), ('IU-03-04'),\n",
+        "      ('IU-04-03'),\n",
+        "      ('DG-01-03'), ('DG-01-04'), ('DG-01-05'),\n",
+        "      ('DG-02-01'), ('DG-02-02'), ('DG-02-03'),\n",
+        "      ('DG-03-02'), ('DG-03-03'),\n",
+        "      ('CO-01-01'), ('CO-01-03'), ('CO-01-04'), ('CO-01-06'), ('CO-01-09'),\n",
+        "      ('CO-02-03'), ('CO-03-01'), ('CO-03-02'), ('CO-03-03'),\n",
+        "      ('PE-01-01'),('PE-01-02'),\n",
+        "      ('PE-02-02'),('PE-02-04'),('PE-02-05'),('PE-02-06'),('PE-02-07'),\n",
+        "      ('SCP-01-06'), ('SCP-01-11'),('SCP-01-12'),\n",
+        "      ('SCP-02-01'),('SCP-02-03'),\n",
+        "      ('SCP-03-03'),\n",
+        "      ('SCP-06-01'),('SCP-06-02'),('SCP-06-03'),('SCP-06-05'),\n",
+        "      ('R-01-01'),('R-01-02'),('R-01-03'),('R-01-05'),('R-01-06'),\n",
+        "      ('R-02-03'),('R-02-04'),\n",
+        "      ('R-03-01'),('R-03-02')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  pillar,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY pillar;\n"
+      ]
+    },
+    {
+      "name": "dbdc9433",
+      "displayName": "waf_controls_c",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'CO-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'CO-01-02' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.lakeflow.job_task_run_timeline JOIN system.compute.clusters USING (cluster_id)\n",
+        "    --   WHERE is_interactive = false LIMIT 1\n",
+        "    -- ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-01-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-01-04' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE dbr_version IS NOT NULL LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-01-09' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE product_features.is_photon = true LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-03-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-03-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE size(map_keys(tags)) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'CO-03-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('CO-01-01', 'Choose optimal resources', 'Use performance optimized data formats'),\n",
+        "    --('CO-01-02', 'Choose optimal resources', 'Use job clusters'),\n",
+        "    ('CO-01-03', 'Choose optimal resources', 'Use SQL warehouse for SQL workloads'),\n",
+        "    ('CO-01-04', 'Choose optimal resources', 'Use up-to-date runtimes'),\n",
+        "    ('CO-01-06', 'Choose optimal resources', 'Use Serverless for your workloads'),\n",
+        "    ('CO-01-09', 'Choose optimal resources', 'Evaluate performance optimized query engines'),\n",
+        "    ('CO-02-03', 'Dynamically allocate resources', 'Use compute policies to control costs'),\n",
+        "    ('CO-03-01', 'Monitor and control cost', 'Monitor costs'),\n",
+        "    ('CO-03-02', 'Monitor and control cost', 'Tag clusters for cost attribution'),\n",
+        "    ('CO-03-03', 'Monitor and control cost', 'Implement observability to track & chargeback cost')\n",
+        ") waf(waf_id, principle, best_practice);\n"
+      ]
+    },
+    {
+      "name": "81f0a6aa",
+      "displayName": "waf_principal_percentage_c",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    principle,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'CO-01-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      -- WHEN waf_id = 'CO-01-02' AND EXISTS (\n",
+        "      --   SELECT 1 FROM system.lakeflow.job_task_run_timeline JOIN system.compute.clusters USING (cluster_id)\n",
+        "      --   WHERE is_interactive = false LIMIT 1\n",
+        "      -- ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-04' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE dbr_version IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-06' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-09' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage WHERE product_features.is_photon = true LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-02-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE size(map_keys(tags)) > 0 LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('CO-01-01', 'Choose optimal resources'),\n",
+        "      --('CO-01-02', 'Choose optimal resources'),\n",
+        "      ('CO-01-03', 'Choose optimal resources'),\n",
+        "      ('CO-01-04', 'Choose optimal resources'),\n",
+        "      ('CO-01-06', 'Choose optimal resources'),\n",
+        "      ('CO-01-09', 'Choose optimal resources'),\n",
+        "      ('CO-02-03', 'Dynamically allocate resources'),\n",
+        "      ('CO-03-01', 'Monitor and control cost'),\n",
+        "      ('CO-03-02', 'Monitor and control cost'),\n",
+        "      ('CO-03-03', 'Monitor and control cost')\n",
+        "    AS waf(waf_id, principle)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;\n"
+      ]
+    },
+    {
+      "name": "06f2987c",
+      "displayName": "total_percentage_c",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'CO-01-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables WHERE data_source_format = 'DELTA' LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      -- WHEN waf_id = 'CO-01-02' AND EXISTS (\n",
+        "      --   SELECT 1 FROM system.lakeflow.job_task_run_timeline JOIN system.compute.clusters USING (cluster_id)\n",
+        "      --   WHERE is_interactive = false LIMIT 1\n",
+        "      -- ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-04' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE dbr_version IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-06' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SERVERLESS%' LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-01-09' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage WHERE product_features.is_photon = true LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-02-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE policy_id IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE size(map_keys(tags)) > 0 LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'CO-03-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.billing.usage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('CO-01-01'),\n",
+        "      --('CO-01-02'),\n",
+        "      ('CO-01-03'),\n",
+        "      ('CO-01-04'),\n",
+        "      ('CO-01-06'),\n",
+        "      ('CO-01-09'),\n",
+        "      ('CO-02-03'),\n",
+        "      ('CO-03-01'),\n",
+        "      ('CO-03-02'),\n",
+        "      ('CO-03-03')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status;\n"
+      ]
+    },
+    {
+      "name": "4745a0f9",
+      "displayName": "waf_controls_p",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'PE-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%JOBS_SERVERLESS_COMPUTE%' OR usage.sku_name LIKE '%SERVERLESS_SQL%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1 \n",
+        "    ) THEN 'Yes'\n",
+        "--    WHEN waf_id = 'PE-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE worker_count > 1 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-04' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE worker_count > 3 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product IN ('ALL_PURPOSE','JOBS','DLT') AND product_features.is_photon = true LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-07' AND EXISTS (\n",
+        "       SELECT 1 FROM system.compute.clusters HAVING COUNT(DISTINCT split(worker_node_type,'[.]')[0])/COUNT(1) >= 0.05 --Look for at least 5% variety in instance families\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('PE-01-01', 'Utilize serverless capabilities', 'Use serverless architecture'),\n",
+        "    ('PE-01-02', 'Utilize serverless capabilities', 'Use an enterprise grade model serving service'),\n",
+        "    --('PE-02-01', 'Utilize serverless capabilities', 'Understand your data ingestion and access patterns'),\n",
+        "    ('PE-02-02', 'Design workloads for performance', 'Use parallel computation where it is beneficial'),\n",
+        "    --('PE-02-03', 'Design workloads for performance', 'Analyze the whole chain of execution'),\n",
+        "    ('PE-02-04', 'Design workloads for performance', 'Prefer larger clusters'),\n",
+        "    ('PE-02-05', 'Design workloads for performance', 'Use native Spark operations'),\n",
+        "    ('PE-02-06', 'Design workloads for performance', 'Use native platform engines'),\n",
+        "    ('PE-02-07', 'Design workloads for performance', 'Understand your hardware and workload type')\n",
+        "    --('PE-02-08', 'Design workloads for performance', 'Use caching'),\n",
+        "    --('PE-02-09', 'Design workloads for performance', 'Use compaction'),\n",
+        ") waf(waf_id, principle, best_practice);\n"
+      ]
+    },
+    {
+      "name": "13e29e6c",
+      "displayName": "waf_principal_percentage_p",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    principle,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'PE-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%JOBS_SERVERLESS_COMPUTE%' OR usage.sku_name LIKE '%SERVERLESS_SQL%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1 \n",
+        "    ) THEN 'Yes'\n",
+        "--    WHEN waf_id = 'PE-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE worker_count > 1 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-04' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE worker_count > 3 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product IN ('ALL_PURPOSE','JOBS','DLT') AND product_features.is_photon = true LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-07' AND EXISTS (\n",
+        "       SELECT 1 FROM system.compute.clusters HAVING COUNT(DISTINCT split(worker_node_type,'[.]')[0])/COUNT(1) >= 0.05 --Look for at least 5% variety in instance families\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('PE-01-01', 'Utilize serverless capabilities'),\n",
+        "    ('PE-01-02', 'Utilize serverless capabilities'),\n",
+        "    --('PE-02-01', 'Utilize serverless capabilities'),\n",
+        "    ('PE-02-02', 'Design workloads for performance'),\n",
+        "    --('PE-02-03', 'Design workloads for performance'),\n",
+        "    ('PE-02-04', 'Design workloads for performance'),\n",
+        "    ('PE-02-05', 'Design workloads for performance'),\n",
+        "    ('PE-02-06', 'Design workloads for performance'),\n",
+        "    ('PE-02-07', 'Design workloads for performance')\n",
+        "    --('PE-02-08', 'Design workloads for performance'),\n",
+        "    --('PE-02-09', 'Design workloads for performance'),\n",
+        "    AS waf(waf_id, principle)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;\n"
+      ]
+    },
+    {
+      "name": "87deca0d",
+      "displayName": "total_percentage_p",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'PE-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%JOBS_SERVERLESS_COMPUTE%' OR usage.sku_name LIKE '%SERVERLESS_SQL%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE usage.sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1 \n",
+        "    ) THEN 'Yes'\n",
+        "--    WHEN waf_id = 'PE-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-02' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE worker_count > 1 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-04' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE worker_count > 3 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product IN ('ALL_PURPOSE','JOBS','DLT') AND product_features.is_photon = true LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'PE-02-07' AND EXISTS (\n",
+        "       SELECT 1 FROM system.compute.clusters HAVING COUNT(DISTINCT split(worker_node_type,'[.]')[0])/COUNT(1) >= 0.05 --Look for at least 5% variety in instance families\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "    ('PE-01-01'),\n",
+        "    ('PE-01-02'),\n",
+        "    --('PE-02-01'),\n",
+        "    ('PE-02-02'),\n",
+        "    --('PE-02-03'),\n",
+        "    ('PE-02-04'),\n",
+        "    ('PE-02-05'),\n",
+        "    ('PE-02-06'),\n",
+        "    ('PE-02-07')\n",
+        "    --('PE-02-08'),\n",
+        "    --('PE-02-09'),\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status;\n"
+      ]
+    },
+    {
+      "name": "a5da7a83",
+      "displayName": "waf_CO-01-01_table_formats",
+      "queryLines": [
+        "SELECT \n",
+        "    --table_catalog AS cat_name,\n",
+        "    --table_schema AS sch_name,\n",
+        "    data_source_format AS tables_format,\n",
+        "    count(data_source_format) AS no_of_tables\n",
+        "    --table_type\n",
+        "    FROM system.information_schema.tables group by all order by no_of_tables desc;"
+      ]
+    },
+    {
+      "name": "c436a496",
+      "displayName": "waf_CO-01-01_managed_tables",
+      "queryLines": [
+        "SELECT \n",
+        "    table_type,\n",
+        "    round(count(table_type)/(select count(*) from system.information_schema.tables) * 100) as percent_of_tables\n",
+        "    FROM system.information_schema.tables\n",
+        "    group by ALL\n",
+        "    having percent_of_tables > 0\n",
+        "    order by percent_of_tables desc"
+      ]
+    },
+    {
+      "name": "feca6b37",
+      "displayName": "waf_CO-01-02_jobs_on_all_purpose",
+      "queryLines": [
+        "with clusters AS (\n",
+        "  SELECT\n",
+        "    *,\n",
+        "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
+        "  FROM system.compute.clusters\n",
+        "  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n",
+        "  QUALIFY rn=1\n",
+        "),\n",
+        "job_tasks_exploded AS (\n",
+        "  SELECT\n",
+        "    workspace_id,\n",
+        "    job_id,\n",
+        "    EXPLODE(compute_ids) as cluster_id\n",
+        "  FROM system.lakeflow.job_task_run_timeline\n",
+        "  WHERE period_start_time >= CURRENT_DATE() - INTERVAL 30 DAY\n",
+        "  GROUP BY ALL\n",
+        "),\n",
+        "all_purpose_cluster_jobs AS (\n",
+        "  SELECT\n",
+        "    t1.*,\n",
+        "    t2.cluster_name,\n",
+        "    t2.owned_by,\n",
+        "    t2.dbr_version\n",
+        "  FROM job_tasks_exploded t1\n",
+        "    INNER JOIN clusters t2 USING (workspace_id, cluster_id)\n",
+        ")\n",
+        "SELECT * FROM all_purpose_cluster_jobs LIMIT 10;"
+      ]
+    },
+    {
+      "name": "d654eb5a",
+      "displayName": "waf_CO-01-03_sql_vs_allpurpose",
+      "queryLines": [
+        "-- ToDo: Use $DBUs with account_prices system table when it is available\n",
+        "-- show SKU distribution between All-Purpose and SQL Warehouses, companies with primary DWH are expected even over 50 % of $DBUs on DWH\n",
+        "-- docs: https://docs.databricks.com/aws/en/admin/system-tables/billing#billing-origin-product-reference\n",
+        "select billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage where billing_origin_product in ('SQL','ALL_PURPOSE') and usage_date >= current_date() - interval 30 days \n",
+        "group by billing_origin_product;"
+      ]
+    },
+    {
+      "name": "898f3132",
+      "displayName": "waf_CO-01-03_sql_on_allpurpose",
+      "queryLines": [
+        "-- ToDo\n",
+        "-- show SKU distribution between All-Purpose and SQL Warehouses, companies with primary DWH are expected even over 50 % on DWH\n",
+        "-- ToDo: What query? Check utilization metrics? Or track Academy?\n",
+        "select 'Coming Soon...'  as message;\n",
+        "-- select * from system.billing.usage where billing_origin_product in ('ALL_PURPOSE','SQL');\n",
+        "-- optional Verbose logging shows command text, this can extract/guess the language https://docs.databricks.com/aws/en/admin/account-settings/verbose-logs\n",
+        "-- workloadTags=commandLanguage or notebookLanguage=sql and SKU All-Purpose"
+      ]
+    },
+    {
+      "name": "f4e7201f",
+      "displayName": "waf_CO-01-04_latest_dbr",
+      "queryLines": [
+        "-- ToDo: Add filter on L28d eg  WHERE period_start_time >= CURRENT_DATE() - INTERVAL 30 DAY\n",
+        "select regexp_extract(dbr_version, '^(\\\\d+\\\\.\\\\d+)',1) as version, count(*) as count\n",
+        "from system.compute.clusters \n",
+        "where not contains(dbr_version, 'custom') \n",
+        "  and cluster_source not in('PIPELINE','PIPELINE_MAINTENANCE') \n",
+        "  and delete_time is null\n",
+        "group by 1\n",
+        "order by count desc;"
+      ]
+    },
+    {
+      "name": "62126ae8",
+      "displayName": "waf_CO-01-05_gpu",
+      "queryLines": [
+        "-- ToDo: List all VM instances with GPUs across clouds and check their usage in system tables. How to keep it up to date?\n",
+        "-- https://docs.databricks.com/aws/en/compute/gpu\n",
+        "-- SRTI Mockup for now:\n",
+        "--select * as DBUs from system.billing.usage u where contains(u.sku_name, 'SERVERLESS_REAL_TIME_INFERENCE') and date_diff(day, u.usage_start_time, now()) <28;\n",
+        "-- ToDo: What query? Check utilization metrics? Or track Academy?\n",
+        "select 'Coming Soon...' as message;\n"
+      ]
+    },
+    {
+      "name": "a36b2899",
+      "displayName": "waf_CO-01-06_serverless",
+      "queryLines": [
+        "with serverless as (\n",
+        "    select sum(usage_quantity) as dbu from system.billing.usage u where contains(u.sku_name, 'SERVERLESS') and u.billing_origin_product in ('ALL_PURPOSE','SQL','JOBS', 'DLT','INTERACTIVE') and date_diff(day, u.usage_start_time, now()) <28\n",
+        "),\n",
+        "total as (\n",
+        "    select sum(usage_quantity) as dbu from system.billing.usage u where  u.billing_origin_product in ('ALL_PURPOSE','SQL','JOBS', 'DLT','INTERACTIVE') and date_diff(day, u.usage_start_time, now()) <28\n",
+        ")\n",
+        "select serverless.dbu * 100 / total.dbu as serverless_dbu_percent from serverless cross join total;\n"
+      ]
+    },
+    {
+      "name": "aed75aae",
+      "displayName": "waf_CO-01-06_serverless_sql",
+      "queryLines": [
+        "--ToDo: Use account_prices system table when available\n",
+        "select \n",
+        "--t1.usage_date,\n",
+        "case when t1.sku_name like '%SERVERLESS_SQL%' then 'SQL_SERVERLESS' \n",
+        "when t1.sku_name like '%ENTERPRISE_SQL_COMPUTE%' then 'SQL_CLASSIC'\n",
+        "when t1.sku_name like '%SQL_PRO%' then 'SQL_PRO'\n",
+        "else 'Other' end as sql_sku_name,\n",
+        "SUM(t1.usage_quantity * list_prices.pricing.default) as list_cost\n",
+        "FROM system.billing.usage t1\n",
+        "INNER JOIN system.billing.list_prices on\n",
+        "   t1.cloud = list_prices.cloud and\n",
+        "   t1.sku_name = list_prices.sku_name and\n",
+        "   t1.usage_start_time >= list_prices.price_start_time and\n",
+        "   (t1.usage_end_time <= list_prices.price_end_time or list_prices.price_end_time is null)\n",
+        "where t1.sku_name like '%SQL%' and t1.usage_date >= current_date() - interval 30 days\n",
+        "group by all"
+      ]
+    },
+    {
+      "name": "efb892e1",
+      "displayName": "waf_CO-01-07_instance_type",
+      "queryLines": [
+        "-- ToDo: What query? Check utilization metrics? Or track Academy?\n",
+        "-- Instance type: Compute-optimized, Memory-optimized etc?\n",
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "1de7073d",
+      "displayName": "waf_CO-01-08_cluster_size",
+      "queryLines": [
+        "-- ToDo: What query? Check utilization metrics? Or track Academy?\n",
+        "-- Use CASE statement and bucket into Personal cluster / Small / Medium / Large\n",
+        "-- --ToDo: Show also % of Single VM vs multi? Eg in cluster sizes with tags.ResourceClass='SingleNode'\n",
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "31958c67",
+      "displayName": "waf_CO-01-08_cluster_utilization",
+      "queryLines": [
+        "-- based on: https://community.databricks.com/t5/data-engineering/cpu-usage-and-idle-time-metrics-from-system-tables/td-p/116314\n",
+        "WITH per_cluster_daily AS (\n",
+        "  SELECT\n",
+        "    cluster_id,\n",
+        "    DATE_TRUNC('DAY', start_time) AS day,\n",
+        "    AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_usage_percent, -- Average CPU usage as the sum of user and system CPU\n",
+        "    --100 - AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_idle_percent,                      -- Average CPU idle time percentage\n",
+        "    AVG(mem_used_percent) AS avg_memory_usage_percent                   -- Average memory usage percentage\n",
+        "  FROM\n",
+        "    system.compute.node_timeline\n",
+        "  WHERE\n",
+        "    start_time >= CURRENT_DATE - INTERVAL 28 DAYS -- Limit data to the last 30 days (optional)\n",
+        "  GROUP BY\n",
+        "    cluster_id,\n",
+        "    DATE_TRUNC('DAY', start_time)\n",
+        ")\n",
+        "SELECT\n",
+        "  percentile(avg_cpu_usage_percent, 0.75) as cpu_usage_percent_p75,\n",
+        "  percentile(avg_memory_usage_percent, 0.75) as memory_usage_percent_p75\n",
+        "FROM\n",
+        "  per_cluster_daily\n",
+        "  group by all;"
+      ]
+    },
+    {
+      "name": "951a00c5",
+      "displayName": "waf_CO-01-09_photon",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;\n"
+      ]
+    },
+    {
+      "name": "b54341e5",
+      "displayName": "waf_CO-02-01_auto_scaling",
+      "queryLines": [
+        "with autoscaling_count as (select count(*) as autoscaling_count from system.compute.clusters where max_autoscale_workers is not null and delete_time is null),\n",
+        "total_clusters_count as (select count(*) as total_clusters_count from system.compute.clusters where delete_time is null)\n",
+        "select autoscaling_count.autoscaling_count * 100 / total_clusters_count.total_clusters_count as autoscaling_percent from total_clusters_count cross join autoscaling_count;"
+      ]
+    },
+    {
+      "name": "d0192813",
+      "displayName": "waf_CO-02-02_auto_termination",
+      "queryLines": [
+        "-- UI and API are All Purpose classic clusters.\n",
+        "select percentile(c.auto_termination_minutes, 0.75) as p_75_auto_termination_minutes, max(c.auto_termination_minutes) as max_auto_termination_minutes, count_if(c.auto_termination_minutes is null) as count_clusters_without_autoterminations, count_if(c.auto_termination_minutes is not null) as count_clusters_with_autoterminations, (count_clusters_without_autoterminations*100)/count(*) as percent_clusters_without_autoterminations from system.compute.clusters c where c.cluster_source in ('UI','API'/*Only UI and API are All Purpose classic clusters,'JOB'*/) and c.delete_time is null;\n"
+      ]
+    },
+    {
+      "name": "cc24226f",
+      "displayName": "waf_CO-02-03_cluster_policies",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "e46a4a40",
+      "displayName": "waf_CO-03-01_billing_tables",
+      "queryLines": [
+        "-- How often is system.billing.usage accessed L28d? Eg 19k in field-eng L30d\n",
+        "select\n",
+        "  event_date,\n",
+        "  count(*) as usage_read\n",
+        "from\n",
+        "  system.access.audit\n",
+        "where\n",
+        "  service_name = 'unityCatalog'\n",
+        "  and action_name = 'getTable'\n",
+        "  and request_params.full_name_arg = 'system.billing.usage'\n",
+        "  and user_identity.email != 'System-User'\n",
+        "  and (date_diff(day, event_date, current_date()) <= 90)\n",
+        "group by event_date\n",
+        "order by event_date;"
+      ]
+    },
+    {
+      "name": "bb77bb31",
+      "displayName": "waf_CO-03-02_tagging_compute",
+      "queryLines": [
+        "-- Enhancement: use CASE statement and segment by number of tags\n",
+        "select array_size(map_entries(tags)) as number_of_tags, count(*) as count \n",
+        "from system.compute.clusters \n",
+        "where tags.ResourceClass is null \n",
+        "and delete_time is null\n",
+        "group by number_of_tags\n",
+        "order by count desc, number_of_tags desc;"
+      ]
+    },
+    {
+      "name": "7abec3c3",
+      "displayName": "waf_CO-03-02_popular_tags",
+      "queryLines": [
+        "with tag_counts as (\n",
+        "  select\n",
+        "    explode(map_keys(tags)) as tag,\n",
+        "    count(*) as count\n",
+        "  from\n",
+        "    system.compute.clusters\n",
+        "  group by\n",
+        "    1\n",
+        "),\n",
+        "cluster_count as (select count(*) as count from system.compute.clusters)\n",
+        "select\n",
+        "  tag_counts.tag,\n",
+        "  sum(tag_counts.count) / any_value(cluster_count.count) *100 as percent\n",
+        "from\n",
+        "  tag_counts cross join cluster_count\n",
+        "group by\n",
+        "  tag_counts.tag\n",
+        "order by\n",
+        "  percent desc;"
+      ]
+    },
+    {
+      "name": "9f038f29",
+      "displayName": "waf_CO-03-03_chargeback",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "e3cd19cf",
+      "displayName": "waf_CO-03-04_share_cost",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "d83ae5eb",
+      "displayName": "waf_CO-03-05_data_transfer_cost",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "d0a01e50",
+      "displayName": "waf_CO-04-01_streaming_triggers",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "67073248",
+      "displayName": "waf_CO-04-02_spot_and_cost_optimized",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "554446fd",
+      "displayName": "waf_control_s",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'SCP-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'SCP-01-08' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1 -- update query\n",
+        "    -- ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-01-11' AND EXISTS (\n",
+        "      SELECT 1 FROM FROM system.access.audit WHERE action_name IN ('workspaceInHouseOAuthClientAuthentication', 'mintOAuthAuthorizationCode') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-01-12' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE data_security_mode = \"USER_ISOLATION\" LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'SCP-01-13' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.lakeflow.jobs WHERE run_as LIKE 'zzz' LIMIT 1 -- not able to identify service principal from run_as column\n",
+        "    -- ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-02-01' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE storage_path LIKE 'dbfs:/%' OR storage_path LIKE '/dbfs/%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('SCP-02-03', 'SCP-03-03') AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.outbound_network LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.access.audit%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.compute.clusters%' AND lower(statement_text) LIKE '%create_time%'  LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-05' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters where cardinality(tags) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('SCP-01-06', 'Manage identity and access using least privilege', 'Use token management'),\n",
+        "    -- ('SCP-01-08', 'Manage identity and access using least privilege', 'Limit cluster creation rights'),\n",
+        "    ('SCP-01-11', 'Manage identity and access using least privilege', 'Customer-approved workspace login'),\n",
+        "    ('SCP-01-12', 'Manage identity and access using least privilege', 'Use clusters that support user isolation'),\n",
+        "    -- ('SCP-01-13', 'Manage identity and access using least privilege', 'Use service principals to run production jobs'),\n",
+        "    ('SCP-02-01', 'Protect data in transit and at rest', 'Avoid storing production data in DBFS'),\n",
+        "    ('SCP-02-03', 'Protect data in transit and at rest', 'Use data exfiltration settings within the admin console'),\n",
+        "    ('SCP-03-03', 'Secure your network and identify and protect endpoints', 'Implement network exfiltration protections'),\n",
+        "    ('SCP-06-01','Monitor system security','Monitor workspace using System tables'),\n",
+        "    ('SCP-06-02', 'Monitor system security', 'Use Databricks audit log'),\n",
+        "    ('SCP-06-03', 'Monitor system security', 'Monitor provisioning activities'),\n",
+        "    ('SCP-06-05', 'Monitor system security', 'Configure tagging to monitor usage and enable charge-back')\n",
+        ") waf(waf_id, principle, best_practice);"
+      ]
+    },
+    {
+      "name": "be11a467",
+      "displayName": "waf_principal_percentage_s",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'SCP-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'SCP-01-08' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1 -- update query\n",
+        "    -- ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-01-11' AND EXISTS (\n",
+        "      SELECT 1 FROM FROM system.access.audit WHERE action_name IN ('workspaceInHouseOAuthClientAuthentication', 'mintOAuthAuthorizationCode') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-01-12' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE data_security_mode = \"USER_ISOLATION\" LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'SCP-01-13' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.lakeflow.jobs WHERE run_as LIKE 'zzz' LIMIT 1 -- not able to identify service principal from run_as column\n",
+        "    -- ) THEN 'Yes'\n",
+        "     WHEN waf_id = 'SCP-02-01' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE storage_path LIKE 'dbfs:/%' OR storage_path LIKE '/dbfs/%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('SCP-02-03', 'SCP-03-03') AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.outbound_network LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.access.audit%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.compute.clusters%' AND lower(statement_text) LIKE '%create_time%'  LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-05' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters where cardinality(tags) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "      ('SCP-01-06', 'Manage identity and access using least privilege', 'Use token management'),\n",
+        "      -- ('SCP-01-08', 'Manage identity and access using least privilege', 'Limit cluster creation rights'),\n",
+        "      ('SCP-01-11', 'Manage identity and access using least privilege', 'Customer-approved workspace login'),\n",
+        "      ('SCP-01-12', 'Manage identity and access using least privilege', 'Use clusters that support user isolation'),\n",
+        "      -- ('SCP-01-13', 'Manage identity and access using least privilege', 'Use service principals to run production jobs'),\n",
+        "      ('SCP-02-01', 'Protect data in transit and at rest', 'Avoid storing production data in DBFS'),\n",
+        "      ('SCP-02-03', 'Protect data in transit and at rest', 'Use data exfiltration settings within the admin console'),\n",
+        "      ('SCP-03-03', 'Secure your network and identify and protect endpoints', 'Implement network exfiltration protections'),\n",
+        "      ('SCP-06-01','Monitor system security','Monitor workspace using System tables'),\n",
+        "      ('SCP-06-02', 'Monitor system security', 'Use Databricks audit log'),\n",
+        "      ('SCP-06-03', 'Monitor system security', 'Monitor provisioning activities'),\n",
+        "      ('SCP-06-05', 'Monitor system security', 'Configure tagging to monitor usage and enable charge-back')\n",
+        "  ) waf(waf_id, principle, best_practice)\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;"
+      ]
+    },
+    {
+      "name": "2003edfa",
+      "displayName": "total_percentage_s",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'SCP-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'SCP-01-08' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.access.audit WHERE action_name = 'mintOAuthToken' LIMIT 1 -- update query\n",
+        "    -- ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-01-11' AND EXISTS (\n",
+        "      SELECT 1 FROM FROM system.access.audit WHERE action_name IN ('workspaceInHouseOAuthClientAuthentication', 'mintOAuthAuthorizationCode') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-01-12' AND EXISTS (\n",
+        "      SELECT 1 FROM system.compute.clusters WHERE data_security_mode = \"USER_ISOLATION\" LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    -- WHEN waf_id = 'SCP-01-13' AND EXISTS (\n",
+        "    --   SELECT 1 FROM system.lakeflow.jobs WHERE run_as LIKE 'zzz' LIMIT 1 -- not able to identify service principal from run_as column\n",
+        "    -- ) THEN 'Yes'\n",
+        "     WHEN waf_id = 'SCP-02-01' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE storage_path LIKE 'dbfs:/%' OR storage_path LIKE '/dbfs/%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('SCP-02-03', 'SCP-03-03') AND EXISTS (\n",
+        "      SELECT 1 FROM system.access.outbound_network LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.access.audit%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.query.history where lower(statement_text) LIKE '%system.compute.clusters%' AND lower(statement_text) LIKE '%create_time%'  LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'SCP-06-05' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters where cardinality(tags) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "    ('SCP-01-06'), \n",
+        "      -- ('SCP-01-08')\n",
+        "      ('SCP-01-11'),\n",
+        "      ('SCP-01-12'),\n",
+        "      -- ('SCP-01-13'),\n",
+        "      ('SCP-02-01'),\n",
+        "      ('SCP-02-03'),\n",
+        "      ('SCP-03-03'),\n",
+        "      ('SCP-06-01'),\n",
+        "      ('SCP-06-02'),\n",
+        "      ('SCP-06-03'),\n",
+        "      ('SCP-06-05')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status;\n"
+      ]
+    },
+    {
+      "name": "d81e0e70",
+      "displayName": "waf_controls_o",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'OE-01-05' AND (\n",
+        "      SELECT count(workspace_id) FROM system.access.workspaces_latest where status = \"RUNNING\"\n",
+        "    ) > 1 THEN 'Yes'\n",
+        "    WHEN waf_id = 'OE-03-01' AND EXISTS (\n",
+        "      SELECT 1 FROM  system.access.table_lineage where target_table_name like '%_quality_monitoring_summary' limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'OE-02-02' AND EXISTS (\n",
+        "      SELECT 1 from system.compute.clusters where policy_id is not null  limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'OE-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM from system.lakeflow.jobs where delete_time is null limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "--  ('OE-01-01', 'Optimize build and release processes', 'Create a dedicated Lakehouse operations team')\n",
+        "-- , ('OE-01-02', 'Optimize build and release processes', 'Use enterprise source code management (SCM) ')\n",
+        "-- , ('OE-01-03', 'Optimize build and release processes', 'Standardize DevOps processes (CI/CD)')\n",
+        "-- , ('OE-01-04', 'Optimize build and release processes', 'Standardize MLOps processes across enterprise')\n",
+        " ('OE-01-05', 'Optimize build and release processes', 'Define environment isolation strategy')\n",
+        "-- , ('OE-01-06', 'Optimize build and release processes', 'Streamline the usage and management of variouslarge language model (LLM) providers')\n",
+        "-- , ('OE-01-07', 'Optimize build and release processes', 'Define catalog strategy for your enterprise')\n",
+        "-- , ('OE-01-08', 'Optimize build and release processes', 'Compare LLM outputs on set prompts')\n",
+        "-- , ('OE-01-09', 'Optimize build and release processes', 'Build models with all representative, accurate and relevant data sources')\n",
+        "-- , ('OE-02-01', 'Automate deployments and workloads', 'Use Infrastructure as Code for deployments and maintenance')\n",
+        ", ('OE-02-02', 'Automate deployments and workloads', 'Standardize compute configurations')\n",
+        ", ('OE-02-03', 'Automate deployments and workloads', 'Use automated workflows for jobs')\n",
+        "-- , ('OE-02-04', 'Automate deployments and workloads', 'Use automated and event driven file ingestion ')\n",
+        "-- , ('OE-02-05', 'Automate deployments and workloads', 'Use ETL frameworks for data pipelines')\n",
+        "-- , ('OE-02-06', 'Automate deployments and workloads', 'Follow the deploy-code approach for ML workloads')\n",
+        "-- , ('OE-02-07', 'Automate deployments and workloads', 'Use a model registry to decouple code and model lifecycle')\n",
+        "-- , ('OE-02-08', 'Automate deployments and workloads', 'Automate ML experiment tracking')\n",
+        "-- , ('OE-02-09', 'Automate deployments and workloads', 'Reuse the same infrastructure to manage ML pipelines')\n",
+        "-- , ('OE-02-10', 'Automate deployments and workloads', 'Utilize declarative management for complex data and ML pipelines')\n",
+        "-- , ('OE-02-11', 'Automate deployments and workloads', 'Automate LLM evaluation')\n",
+        ", ('OE-03-01', 'Set up Monitoring, Alerting and Logging', 'Establish monitoring processes')\n",
+        "-- , ('OE-03-02', 'Set up Monitoring, Alerting and Logging', 'Use native and external tools for platform monitoring')\n",
+        "-- , ('OE-03-03', 'Set up Monitoring, Alerting and Logging', 'Establish an incident response strategy')\n",
+        "-- , ('OE-03-04', 'Set up Monitoring, Alerting and Logging', 'Triggering actions in response to a specific event')\n",
+        "-- , ('OE-04-01', 'Manage capacity and quotas', 'Manage service limits and quotas')\n",
+        "-- , ('OE-04-02', 'Manage capacity and quotas', 'Invest in capacity planning')\n",
+        ") waf(waf_id, principle, best_practice);"
+      ]
+    },
+    {
+      "name": "42ba828c",
+      "displayName": "waf_principal_percentage_o",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "    SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'OE-01-05' AND (\n",
+        "      SELECT count(workspace_id) FROM system.access.workspaces_latest where status = \"RUNNING\"\n",
+        "    ) > 1 THEN 'Yes'\n",
+        "    WHEN waf_id = 'OE-03-01' AND EXISTS (\n",
+        "      SELECT 1 FROM  system.access.table_lineage where target_table_name like '%_quality_monitoring_summary' limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'OE-02-02' AND EXISTS (\n",
+        "      SELECT 1 from system.compute.clusters where policy_id is not null  limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'OE-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM from system.lakeflow.jobs where delete_time is null limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "--  ('OE-01-01', 'Optimize build and release processes', 'Create a dedicated Lakehouse operations team')\n",
+        "-- , ('OE-01-02', 'Optimize build and release processes', 'Use enterprise source code management (SCM) ')\n",
+        "-- , ('OE-01-03', 'Optimize build and release processes', 'Standardize DevOps processes (CI/CD)')\n",
+        "-- , ('OE-01-04', 'Optimize build and release processes', 'Standardize MLOps processes across enterprise')\n",
+        " ('OE-01-05', 'Optimize build and release processes', 'Define environment isolation strategy')\n",
+        "-- , ('OE-01-06', 'Optimize build and release processes', 'Streamline the usage and management of variouslarge language model (LLM) providers')\n",
+        "-- , ('OE-01-07', 'Optimize build and release processes', 'Define catalog strategy for your enterprise')\n",
+        "-- , ('OE-01-08', 'Optimize build and release processes', 'Compare LLM outputs on set prompts')\n",
+        "-- , ('OE-01-09', 'Optimize build and release processes', 'Build models with all representative, accurate and relevant data sources')\n",
+        "-- , ('OE-02-01', 'Automate deployments and workloads', 'Use Infrastructure as Code for deployments and maintenance')\n",
+        ", ('OE-02-02', 'Automate deployments and workloads', 'Standardize compute configurations')\n",
+        ", ('OE-02-03', 'Automate deployments and workloads', 'Use automated workflows for jobs')\n",
+        "-- , ('OE-02-04', 'Automate deployments and workloads', 'Use automated and event driven file ingestion ')\n",
+        "-- , ('OE-02-05', 'Automate deployments and workloads', 'Use ETL frameworks for data pipelines')\n",
+        "-- , ('OE-02-06', 'Automate deployments and workloads', 'Follow the deploy-code approach for ML workloads')\n",
+        "-- , ('OE-02-07', 'Automate deployments and workloads', 'Use a model registry to decouple code and model lifecycle')\n",
+        "-- , ('OE-02-08', 'Automate deployments and workloads', 'Automate ML experiment tracking')\n",
+        "-- , ('OE-02-09', 'Automate deployments and workloads', 'Reuse the same infrastructure to manage ML pipelines')\n",
+        "-- , ('OE-02-10', 'Automate deployments and workloads', 'Utilize declarative management for complex data and ML pipelines')\n",
+        "-- , ('OE-02-11', 'Automate deployments and workloads', 'Automate LLM evaluation')\n",
+        ", ('OE-03-01', 'Set up Monitoring, Alerting and Logging', 'Establish monitoring processes')\n",
+        "-- , ('OE-03-02', 'Set up Monitoring, Alerting and Logging', 'Use native and external tools for platform monitoring')\n",
+        "-- , ('OE-03-03', 'Set up Monitoring, Alerting and Logging', 'Establish an incident response strategy')\n",
+        "-- , ('OE-03-04', 'Set up Monitoring, Alerting and Logging', 'Triggering actions in response to a specific event')\n",
+        "-- , ('OE-04-01', 'Manage capacity and quotas', 'Manage service limits and quotas')\n",
+        "-- , ('OE-04-02', 'Manage capacity and quotas', 'Invest in capacity planning')\n",
+        ") waf(waf_id, principle, best_practice)\n",
+        ")\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;"
+      ]
+    },
+    {
+      "name": "62c1b232",
+      "displayName": "total_percentage_o",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "    SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'OE-01-05' AND (\n",
+        "      SELECT count(workspace_id) FROM system.access.workspaces_latest where status = \"RUNNING\"\n",
+        "    ) > 1 THEN 'Yes'\n",
+        "    WHEN waf_id = 'OE-03-01' AND EXISTS (\n",
+        "      SELECT 1 FROM  system.access.table_lineage where target_table_name like '%_quality_monitoring_summary' limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'OE-02-02' AND EXISTS (\n",
+        "      SELECT 1 from system.compute.clusters where policy_id is not null  limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'OE-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM from system.lakeflow.jobs where delete_time is null limit 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "--  ('OE-01-01', 'Optimize build and release processes', 'Create a dedicated Lakehouse operations team')\n",
+        "-- , ('OE-01-02', 'Optimize build and release processes', 'Use enterprise source code management (SCM) ')\n",
+        "-- , ('OE-01-03', 'Optimize build and release processes', 'Standardize DevOps processes (CI/CD)')\n",
+        "-- , ('OE-01-04', 'Optimize build and release processes', 'Standardize MLOps processes across enterprise')\n",
+        " ('OE-01-05', 'Optimize build and release processes', 'Define environment isolation strategy')\n",
+        "-- , ('OE-01-06', 'Optimize build and release processes', 'Streamline the usage and management of variouslarge language model (LLM) providers')\n",
+        "-- , ('OE-01-07', 'Optimize build and release processes', 'Define catalog strategy for your enterprise')\n",
+        "-- , ('OE-01-08', 'Optimize build and release processes', 'Compare LLM outputs on set prompts')\n",
+        "-- , ('OE-01-09', 'Optimize build and release processes', 'Build models with all representative, accurate and relevant data sources')\n",
+        "-- , ('OE-02-01', 'Automate deployments and workloads', 'Use Infrastructure as Code for deployments and maintenance')\n",
+        ", ('OE-02-02', 'Automate deployments and workloads', 'Standardize compute configurations')\n",
+        ", ('OE-02-03', 'Automate deployments and workloads', 'Use automated workflows for jobs')\n",
+        "-- , ('OE-02-04', 'Automate deployments and workloads', 'Use automated and event driven file ingestion ')\n",
+        "-- , ('OE-02-05', 'Automate deployments and workloads', 'Use ETL frameworks for data pipelines')\n",
+        "-- , ('OE-02-06', 'Automate deployments and workloads', 'Follow the deploy-code approach for ML workloads')\n",
+        "-- , ('OE-02-07', 'Automate deployments and workloads', 'Use a model registry to decouple code and model lifecycle')\n",
+        "-- , ('OE-02-08', 'Automate deployments and workloads', 'Automate ML experiment tracking')\n",
+        "-- , ('OE-02-09', 'Automate deployments and workloads', 'Reuse the same infrastructure to manage ML pipelines')\n",
+        "-- , ('OE-02-10', 'Automate deployments and workloads', 'Utilize declarative management for complex data and ML pipelines')\n",
+        "-- , ('OE-02-11', 'Automate deployments and workloads', 'Automate LLM evaluation')\n",
+        ", ('OE-03-01', 'Set up Monitoring, Alerting and Logging', 'Establish monitoring processes')\n",
+        "-- , ('OE-03-02', 'Set up Monitoring, Alerting and Logging', 'Use native and external tools for platform monitoring')\n",
+        "-- , ('OE-03-03', 'Set up Monitoring, Alerting and Logging', 'Establish an incident response strategy')\n",
+        "-- , ('OE-03-04', 'Set up Monitoring, Alerting and Logging', 'Triggering actions in response to a specific event')\n",
+        "-- , ('OE-04-01', 'Manage capacity and quotas', 'Manage service limits and quotas')\n",
+        "-- , ('OE-04-02', 'Manage capacity and quotas', 'Invest in capacity planning')\n",
+        ") waf(waf_id, principle, best_practice)\n",
+        ")\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;"
+      ]
+    },
+    {
+      "name": "03babf4f",
+      "displayName": "total_percentage_r",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'R-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.metastores LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "    ('R-01-01'),\n",
+        "    ('R-01-02'),\n",
+        "    ('R-01-03'),\n",
+        "    --('R-01-04'),\n",
+        "    ('R-01-05'),\n",
+        "    ('R-01-06'),\n",
+        "    ('R-02-03'),\n",
+        "    ('R-02-04'),\n",
+        "    ('R-03-01'),\n",
+        "    ('R-03-02')\n",
+        "    AS waf(waf_id)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status;\n"
+      ]
+    },
+    {
+      "name": "011cf80a",
+      "displayName": "waf_principal_percentage_r",
+      "queryLines": [
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "    waf_id,\n",
+        "    principle,\n",
+        "    CASE \n",
+        "    WHEN waf_id = 'R-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.metastores LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
+        "    ('R-01-01', 'Design for failure'),\n",
+        "    ('R-01-02', 'Design for failure'),\n",
+        "    ('R-01-03', 'Design for failure'),\n",
+        "    --('R-01-04', 'Design for failure'),\n",
+        "    ('R-01-05', 'Design for failure'),\n",
+        "    ('R-01-06', 'Design for failure'),\n",
+        "    ('R-02-03', 'Manage data quality'),\n",
+        "    ('R-02-04', 'Manage data quality'),\n",
+        "    ('R-03-01', 'Design for autoscaling'),\n",
+        "    ('R-03-02', 'Design for autoscaling')\n",
+        "    AS waf(waf_id, principle)\n",
+        "  )\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  principle,\n",
+        "  COUNT(*) AS total_controls,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
+        "FROM waf_status\n",
+        "GROUP BY principle\n",
+        "ORDER BY principle;\n"
+      ]
+    },
+    {
+      "name": "60cfe928",
+      "displayName": "waf_controls_r",
+      "queryLines": [
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  CASE \n",
+        "    WHEN waf_id = 'R-01-01' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.tables WHERE data_source_format IN  ('DELTA','ICEBERG') LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-02' THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-02-01' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE usage_type LIKE '%SQL%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf_id IN ('R-01-03','R-02-04') AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'DLT' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-02-03' AND EXISTS (\n",
+        "      SELECT 1 FROM system.information_schema.metastores LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.clusters WHERE ifnull(max_autoscale_Workers,0) > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf_id = 'R-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.compute.warehouses where max_clusters - min_clusters > 0 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('R-01-01', 'Design for failure', 'Use a data format that supports ACID transactions'),\n",
+        "    --('R-01-02', 'Design for failure', 'Use a resilient distributed data engine for all workloads'),\n",
+        "    --('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data '),\n",
+        "    ('R-01-04', 'Design for failure', 'Configure jobs for automatic retries and termination'),\n",
+        "    ('R-01-05', 'Design for failure', 'Use a scalable and production-grade model serving infrastructure'),\n",
+        "    --('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n",
+        "    --('R-02-03', 'Manage data quality', 'Actively manage schemas'),\n",
+        "    --('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n",
+        "    ('R-03-01', 'Design for autoscaling', 'Enable autoscaling for ETL workloads'),\n",
+        "    ('R-03-02', 'Design for autoscaling', 'Use autoscaling for SQL Warehouses')\n",
+        "    --('R-02-09', 'Design workloads for performance', 'Use compaction'),\n",
+        ") waf(waf_id, principle, best_practice);\n"
+      ]
+    },
+    {
+      "name": "8486d58c",
+      "displayName": "Count of tables with lineage",
+      "queryLines": [
+        "WITH lineage_tables AS (\n",
+        "  SELECT DISTINCT\n",
+        "    source_table_catalog,\n",
+        "    source_table_schema,\n",
+        "    source_table_name\n",
+        "  FROM\n",
+        "    (\n",
+        "      select distinct\n",
+        "        source_table_catalog,\n",
+        "        source_table_schema,\n",
+        "        source_table_name\n",
+        "      from\n",
+        "        system.access.table_lineage\n",
+        "      union\n",
+        "      select distinct\n",
+        "        target_table_catalog,\n",
+        "        target_table_catalog,\n",
+        "        target_table_name\n",
+        "      from\n",
+        "        system.access.table_lineage\n",
+        "    )\n",
+        "  WHERE\n",
+        "    source_table_catalog IS NOT NULL\n",
+        "),\n",
+        "table_list AS (\n",
+        "  SELECT\n",
+        "    table_catalog,\n",
+        "    table_schema,\n",
+        "    table_name,\n",
+        "    table_type\n",
+        "  from\n",
+        "    system.information_schema.tables\n",
+        " -- where\n",
+        "   -- table_type not in ('FOREIGN')\n",
+        ")\n",
+        "SELECT\n",
+        "  table_list.table_type,\n",
+        "  COUNT(*) AS total_tables,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN lineage_tables.source_table_catalog IS NULL THEN 0\n",
+        "      ELSE 1\n",
+        "    END\n",
+        "  ) AS lineage_tables\n",
+        "FROM\n",
+        "  table_list\n",
+        "    LEFT JOIN lineage_tables\n",
+        "      ON table_list.table_catalog = lineage_tables.source_table_catalog\n",
+        "      AND table_list.table_schema = lineage_tables.source_table_schema\n",
+        "      AND table_list.table_name = lineage_tables.source_table_name\n",
+        "GROUP BY\n",
+        "  table_list.table_type\n"
+      ]
+    },
+    {
+      "name": "16facbed",
+      "displayName": "Count of table formats with table types",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*) AS count_of_tables,\n",
+        "  table_type,\n",
+        "  data_source_format\n",
+        "FROM\n",
+        "  system.information_schema.tables\n",
+        "GROUP BY\n",
+        "  table_type,\n",
+        "  data_source_format"
+      ]
+    },
+    {
+      "name": "f7dd8a02",
+      "displayName": "waf_DG-03-02_lakehouse_monitoring",
+      "queryLines": [
+        "SELECT COUNT(*) as count_tables FROM system.information_schema.tables \n",
+        "WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics'"
+      ]
+    },
+    {
+      "name": "1ab4ec65",
+      "displayName": "waf_DG-02-03_marketplace_listings",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*) AS count_of_events,\n",
+        "  consumer_delta_sharing_recipient_name,\n",
+        "  provider_name,\n",
+        "  listing_name,\n",
+        "  event_type\n",
+        "FROM\n",
+        "  system.marketplace.listing_access_events\n",
+        "where\n",
+        "  event_date between current_date() - 30 and current_date()\n",
+        "GROUP BY\n",
+        "  consumer_delta_sharing_recipient_name,\n",
+        "  provider_name,\n",
+        "  listing_name,\n",
+        "  event_type\n",
+        "ORDER BY\n",
+        "  count_of_events DESC"
+      ]
+    },
+    {
+      "name": "5b3944b6",
+      "displayName": "waf_DG-02-02_audit_events",
+      "queryLines": [
+        "SELECT\n",
+        "  count(*) as count_of_events,\n",
+        "  audit_level,\n",
+        "  workspace_id\n",
+        "from\n",
+        "  system.access.audit\n",
+        "where\n",
+        "  event_date between current_date() - 30 and current_date()\n",
+        "group by\n",
+        "  audit_level,\n",
+        "  workspace_id"
+      ]
+    },
+    {
+      "name": "6b0c95c6",
+      "displayName": "waf_DG-02-01_rbac_col_mask",
+      "queryLines": [
+        "SELECT\n",
+        "  count(distinct table_catalog, table_schema, table_name) AS count,\n",
+        "  'table_with_filters' AS object_type\n",
+        "from\n",
+        "  system.information_schema.row_filters\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(distinct table_catalog, table_schema, table_name),\n",
+        "  'table_with_masks'\n",
+        "from\n",
+        "  system.information_schema.column_masks\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(*),\n",
+        "  'column_masks'\n",
+        "from\n",
+        "  system.information_schema.column_masks\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(*),\n",
+        "  'row_filters'\n",
+        "from\n",
+        "  system.information_schema.row_filters"
+      ]
+    },
+    {
+      "name": "e097b5c1",
+      "displayName": "waf_DG-01-04_comments",
+      "queryLines": [
+        "SELECT *, count_comment/overall_count AS perc_comment\n",
+        "FROM (\n",
+        "select 'Tables' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END) AS count_comment, COUNT(*) AS overall_count FROM system.information_schema.tables \n",
+        "UNION ALL\n",
+        "--select 'Columns' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.columns \n",
+        "--UNION ALL\n",
+        "select 'Volumes' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.volumes \n",
+        "UNION ALL\n",
+        "select 'Catalogs' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.catalogs \n",
+        "UNION ALL\n",
+        "select 'Connections' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.connections \n",
+        "UNION ALL\n",
+        "select 'Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.credentials \n",
+        "UNION ALL\n",
+        "select 'External Locations' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.external_locations \n",
+        "UNION ALL\n",
+        "select 'Providers' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.providers \n",
+        "UNION ALL\n",
+        "select 'Recipients' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.recipients \n",
+        "UNION ALL\n",
+        "select 'Routines' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.routines \n",
+        "UNION ALL\n",
+        "select 'Schemas' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.schemata \n",
+        "UNION ALL\n",
+        "select 'Shares' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.shares \n",
+        "UNION ALL\n",
+        "select 'Storage Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.storage_credentials \n",
+        ")"
+      ]
+    },
+    {
+      "name": "27265888",
+      "displayName": "waf_R-03-02_auto_scaling_SQL",
+      "queryLines": [
+        "SELECT\n",
+        "    warehouse_id,\n",
+        "    warehouse_name,\n",
+        "    warehouse_type,\n",
+        "    warehouse_size,\n",
+        "    min_clusters,\n",
+        "    max_clusters,\n",
+        "    auto_stop_minutes\n",
+        "FROM\n",
+        "    system.compute.warehouses\n",
+        "QUALIFY\n",
+        "    ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) = 1\n",
+        "    and delete_time is null\n",
+        "    and min_clusters = max_clusters;"
+      ]
+    },
+    {
+      "name": "6e7d4785",
+      "displayName": "waf_PE-01-_serverless_compute",
+      "queryLines": [
+        "WITH CTE AS (\n",
+        "SELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END AS billing_origin_product\n",
+        ", CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
+        "FROM system.billing.usage \n",
+        "WHERE usage_date BETWEEN current_date()-:rollback_days AND current_date()\n",
+        "AND usage_unit = 'DBU'\n",
+        "AND billing_origin_product IN ('JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
+        "GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END \n",
+        ")\n",
+        "SELECT \n",
+        "    billing_origin_product\n",
+        "  , SUM(runs) AS runs_total\n",
+        "  , SUM(dbu_usage) AS dbu_usage_total\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
+        "  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
+        "  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
+        "FROM CTE\n",
+        "GROUP BY\n",
+        "billing_origin_product \n",
+        "ORDER BY runs_total DESC;"
+      ],
+      "parameters": [
+        {
+          "displayName": "rollback_days",
+          "keyword": "rollback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "e8a98fa1",
+      "displayName": "waf_PE-02-_cluster_metrics",
+      "queryLines": [
+        "--waf_PE-02-*_cluster_metrics\n",
+        "WITH usage AS (    \n",
+        "  SELECT usage_metadata.cluster_id AS cluster_id, account_id, workspace_id\n",
+        "  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n",
+        "    WHERE \n",
+        "     usage_date BETWEEN current_date()-30 AND current_date()\n",
+        "    AND usage_metadata.cluster_id IS NOT NULL\n",
+        "    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n",
+        "),\n",
+        "compute_met AS (\n",
+        "  SELECT * FROM \n",
+        "    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n",
+        "        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n",
+        "    from system.compute.clusters c)\n",
+        "  WHERE rn = 1\n",
+        ")\n",
+        "SELECT *, row_number() over( order by dbu_usage desc) AS rank\n",
+        "FROM(\n",
+        "SELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs, c.cluster_id, c.cluster_name, c.worker_node_type\n",
+        ",CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END AS is_multi_worker\n",
+        ", ifnull(worker_count,ifnull(max_autoscale_workers,0)) AS max_worker_count\n",
+        ", CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling\n",
+        " FROM\n",
+        "usage u\n",
+        "INNER JOIN\n",
+        "compute_met c\n",
+        "ON u.cluster_id = c.cluster_id\n",
+        "AND u.account_id = c.account_id\n",
+        "AND u.workspace_id = c.workspace_id\n",
+        "GROUP BY\n",
+        "c.cluster_id, c.cluster_name, c.worker_node_type\n",
+        ",CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n",
+        ", ifnull(worker_count,ifnull(max_autoscale_workers,0)) \n",
+        ", CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END \n",
+        ")\n"
+      ]
+    },
+    {
+      "name": "caef943a",
+      "displayName": "waf_PE-02-05_python_udfs",
+      "queryLines": [
+        "--waf_PE-02-05_python_udfs\n",
+        "SELECT COUNT(*) as count, routine_catalog as catalog_name, routine_schema AS schema_name, concat(routine_catalog,'.',routine_schema) AS full_schema\n",
+        "FROM system.information_schema.routines WHERE external_language = 'Python' \n",
+        "GROUP BY routine_catalog, routine_schema \n",
+        "ORDER BY count DESC;"
+      ]
+    },
+    {
+      "name": "3eb728b7",
+      "displayName": "waf_PE-02-06_photon_workloads",
+      "queryLines": [
+        "--waf_PE-02-06_photon_workloads\n",
+        "WITH CTE AS (\n",
+        "SELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, billing_origin_product\n",
+        ", CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n",
+        "FROM system.billing.usage \n",
+        "WHERE usage_date BETWEEN current_date()-30 AND current_date()\n",
+        "AND billing_origin_product  IN ('JOBS','LAKEFLOW_CONNECT','VECTOR_SEARCH','DATABASE','DLT','ALL_PURPOSE','ONLINE_TABLES','INTERACTIVE')\n",
+        "AND usage_unit = 'DBU'\n",
+        "GROUP BY billing_origin_product, CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END \n",
+        ")\n",
+        "SELECT \n",
+        "    billing_origin_product\n",
+        "  , SUM(runs) AS runs_total\n",
+        "  , SUM(dbu_usage) AS dbu_usage_total\n",
+        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END) AS sum_photon_run\n",
+        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END) AS sum_photon_dbu\n",
+        "  , SUM(CASE WHEN is_photon = false THEN runs ELSE 0 END) AS sum_non_photon_run\n",
+        "  , SUM(CASE WHEN is_photon = false THEN dbu_usage ELSE 0 END) AS sum_non_photon_dbu\n",
+        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END)/SUM(runs) AS pct_photon_runs\n",
+        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_photon_dbu\n",
+        "FROM CTE\n",
+        "GROUP BY\n",
+        "billing_origin_product \n",
+        "ORDER BY runs_total DESC;\n"
+      ]
+    },
+    {
+      "name": "95b08392",
+      "displayName": "waf_R-03-01_auto_scaling_ETL",
+      "queryLines": [
+        "select workspace_id, cluster_id, cluster_name, owned_by, worker_count, create_time  \n",
+        "from system.compute.clusters \n",
+        "where cluster_source = 'JOB'\n",
+        "and create_time >= current_timestamp() - interval 7 days\n",
+        "and max_autoscale_workers is null"
+      ]
+    },
+    {
+      "name": "db7bc0c3",
+      "displayName": "waf_R-01-04_auto_termination",
+      "queryLines": [
+        "WITH all_purpose_cluster AS (\n",
+        "  SELECT\n",
+        "    *,\n",
+        "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
+        "  FROM system.compute.clusters\n",
+        "  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n",
+        "  QUALIFY rn=1 AND delete_time is null\n",
+        ")\n",
+        "\n",
+        "\n",
+        "SELECT   \n",
+        "  workspace_id,\n",
+        "  cluster_id,\n",
+        "  cluster_name,\n",
+        "  owned_by\n",
+        "FROM all_purpose_cluster WHERE auto_termination_minutes IS NULL"
+      ]
+    },
+    {
+      "name": "ea93f04e",
+      "displayName": "waf_R-01-05_model_serving",
+      "queryLines": [
+        "select usage_metadata.endpoint_name endpoint_name, billing_origin_product, sum(usage_quantity) usage_dbus from system.billing.usage\n",
+        "WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%'\n",
+        "AND usage_date >= current_timestamp() - interval 7 days\n",
+        "AND usage_metadata.endpoint_name is not null\n",
+        "group by endpoint_name, billing_origin_product\n",
+        "order by usage_dbus desc"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "3f38204d",
+      "displayName": "Summary",
+      "layout": [
+        {
+          "widget": {
+            "name": "2ca8f2ea",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "b39d7f91",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "pillar",
+                      "expression": "`pillar`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "pillar",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "pillar"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage across pillars",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "5c1053c3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "WAF Coverage\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "e9e15078",
+      "displayName": "Data And AI Governance",
+      "layout": [
+        {
+          "widget": {
+            "name": "ec3a56bc",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Data And AI Governance"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "d682affb",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "303a6758",
+                  "fields": [
+                    {
+                      "name": "count(1)",
+                      "expression": "`count(1)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(1)",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "0"
+                          }
+                        },
+                        "color": "#888888"
+                      }
+                    ]
+                  },
+                  "displayName": "count(1)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": "Total Tables"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "f0321af0",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f5bf425c",
+                  "fields": [
+                    {
+                      "name": "count(1)",
+                      "expression": "`count(1)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(1)",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "0"
+                          }
+                        },
+                        "color": "#888888"
+                      }
+                    ]
+                  },
+                  "displayName": "count(1)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Volumes",
+                "contentAlignment": "center"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 16,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ee5b3bb1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5fdcd556",
+                  "fields": [
+                    {
+                      "name": "count(1)",
+                      "expression": "`count(1)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(1)",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "0"
+                          }
+                        },
+                        "color": "#888888"
+                      }
+                    ]
+                  },
+                  "displayName": "count(1)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Functions"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 16,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "33abd742",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a92ace17",
+                  "fields": [
+                    {
+                      "name": "full_name_count",
+                      "expression": "`full_name_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "full_name_count",
+                  "displayName": "full_name_count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "description": "See the count of tables with no reads",
+                "title": "Unused Tables (Last 30 Days)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 26,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bb0b2fd5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "55e66413",
+                  "fields": [
+                    {
+                      "name": "distinct_tables",
+                      "expression": "`distinct_tables`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "distinct_tables",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "0"
+                          }
+                        },
+                        "color": "#888888"
+                      }
+                    ]
+                  },
+                  "displayName": "distinct_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Active Tables (Last 30 days)",
+                "showDescription": true,
+                "description": "See the count of tables with reads"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 26,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "7414554c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "90d7e6f1",
+                  "fields": [
+                    {
+                      "name": "distinct_users",
+                      "expression": "`distinct_users`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "distinct_users",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "0"
+                          }
+                        },
+                        "color": "#000000"
+                      }
+                    ]
+                  },
+                  "displayName": "distinct_users"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Active Users (Last 30 Days)",
+                "showDescription": true,
+                "description": "See the count of users who read from tables"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 26,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bdaa8aa0",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "628c2773",
+                  "fields": [
+                    {
+                      "name": "full_name_count",
+                      "expression": "`full_name_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "full_name_count",
+                  "displayName": "full_name_count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Ungoverned Tables",
+                "showDescription": true,
+                "description": "See the count of tables to which all users have read access"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 36,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "e60dfd50",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1f951287",
+                  "fields": [
+                    {
+                      "name": "distinct_table_count",
+                      "expression": "`distinct_table_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "distinct_table_count",
+                  "displayName": "distinct_table_count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Sensitive Tables",
+                "showDescription": true,
+                "description": "See the count of tables with either row filters or column masks"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 36,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "4a969668",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "763a2da9",
+                  "fields": [
+                    {
+                      "name": "sum(read_count)",
+                      "expression": "SUM(`read_count`)"
+                    },
+                    {
+                      "name": "table_full_name",
+                      "expression": "`table_full_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(read_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Usage Count"
+                },
+                "y": {
+                  "fieldName": "table_full_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Table Name"
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Most Popular Tables",
+                "showDescription": true,
+                "description": "Identify the 10 most read from tables and see when they were last written to"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 29,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "f9046177",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "8d97349c",
+                  "fields": [
+                    {
+                      "name": "monthly(usage_date)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `usage_date`)"
+                    },
+                    {
+                      "name": "sum(usage_count)",
+                      "expression": "SUM(`usage_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(usage_date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Period"
+                },
+                "y": {
+                  "fieldName": "sum(usage_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Read Events"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Table Usage (Last 12 Months)",
+                "description": "See read events for tables over time"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "b78ba2ba",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1eab9fe1",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    },
+                    {
+                      "name": "pillar",
+                      "expression": "`pillar`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "description",
+                      "expression": "`description`"
+                    },
+                    {
+                      "name": "check_type",
+                      "expression": "`check_type`"
+                    },
+                    {
+                      "name": "source_object",
+                      "expression": "`source_object`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "title": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "title": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "implemented"
+                  },
+                  {
+                    "fieldName": "pillar",
+                    "title": "pillar",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "pillar"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "title": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "description",
+                    "title": "description",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "description"
+                  },
+                  {
+                    "fieldName": "check_type",
+                    "title": "check_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "check_type"
+                  },
+                  {
+                    "fieldName": "source_object",
+                    "title": "source_object",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string",
+                    "displayName": "source_object"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "ca7cc5ad",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "95258030",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "4b2ce052",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "920a8759",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "afce077c",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Principle"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 39,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "5938b707",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Signal"
+              ]
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 39,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "00d40a61",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-01-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Track [data and AI lineage](https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage) to drive visibility of the data**\n",
+                "\n",
+                "1. Are you using unity catalog to access data in order to track lineage?\n",
+                "\n",
+                "2. Are you using unity catalog to register your models?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 40,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e4d9261a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "8486d58c",
+                  "fields": [
+                    {
+                      "name": "sum(total_tables)",
+                      "expression": "SUM(`total_tables`)"
+                    },
+                    {
+                      "name": "sum(lineage_tables)",
+                      "expression": "SUM(`lineage_tables`)"
+                    },
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fields": [
+                    {
+                      "fieldName": "sum(total_tables)",
+                      "displayName": "Sum of total_tables"
+                    },
+                    {
+                      "fieldName": "sum(lineage_tables)",
+                      "displayName": "Sum of lineage_tables"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "table_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "table_type"
+                }
+              },
+              "frame": {
+                "showDescription": true,
+                "description": "Objects with captured lineage information"
+              },
+              "mark": {
+                "layout": "group"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 40,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "320b2a12",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-01-04\n",
+                "&nbsp;\n",
+                "\n",
+                "**Add consistent descriptions to your metadata**\n",
+                "\n",
+                "Are you adding comments to your objects?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 47,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "50d62bb0",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 46,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "71c7137f",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 53,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "b7a1c2ed",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-01-05\n",
+                "&nbsp;\n",
+                "\n",
+                "**Allow easy data discovery for data consumers**\n",
+                "\n",
+                "Are you adding tags to your objects?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 54,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "5373c79b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "913b3827",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    },
+                    {
+                      "name": "label",
+                      "expression": "`label`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": " "
+                },
+                "color": {
+                  "fieldName": "label",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Untagged",
+                        "color": "#919191"
+                      },
+                      {
+                        "value": "Tagged",
+                        "color": "#00A972"
+                      }
+                    ]
+                  },
+                  "displayName": "Legend"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Table Tag Usage",
+                "showDescription": false,
+                "description": "See the breakdown of tagged and untagged tables"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 54,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "59d1606b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "788914b8",
+                  "fields": [
+                    {
+                      "name": "sum(usage_count)",
+                      "expression": "SUM(`usage_count`)"
+                    },
+                    {
+                      "name": "tag_name",
+                      "expression": "`tag_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(usage_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Usage Count"
+                },
+                "y": {
+                  "fieldName": "tag_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Tag Name"
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Most Popular Table Tags",
+                "showDescription": false,
+                "description": ""
+              },
+              "mark": {
+                "colors": [
+                  "#AB4057",
+                  "#FFAB00",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 54,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "c6204dab",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 60,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "764be487",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-02-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Centralize access control for all data and AI assets**\n",
+                "\n",
+                "1. Are you using row level filters?\n",
+                "\n",
+                "2. Are you using column masking?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 61,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f7938519",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 67,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "b2b6be1d",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-02-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Configure audit logging**\n",
+                "\n",
+                "\n",
+                "\n",
+                "Are you aware of how to audit events?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 68,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f1234e40",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 74,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "af95532b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-02-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Audit data platform events**\n",
+                "\n",
+                "1. Do you use delta shares?\n",
+                "2. Are you aware of how to track data requests for your published assets?\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 75,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "6275cccb",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 81,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "7b489f51",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-03-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use data quality tools for profiling, cleansing, validating, and monitoring data**\n",
+                "\n",
+                "1. Are you using expectations in Lakeflow Declarative Pipelines?\n",
+                "\n",
+                "2. Are you leveraging Lakehouse Monitoring?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 82,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "57b77b61",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 88,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3a71edd7",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### DG-03-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Implement and enforce standardized data formats and definitions**\n",
+                "\n",
+                "What type of data formats are you using today?\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 89,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "dfe2f7a1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    },
+                    {
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_tables"
+                },
+                "color": {
+                  "fieldName": "data_source_format",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "data_source_format"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 89,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "1a05ee4a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    },
+                    {
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
+                    },
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    }
+                  ],
+                  "cubeGroupingSets": {
+                    "sets": [
+                      {
+                        "fieldNames": [
+                          "table_type"
+                        ]
+                      },
+                      {
+                        "fieldNames": [
+                          "data_source_format"
+                        ]
+                      }
+                    ]
+                  },
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "ASC",
+                      "expression": "`table_type`"
+                    },
+                    {
+                      "direction": "ASC",
+                      "expression": "`data_source_format`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pivot",
+              "encodings": {
+                "rows": [
+                  {
+                    "fieldName": "table_type",
+                    "displayName": "table_type"
+                  }
+                ],
+                "columns": [
+                  {
+                    "fieldName": "data_source_format",
+                    "displayName": "data_source_format"
+                  }
+                ],
+                "cell": {
+                  "type": "multi-cell",
+                  "fields": [
+                    {
+                      "fieldName": "sum(count_of_tables)",
+                      "cellType": "text",
+                      "displayName": "Sum of count_of_tables"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 89,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "8de06bb7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "count_of_tables",
+                      "expression": "`count_of_tables`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('STREAMING_TABLE')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_of_tables",
+                  "displayName": "count_of_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Streaming Tables",
+                "showDescription": true,
+                "description": "See the count of Streaming Tables"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 82,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b4791872",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "count_of_tables",
+                      "expression": "`count_of_tables`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('MATERIALIZED_VIEW')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_of_tables",
+                  "displayName": "count_of_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Materialized Views",
+                "showDescription": true,
+                "description": "See the count of materialized views"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 85,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b8c4d566",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f7dd8a02",
+                  "fields": [
+                    {
+                      "name": "count_tables",
+                      "expression": "`count_tables`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_tables",
+                  "displayName": "count_tables"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lakehouse Monitoring",
+                "showDescription": true,
+                "description": "See the count of drift metrics or profile metrics tables"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 82,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "6bd69b8f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1ab4ec65",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    },
+                    {
+                      "name": "consumer_delta_sharing_recipient_name",
+                      "expression": "`consumer_delta_sharing_recipient_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_events"
+                },
+                "y": {
+                  "fieldName": "consumer_delta_sharing_recipient_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "consumer_delta_sharing_recipient_name"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Delta share events in the last 30 days"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 75,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "1bef9a9a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1ab4ec65",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    },
+                    {
+                      "name": "event_type",
+                      "expression": "`event_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_events"
+                },
+                "color": {
+                  "fieldName": "event_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "event_type"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "title": "Event Type Distribution",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 75,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "c4b3d045",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5b3944b6",
+                  "fields": [
+                    {
+                      "name": "audit_level",
+                      "expression": "`audit_level`"
+                    },
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "audit_level",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  },
+                  "displayName": "audit_level"
+                },
+                "y": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of count_of_events"
+                }
+              },
+              "frame": {
+                "title": "Count of audit events by type (Last 30 days)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 68,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "3a695476",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5b3944b6",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_events)",
+                      "expression": "SUM(`count_of_events`)"
+                    },
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`workspace_id` NOT IN ('0')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(count_of_events)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Count of Events"
+                  },
+                  "displayName": "Count of Events"
+                },
+                "y": {
+                  "fieldName": "workspace_id",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "axis": {
+                    "title": "Workspace ID"
+                  },
+                  "displayName": "Workspace ID"
+                }
+              },
+              "frame": {
+                "title": "Most popular workspace (Last 30 days)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 68,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "b21db0e5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6b0c95c6",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`object_type` IN ('row_filters')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Number of total row filters"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 61,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "34358997",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6b0c95c6",
+                  "fields": [
+                    {
+                      "name": "object_type",
+                      "expression": "`object_type`"
+                    },
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`object_type` IN ('column_masks', 'table_with_masks')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "object_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "displayName": "object_type"
+                },
+                "y": {
+                  "fieldName": "sum(count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Count"
+                  },
+                  "displayName": "Count"
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Number of column masks and number of tables with column masks"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 61,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "84d35a18",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e097b5c1",
+                  "fields": [
+                    {
+                      "name": "object_type",
+                      "expression": "`object_type`"
+                    },
+                    {
+                      "name": "count_comment",
+                      "expression": "`count_comment`"
+                    },
+                    {
+                      "name": "overall_count",
+                      "expression": "`overall_count`"
+                    },
+                    {
+                      "name": "perc_comment",
+                      "expression": "`perc_comment`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "object_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "Object",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "object_type"
+                  },
+                  {
+                    "fieldName": "count_comment",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "# with comments",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "count_comment"
+                  },
+                  {
+                    "fieldName": "overall_count",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "Total count",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "overall_count"
+                  },
+                  {
+                    "fieldName": "perc_comment",
+                    "numberFormat": "0.00%",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "% with comments",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "scalePercentBy100": true,
+                    "displayName": "perc_comment"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": true,
+              "frame": {
+                "showTitle": false
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 47,
+            "width": 5,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "d88f271c",
+      "displayName": "Interoperability & Usability",
+      "layout": [
+        {
+          "widget": {
+            "name": "96149840",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Interoperability & Usability"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "036dc3f7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c19487ca",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "practice",
+                      "expression": "`practice`"
+                    },
+                    {
+                      "name": "source_object",
+                      "expression": "`source_object`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "practice"
+                  },
+                  {
+                    "fieldName": "source_object",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "source_object",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "source_object"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "8953ae16",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "83c64453",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e831cd84",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "05c16819",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "e290aac3",
+      "displayName": "Cost  Optimisation",
+      "layout": [
+        {
+          "widget": {
+            "name": "96877a12",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Cost Optimisation"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "42a0abd4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "best_practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "best_practice"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "35c49ee2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "81f0a6aa",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "04def979",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "06f2987c",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "4c37a8d4",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f08e62cb",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Principle"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "0b04dde5",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Signal"
+              ]
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 18,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "24e2c544",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use performance optimized data formats ([Delta Lake](https://docs.databricks.com/aws/en/delta/))**\n",
+                "\n",
+                "1. What file formats do you use and why? If not using Delta, what prevents you from defaulting to Delta Lake?\n",
+                "\n",
+                "2. What clients/connectors do you use and do they support Delta Lake?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e357302e",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a5da7a83",
+                  "fields": [
+                    {
+                      "name": "sum(no_of_tables)",
+                      "expression": "SUM(`no_of_tables`)"
+                    },
+                    {
+                      "name": "tables_format",
+                      "expression": "`tables_format`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(no_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Table formats"
+                },
+                "color": {
+                  "fieldName": "tables_format",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "hideTitle": true
+                  },
+                  "displayName": "tables_format"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": false
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 19,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "009b71f1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c436a496",
+                  "fields": [
+                    {
+                      "name": "sum(percent_of_tables)",
+                      "expression": "SUM(`percent_of_tables`)"
+                    },
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(percent_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Table types"
+                },
+                "color": {
+                  "fieldName": "table_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "hideTitle": true
+                  },
+                  "displayName": "table_type"
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 19,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "13fed61c",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use job clusters ([Databricks Workflows](https://www.databricks.com/product/data-engineering/workflows))**\n",
+                "\n",
+                "1. How you instruct users to run Jobs on Jobs clusters instead of All Purpose?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 26,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "0b0c4104",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f58e6ab1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "feca6b37",
+                  "fields": [
+                    {
+                      "name": "job_id",
+                      "expression": "`job_id`"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "cluster_name",
+                      "expression": "`cluster_name`"
+                    },
+                    {
+                      "name": "owned_by",
+                      "expression": "`owned_by`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "job_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "job_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "job_id"
+                  },
+                  {
+                    "fieldName": "cluster_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_id"
+                  },
+                  {
+                    "fieldName": "cluster_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "cluster_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_name"
+                  },
+                  {
+                    "fieldName": "owned_by",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "owned_by",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "owned_by"
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "workspace_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dbr_version",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 5,
+                  "title": "dbr_version",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "These jobs are configured to run on All Purpose clusters instead of Job clusters:"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 26,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "8c1af4a6",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 32,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "d232cb60",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**[SQL Warehouses](https://docs.databricks.com/en/sql/admin/sql-warehouse.html) for SQL workloads**\n",
+                "\n",
+                "1. Do do you instruct users to use cheaper DBSQL Warehouse instead of All-Purpose for SQL queries and BI?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 33,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "67085075",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "898f3132",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 33,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "99b1a37d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d654eb5a",
+                  "fields": [
+                    {
+                      "name": "sum(dbu)",
+                      "expression": "SUM(`dbu`)"
+                    },
+                    {
+                      "name": "billing_origin_product",
+                      "expression": "`billing_origin_product`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU (not $DBU)"
+                },
+                "color": {
+                  "fieldName": "billing_origin_product",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "billing_origin_product"
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 33,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "cb9c0e9e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 39,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "eb0316c3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-04\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use up-to-date [Runtimes](https://docs.databricks.com/aws/en/release-notes/runtime/) for your workloads**\n",
+                "\n",
+                "1. How do your project teams operate - do they have freedom to choose the DBR version or is it centralized (eg via automation)?\n",
+                "\n",
+                "1. How do you decide when to upgrade to the next runtime version, for example LTS? What is your change management process?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 40,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "a1e036b9",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f4e7201f",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    },
+                    {
+                      "name": "version",
+                      "expression": "`version`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": " "
+                },
+                "color": {
+                  "fieldName": "version",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "version"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "title": "Version Distribution",
+                "showTitle": true,
+                "headerAlignment": "center",
+                "showDescription": false
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 40,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "286ce2b0",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 46,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "72f7cf44",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-05\n",
+                "&nbsp;\n",
+                "\n",
+                "**Only use [GPUs](https://docs.databricks.com/aws/en/compute/gpu) for the right workloads**\n",
+                "\n",
+                "1. How do your project teams operate - do they have freedom to choose the DBR version or is it centralized (eg via automation)?\n",
+                "\n",
+                "1. How do you decide when to upgrade to the next runtime version, for example LTS? What is your change management process?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 47,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "0ac81fcb",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "62126ae8",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 47,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "6283c9d0",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 53,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "9329ad14",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-06\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use [Serverless](https://docs.databricks.com/aws/en/compute/serverless/) for your workloads**\n",
+                "\n",
+                "1. What is your guidance on Serverless for your users?\n",
+                "\n",
+                "1. If not done yet, what prevents you from adopting Serverless as the default?\n",
+                "\n",
+                "1. Is the team trained to know the difference between Cost Optimized and Performance Optimized Serverless?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 54,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "cd40aa5d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a36b2899",
+                  "fields": [
+                    {
+                      "name": "serverless_dbu_percent",
+                      "expression": "`serverless_dbu_percent`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "serverless_dbu_percent",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "displayName": "serverless_dbu_percent"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Serverless adoption (in JOBS, ALL_PURPOSE, INTERACTIVE, DLT and SQL)",
+                "headerAlignment": "center",
+                "showDescription": true,
+                "description": "Unit is %. The Product does not let me to update the title at the moment ^^"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 54,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "f67dc9c5",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 59,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fcb831ad",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-07\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use the right instance type**\n",
+                "\n",
+                "1. How do you choose the VM type?\n",
+                "\n",
+                "1. How do you monitor the VM/clusters utilization? / Are you aware of the built-in metrics monitoring in Clusters and System tables?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 60,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "62567a67",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "efb892e1",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 60,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "62314c18",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 65,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "4506b67a",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-08\n",
+                "&nbsp;\n",
+                "\n",
+                "**Choose the most [efficient cluster size](https://docs.databricks.com/aws/en/lakehouse-architecture/cost-optimization/best-practices#choose-the-most-efficient-cluster-size)**\n",
+                "\n",
+                "1. How do you use to select optimal worker nodes, sizes and types? Are you aware of instance fleets(only in classic)?\n",
+                "\n",
+                "1. Have you attended training/trained your team on Apache Spark Optimization?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 66,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "0d1674a4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1de7073d",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 66,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "4290b1ba",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 72,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "72d9583b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-01-09\n",
+                "&nbsp;\n",
+                "\n",
+                "**Evaluate performance optimized query engines with [Photon](https://docs.databricks.com/aws/en/compute/configure#use-photon-acceleration)**\n",
+                "\n",
+                "1. How do you choose Photon on/off? Do you know that Photon is just one button to enable on/off and recommended for CPU-bounded workloads and not recommended for classic AllPurpose?\n",
+                "\n",
+                "1. Did you know that Photon is included in Serverless, both DBSQL and GC?\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 73,
+            "width": 1,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "a9ea23dd",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "951a00c5",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 73,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "b12b9ae5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "31958c67",
+                  "fields": [
+                    {
+                      "name": "cpu_usage_percent_p75",
+                      "expression": "`cpu_usage_percent_p75`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "cpu_usage_percent_p75",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "displayName": "cpu_usage_percent_p75"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "P75 CPU utilization in %"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 66,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b7cf3cb8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "31958c67",
+                  "fields": [
+                    {
+                      "name": "memory_usage_percent_p75",
+                      "expression": "`memory_usage_percent_p75`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "memory_usage_percent_p75",
+                  "displayName": "memory_usage_percent_p75"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "P75 Memory utitlization in %"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 69,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "e49c6507",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 80,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "a4a15f20",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-02-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Leverage [auto-scaling](https://docs.databricks.com/aws/en/compute/configure#enable-autoscaling) compute**\n",
+                "\n",
+                "1. What SLAs your queries need to meet?\n",
+                "\n",
+                "1. Do you have estimates for maximum concurrent queries/throughput and applied those as auto-scaling configuration?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 81,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "f8666e94",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "b54341e5",
+                  "fields": [
+                    {
+                      "name": "autoscaling_percent",
+                      "expression": "`autoscaling_percent`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "autoscaling_percent",
+                  "displayName": "autoscaling_percent"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% of clusters with auto-scaling enabled"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 81,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "94a246b7",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 86,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3aaf7e8b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-02-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use [auto termination](https://docs.databricks.com/aws/en/compute/configure#automatic-termination)**\n",
+                "\n",
+                "1. Can your customers tolerate eventual shutdown of the compute or slower startup time in exchange to save monies?\n",
+                "\n",
+                "2. Do you use Policies (separate point) to enforce Auto-Termination or monitoring to alert on long running - possibly forgotten - compute?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 87,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "2a127d7b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d0192813",
+                  "fields": [
+                    {
+                      "name": "percent_clusters_without_autoterminations",
+                      "expression": "`percent_clusters_without_autoterminations`"
+                    },
+                    {
+                      "name": "p_75_auto_termination_minutes",
+                      "expression": "`p_75_auto_termination_minutes`"
+                    },
+                    {
+                      "name": "max_auto_termination_minutes",
+                      "expression": "`max_auto_termination_minutes`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "percent_clusters_without_autoterminations",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 0,
+                    "title": "percent_clusters_without_autoterminations",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "percent_clusters_without_autoterminations"
+                  },
+                  {
+                    "fieldName": "p_75_auto_termination_minutes",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 1,
+                    "title": "p_75_auto_termination_minutes",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "p_75_auto_termination_minutes"
+                  },
+                  {
+                    "fieldName": "max_auto_termination_minutes",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2,
+                    "title": "max_auto_termination_minutes",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "max_auto_termination_minutes"
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "count_clusters_without_autoterminations",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 3,
+                  "title": "count_clusters_without_autoterminations",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "count_clusters_with_autoterminations",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 4,
+                  "title": "count_clusters_with_autoterminations",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 87,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "9c7fbc03",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 93,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3d5715db",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-02-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use [compute policies](https://docs.databricks.com/aws/en/admin/clusters/policies) to control costs**\n",
+                "\n",
+                "1. Would you welcome guardrails for controling spend and prescribing what users can configure when creating clusters?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 94,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "ed7d96a4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "cc24226f",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 94,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "140f6c6b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 99,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3bf3bcc6",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-03-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Monitor costs**\n",
+                "\n",
+                "0. Are you worried about users incurring unexpected costs?\n",
+                "\n",
+                "1. How do you monitor Databricks cost including cost from cloud providers?\n",
+                "\n",
+                "2. Are you using the built-in [cost monitoring dashboard](https://docs.databricks.com/en/admin/account-settings/usage.html)?\n",
+                "\n",
+                "3. Have you setup [budgets](https://docs.databricks.com/en/admin/account-settings/budgets.html ) in Databricks or elsewhere?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 100,
+            "width": 1,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "0b447804",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e46a4a40",
+                  "fields": [
+                    {
+                      "name": "daily(event_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `event_date`)"
+                    },
+                    {
+                      "name": "sum(usage_read)",
+                      "expression": "SUM(`usage_read`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(event_date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "date (day granularity)"
+                },
+                "y": {
+                  "fieldName": "sum(usage_read)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Number of usage table reads"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 100,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "a0de1765",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 107,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3c21f01a",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-03-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**[Tag clusters](https://docs.databricks.com/aws/en/lakehouse-architecture/cost-optimization/best-practices#tag-clusters-for-cost-attribution) for cost attribution**\n",
+                "\n",
+                "1. What tagging guidelines exist in your organization?\n",
+                "\n",
+                "2. What cost attribution processes based on tags exist?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 108,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "22d5ba56",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bb77bb31",
+                  "fields": [
+                    {
+                      "name": "count",
+                      "expression": "`count`"
+                    },
+                    {
+                      "name": "number_of_tags",
+                      "expression": "`number_of_tags`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "count",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "displayName": "count"
+                },
+                "color": {
+                  "fieldName": "number_of_tags",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": 0,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 4
+                        }
+                      },
+                      {
+                        "value": 1,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 8
+                        }
+                      }
+                    ],
+                    "sort": {
+                      "by": "natural-order"
+                    }
+                  },
+                  "displayName": "number_of_tags"
+                },
+                "label": {
+                  "show": false
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 108,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "40a82523",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7abec3c3",
+                  "fields": [
+                    {
+                      "name": "tag",
+                      "expression": "`tag`"
+                    },
+                    {
+                      "name": "percent",
+                      "expression": "`percent`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "tag",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "tag",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "tag"
+                  },
+                  {
+                    "fieldName": "percent",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "percent",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "percent"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 108,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "4252c35c",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 114,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "d4669fcb",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-03-03\n",
+                "&nbsp;\n",
+                "\n",
+                "**[Budgets](https://docs.databricks.com/en/admin/account-settings/budgets.html ) and Chargeback**\n",
+                "\n",
+                "0. Are you worried about users incurring unexpected costs? \n",
+                "3. Have you setup [budgets](https://docs.databricks.com/en/admin/account-settings/budgets.html ) in Databricks or custom? \n",
+                "\n",
+                "\n",
+                "1. How do you monitor Databricks cost including cost from cloud providers?\n",
+                "\n",
+                "2. Are you using the built-in [cost monitoring dashboard](https://docs.databricks.com/en/admin/account-settings/usage.html)?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 115,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e9658fbc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9f038f29",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 115,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "57ce5648",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 121,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "1baedeb1",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-03-04\n",
+                "&nbsp;\n",
+                "\n",
+                "**Share cost reports regularly**\n",
+                "\n",
+                "1. How do you share cost with spenders?\n",
+                "\n",
+                "2. Do spenders have permissions and training to analyse their spend in Billing Dashboard?\n",
+                "\n",
+                "3. What mechanisms do you have in place to detect spikes and remediate them?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 122,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "ad5219bc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e3cd19cf",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 122,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "d2eee859",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 128,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fb74bc19",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-03-05\n",
+                "&nbsp;\n",
+                "\n",
+                "**Monitor and manage Delta Sharing egress costs**\n",
+                "\n",
+                "1. Do you expect to transfer data across regions?\n",
+                " \n",
+                "2. How do you monitor your egress cost budget?\n",
+                "\n",
+                "3. Are you using delta sharing?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 129,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "0a06670c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d83ae5eb",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 129,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "b8490725",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 134,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "e1ac318b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-04-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Balance always-on and triggered streaming**\n",
+                "\n",
+                "1. What are your use-cases for low latency requirements/SLA and data freshness?\n",
+                "\n",
+                "2. How do you train your engineers on batch and streaming?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 135,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "fdc57e08",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d0a01e50",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 135,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "d4ad6eaa",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 140,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "5a454423",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### CO-04-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Balance between on-demand and capacity excess instances**\n",
+                "\n",
+                "1. What is your policy for using Spot instances?\n",
+                "\n",
+                "2. Is the team trained to know the difference between Cost Optimized and Performance Optimized Serverless?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 141,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "fdb2bd9d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "67073248",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "expression": "`message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "message"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 141,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "cf9364cb",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "aed75aae",
+                  "fields": [
+                    {
+                      "name": "list_cost",
+                      "expression": "`list_cost`"
+                    },
+                    {
+                      "name": "sql_sku_name",
+                      "expression": "`sql_sku_name`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "list_cost",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Serverless in SQL Warehouses"
+                },
+                "color": {
+                  "fieldName": "sql_sku_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "sql_sku_name"
+                },
+                "label": {
+                  "show": false
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 54,
+            "width": 2,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "4d045fd5",
+      "displayName": "Performance Efficiency",
+      "layout": [
+        {
+          "widget": {
+            "name": "3090a1a6",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Performance Efficiency"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "dfe014e3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "4745a0f9",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "best_practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "best_practice"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "f60f67db",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "13e29e6c",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f77e0b79",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "87deca0d",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "218a4cb9",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Principle"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "cd03885b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Signal"
+              ]
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 15,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "7cca37a3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### PE-02-02\n",
+                "&nbsp;\n",
+                "**Use parallel computation where it is beneficial**\n",
+                "\n",
+                "Do you know when to use a single-node vs a multi-node cluster?\n",
+                "\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "eb907528",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### PE-01-01\n",
+                "&nbsp;\n",
+                "Use [serverless](https://www.databricks.com/glossary/serverless-computing) architecture\n",
+                "\n",
+                "\n",
+                "#### PE-01-02\n",
+                "&nbsp;\n",
+                "Use an enterprise grade [model serving](https://www.databricks.com/product/model-serving) service\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "4b90cdad",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6e7d4785",
+                  "fields": [
+                    {
+                      "name": "sum_serverless_dbu",
+                      "expression": "`sum_serverless_dbu`"
+                    },
+                    {
+                      "name": "sum_non_serverless_dbu",
+                      "expression": "`sum_non_serverless_dbu`"
+                    },
+                    {
+                      "name": "billing_origin_product",
+                      "expression": "`billing_origin_product`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` NOT IN ('MODEL_SERVING')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fields": [
+                    {
+                      "fieldName": "sum_serverless_dbu",
+                      "displayName": "Serverless DBU"
+                    },
+                    {
+                      "fieldName": "sum_non_serverless_dbu",
+                      "displayName": "Non-Serverless DBU"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "billing_origin_product",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Product",
+                    "hideTitle": true
+                  },
+                  "displayName": "Product"
+                }
+              },
+              "frame": {
+                "title": "Serverless vs Non-Serverless Usage in the last 30 days",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 16,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "44a94f85",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6e7d4785",
+                  "fields": [
+                    {
+                      "name": "dbu_usage_total",
+                      "expression": "`dbu_usage_total`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('MODEL_SERVING')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "dbu_usage_total",
+                  "displayName": "dbu_usage_total"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Model Serving Usage in DBUs (last 30 days)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 16,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "49e332f5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e8a98fa1",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    },
+                    {
+                      "name": "is_multi_worker",
+                      "expression": "`is_multi_worker`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "count(*)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "# of clusters",
+                    "hideTitle": true
+                  },
+                  "displayName": "# of clusters"
+                },
+                "color": {
+                  "fieldName": "is_multi_worker",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "hideTitle": true
+                  },
+                  "displayName": "is_multi_worker"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Clusters used in the last 30 days "
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 23,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fc72d111",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e8a98fa1",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage)",
+                      "expression": "SUM(`dbu_usage`)"
+                    },
+                    {
+                      "name": "is_multi_worker",
+                      "expression": "`is_multi_worker`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "DBU usage",
+                    "hideTitle": true
+                  },
+                  "displayName": "DBU usage"
+                },
+                "color": {
+                  "fieldName": "is_multi_worker",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "hideTitle": true
+                  },
+                  "displayName": "is_multi_worker"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBUs consumed in the last 30 days"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 23,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "eca6f886",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e8a98fa1",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage)",
+                      "expression": "SUM(`dbu_usage`)"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`rank` IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(dbu_usage)",
+                  "scale": {
+                    "type": "quantitative",
+                    "domain": {
+                      "min": 5000
+                    }
+                  },
+                  "axis": {
+                    "title": "DBU",
+                    "hideTitle": true
+                  },
+                  "displayName": "DBU"
+                },
+                "y": {
+                  "fieldName": "cluster_id",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "cluster_id"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 clusters by DBU in the last 30 days"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 23,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bb63359e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "2d3e0091",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 29,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "6d453f61",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### PE-02-04\n",
+                "&nbsp;\n",
+                "**Prefer larger clusters** - Running 4 workers is twice as fast as running 2 workers at the same cost.\n",
+                "\n",
+                "\n",
+                "#### PE-02-05\n",
+                "&nbsp;\n",
+                "**Use native Spark operations** - Minimize the use of UDFs as they slow down Spark operations.\n",
+                "\n",
+                "\n",
+                "\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 30,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "df18ee7d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e8a98fa1",
+                  "fields": [
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "cluster_name",
+                      "expression": "`cluster_name`"
+                    },
+                    {
+                      "name": "max_worker_count",
+                      "expression": "`max_worker_count`"
+                    },
+                    {
+                      "name": "dbu_usage",
+                      "expression": "`dbu_usage`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "max_worker_count",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Max Worker count"
+                  },
+                  "displayName": "Max Worker count"
+                },
+                "y": {
+                  "fieldName": "dbu_usage",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "extra": [
+                  {
+                    "fieldName": "cluster_id",
+                    "displayName": "cluster_id"
+                  },
+                  {
+                    "fieldName": "cluster_name",
+                    "displayName": "cluster_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# of workers by DBU (last 30 days)"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 30,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "3bcd6ff7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e8a98fa1",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    },
+                    {
+                      "name": "worker_node_type",
+                      "expression": "`worker_node_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "count(*)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "displayName": "Count of clusters"
+                },
+                "color": {
+                  "fieldName": "worker_node_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "legend": {
+                    "title": "Worker Node Type",
+                    "hideTitle": false,
+                    "hide": false
+                  },
+                  "displayName": "Worker Node Type"
+                },
+                "label": {
+                  "show": false
+                },
+                "extra": [
+                  {
+                    "fieldName": "worker_node_type",
+                    "displayName": "worker_node_type"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Worker node distribution by clusters (last 30 days)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 37,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "52d248f8",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### PE-02-06\n",
+                "&nbsp;\n",
+                "**Use native platform engines** - [Photon](https://www.databricks.com/product/photon) makes your queries blazing fast.\n",
+                "\n",
+                "\n",
+                "#### PE-02-07\n",
+                "&nbsp;\n",
+                "**Understand your hardware and workload type** - Do you know how to choose the right VM for your workload? Go serverless when you don't.\n",
+                "\n",
+                "\n",
+                "\n",
+                "\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 37,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "62979752",
+            "multilineTextboxSpec": {
+              "lines": [
+                "---"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 36,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "5dff5c99",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "caef943a",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# of Python UDFs"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 30,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "4caf9bd3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "3eb728b7",
+                  "fields": [
+                    {
+                      "name": "sum_photon_dbu",
+                      "expression": "`sum_photon_dbu`"
+                    },
+                    {
+                      "name": "sum_non_photon_dbu",
+                      "expression": "`sum_non_photon_dbu`"
+                    },
+                    {
+                      "name": "billing_origin_product",
+                      "expression": "`billing_origin_product`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fields": [
+                    {
+                      "fieldName": "sum_photon_dbu",
+                      "displayName": "Photon DBU"
+                    },
+                    {
+                      "fieldName": "sum_non_photon_dbu",
+                      "displayName": "Non-Photon DBU"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "billing_origin_product",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "axis": {
+                    "title": "Product",
+                    "hideTitle": true
+                  },
+                  "displayName": "Product"
+                }
+              },
+              "frame": {
+                "title": "Photon vs Non-Photon Usage in the last 30 days",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 37,
+            "width": 3,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "59202f2b",
+      "displayName": "Operational Excellence",
+      "layout": [
+        {
+          "widget": {
+            "name": "3344b471",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Operational Excellence"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "702b9ff1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d81e0e70",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "best_practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "best_practice"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "68c863f8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "42ba828c",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fb71ca9a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "62c1b232",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "cd983f88",
+      "displayName": "Security, Compliance and Privacy",
+      "layout": [
+        {
+          "widget": {
+            "name": "9d70a3c3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Security, Compliance and Privacy"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "12d98614",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "554446fd",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "best_practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "best_practice"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "ee1eca60",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "be11a467",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "6cebc7e8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "2003edfa",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "3be344ef",
+      "displayName": "Reliability",
+      "layout": [
+        {
+          "widget": {
+            "name": "e9309306",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Reliability"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "530fa633",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "60cfe928",
+                  "fields": [
+                    {
+                      "name": "waf_id",
+                      "expression": "`waf_id`"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    },
+                    {
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "waf_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "waf_id"
+                  },
+                  {
+                    "fieldName": "principle",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "principle"
+                  },
+                  {
+                    "fieldName": "best_practice",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "best_practice"
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "implemented"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "WAF Controls Table",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "4c6080fc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "011cf80a",
+                  "fields": [
+                    {
+                      "name": "sum(completion_percent)",
+                      "expression": "SUM(`completion_percent`)"
+                    },
+                    {
+                      "name": "principle",
+                      "expression": "`principle`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(completion_percent)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of completion_percent"
+                },
+                "y": {
+                  "fieldName": "principle",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "principle"
+                }
+              },
+              "frame": {
+                "title": "Completion percentage of implemented controls per principle",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f05f948d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "03babf4f",
+                  "fields": [
+                    {
+                      "name": "avg(completion_percent)",
+                      "expression": "AVG(`completion_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completion_percent)",
+                  "displayName": "Average completion_percent"
+                }
+              },
+              "frame": {
+                "title": "Completion Percentage",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "7736691f",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Principle"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "912b9d1e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Signal"
+              ]
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 18,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "40470a83",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-01-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use a data format that supports ACID transactions ([Delta Lake](https://docs.databricks.com/aws/en/delta/))**\n",
+                "\n",
+                "1. What file formats do you use and why? If not using Delta, what prevents you from defaulting to Delta Lake?\n",
+                "\n",
+                "2. What clients/connectors do you use and do they support Delta Lake?"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "11a1aa40",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a5da7a83",
+                  "fields": [
+                    {
+                      "name": "sum(no_of_tables)",
+                      "expression": "SUM(`no_of_tables`)"
+                    },
+                    {
+                      "name": "tables_format",
+                      "expression": "`tables_format`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(no_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Table Formats"
+                  },
+                  "displayName": "Table Formats"
+                },
+                "color": {
+                  "fieldName": "tables_format",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "tables_format"
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 19,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "c8ff09f3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-03-02\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use autoscaling for SQL Warehouses**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 43,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "75b3a2e8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7bc0c3",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "cluster_name",
+                      "expression": "`cluster_name`"
+                    },
+                    {
+                      "name": "owned_by",
+                      "expression": "`owned_by`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "workspace_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "workspace_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "workspace_id"
+                  },
+                  {
+                    "fieldName": "cluster_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_id"
+                  },
+                  {
+                    "fieldName": "cluster_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "cluster_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_name"
+                  },
+                  {
+                    "fieldName": "owned_by",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "owned_by",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "owned_by"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "All purpose cluster which do not have auto-termination configured"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 25,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "1df808a3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-03-01\n",
+                "&nbsp;\n",
+                "\n",
+                "**Enable autoscaling for ETL workloads**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 37,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "a90d04b7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "27265888",
+                  "fields": [
+                    {
+                      "name": "warehouse_id",
+                      "expression": "`warehouse_id`"
+                    },
+                    {
+                      "name": "warehouse_name",
+                      "expression": "`warehouse_name`"
+                    },
+                    {
+                      "name": "warehouse_type",
+                      "expression": "`warehouse_type`"
+                    },
+                    {
+                      "name": "warehouse_size",
+                      "expression": "`warehouse_size`"
+                    },
+                    {
+                      "name": "min_clusters",
+                      "expression": "`min_clusters`"
+                    },
+                    {
+                      "name": "max_clusters",
+                      "expression": "`max_clusters`"
+                    },
+                    {
+                      "name": "auto_stop_minutes",
+                      "expression": "`auto_stop_minutes`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "warehouse_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "warehouse_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "warehouse_id"
+                  },
+                  {
+                    "fieldName": "warehouse_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "warehouse_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "warehouse_name"
+                  },
+                  {
+                    "fieldName": "warehouse_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "warehouse_type",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "warehouse_type"
+                  },
+                  {
+                    "fieldName": "warehouse_size",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "warehouse_size",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "warehouse_size"
+                  },
+                  {
+                    "fieldName": "min_clusters",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "min_clusters",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "min_clusters"
+                  },
+                  {
+                    "fieldName": "max_clusters",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "max_clusters",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "max_clusters"
+                  },
+                  {
+                    "fieldName": "auto_stop_minutes",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100006,
+                    "title": "auto_stop_minutes",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "auto_stop_minutes"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "These warehouses do not have autoscaling configured"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 31,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f87d77aa",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-01-04\n",
+                "&nbsp;\n",
+                "\n",
+                "**Configure jobs for automatic retries and termination**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "74d18572",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "95b08392",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "cluster_name",
+                      "expression": "`cluster_name`"
+                    },
+                    {
+                      "name": "owned_by",
+                      "expression": "`owned_by`"
+                    },
+                    {
+                      "name": "worker_count",
+                      "expression": "`worker_count`"
+                    },
+                    {
+                      "name": "create_time",
+                      "expression": "`create_time`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "workspace_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "workspace_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "workspace_id"
+                  },
+                  {
+                    "fieldName": "cluster_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_id"
+                  },
+                  {
+                    "fieldName": "cluster_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "cluster_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "cluster_name"
+                  },
+                  {
+                    "fieldName": "owned_by",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "owned_by",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "owned_by"
+                  },
+                  {
+                    "fieldName": "worker_count",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "worker_count",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "worker_count"
+                  },
+                  {
+                    "fieldName": "create_time",
+                    "dateTimeFormat": "DD/MM/YYYY HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "create_time",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "create_time"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Job runs from past 7 days which do not have autoscaling configured"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 31,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "261db1e1",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### R-01-05\n",
+                "&nbsp;\n",
+                "\n",
+                "**Use a scalable and production-grade model serving infrastructure**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 31,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f5746bba",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ea93f04e",
+                  "fields": [
+                    {
+                      "name": "endpoint_name",
+                      "expression": "`endpoint_name`"
+                    },
+                    {
+                      "name": "billing_origin_product",
+                      "expression": "`billing_origin_product`"
+                    },
+                    {
+                      "name": "usage_dbus",
+                      "expression": "`usage_dbus`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "endpoint_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "endpoint_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "endpoint_name"
+                  },
+                  {
+                    "fieldName": "billing_origin_product",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "billing_origin_product",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "billing_origin_product"
+                  },
+                  {
+                    "fieldName": "usage_dbus",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "usage_dbus",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "usage_dbus"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Model Serving DBU usage the last 7 days"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 31,
+            "width": 5,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    }
+  }
+}
