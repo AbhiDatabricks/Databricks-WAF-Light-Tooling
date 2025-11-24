@@ -73,11 +73,18 @@ def root() -> HTMLResponse:
       :root {{
         color-scheme: light dark;
       }}
-      body {{
+      * {{
         margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }}
+      html, body {{
+        height: 100%;
+        overflow: hidden;
+      }}
+      body {{
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         background-color: #f6f8fa;
-        height: 100vh;
         display: flex;
         flex-direction: column;
       }}
@@ -87,6 +94,7 @@ def root() -> HTMLResponse:
         color: #ffffff;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
         z-index: 1;
+        flex-shrink: 0;
       }}
       h1 {{
         font-size: 1.25rem;
@@ -97,14 +105,17 @@ def root() -> HTMLResponse:
         font-size: 0.95rem;
         opacity: 0.85;
       }}
+      .iframe-container {{
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+        min-height: 0;
+      }}
       iframe {{
         flex: 1;
         border: 0;
         width: 100%;
-      }}
-      .iframe-container {{
-        flex: 1;
-        padding: 0;
+        height: 100%;
       }}
     </style>
   </head>
