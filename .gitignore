@@ -173,3 +173,20 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .idea/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE / Editor specific
+.vscode/
+.claude/
+
+# Databricks specific
+.databricks/
+server.log
+server.pid
+
+# Project specific - do not check in
+NOCHECKIN/

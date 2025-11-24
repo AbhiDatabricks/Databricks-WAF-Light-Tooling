@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wafauto Databricks App - Documentation</title>
+    <style>
+        :root {
+            --primary-color: #FF3621;
+            --secondary-color: #1f3b63;
+            --accent-color: #00aa00;
+            --bg-color: #f6f8fa;
+            --code-bg: #f3f4f6;
+            --border-color: #e1e4e8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #24292e;
+            background-color: var(--bg-color);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px 60px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: var(--secondary-color);
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        h2 {
+            color: var(--secondary-color);
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            padding-top: 1rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            color: #444;
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        p {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .intro {
+            font-size: 1.1rem;
+            color: #586069;
+            margin-bottom: 2rem;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 6px;
+        }
+        
+        .quick-start {
+            background: linear-gradient(135deg, #f0fff0 0%, #e8f8e8 100%);
+            border: 3px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 2rem 0;
+        }
+        
+        .quick-start h2 {
+            color: var(--accent-color);
+            border: none;
+            margin-top: 0;
+            padding-top: 0;
+        }
+        
+        .quick-start strong {
+            color: var(--accent-color);
+        }
+        
+        ul, ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #d73a49;
+            border: 1px solid #e1e4e8;
+        }
+        
+        pre {
+            background-color: var(--code-bg);
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            border: none;
+            color: #24292e;
+            font-size: 0.95em;
+        }
+        
+        .structure {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .structure .comment {
+            color: #5c6370;
+        }
+        
+        .structure .highlight {
+            color: #61afef;
+        }
+        
+        .structure .new {
+            color: #98c379;
+        }
+        
+        .endpoints {
+            background: #fffef0;
+            border-left: 4px solid #ffd700;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+        }
+        
+        .endpoints li {
+            font-family: 'Consolas', monospace;
+            margin-bottom: 0.75rem;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        
+        .badge-new {
+            background: #28a745;
+            color: white;
+        }
+        
+        .steps {
+            counter-reset: step-counter;
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .steps > li {
+            counter-increment: step-counter;
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .steps > li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #ff6b5a 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffb020;
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+        }
+        
+        .note strong {
+            color: #856404;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 30px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>wafauto Databricks App</h1>
+        
+        <div class="intro">
+            This lightweight Databricks App serves an embedded Lakeview dashboard so field teams can access the Well-Architected Framework (WAF) insights without running notebooks or manual install scripts.
+        </div>
+
+        <div class="quick-start">
+            <h2>🚀 Quick Start: Automated Deployment</h2>
+            
+            <p><strong>The easiest way to deploy everything:</strong></p>
+            
+            <ol class="steps">
+                <li>
+                    <strong>Upload to Databricks:</strong>
+                    <ul>
+                        <li>Clone this repo to Databricks Repos, or</li>
+                        <li>Upload the <code>install.ipynb</code> notebook to your workspace</li>
+                    </ul>
+                </li>
+                
+                <li>
+                    <strong>Run <code>install.ipynb</code>:</strong>
+                    <p>The notebook will automatically:</p>
+                    <ul>
+                        <li>Deploy the WAF Assessment dashboard</li>
+                        <li>Get the dashboard URL</li>
+                        <li>Deploy the waf-auto app with the dashboard embedded</li>
+                        <li>Return the app URL</li>
+                    </ul>
+                </li>
+                
+                <li>
+                    <strong>Done!</strong>
+                    <ul>
+                        <li>Click the app URL to access your embedded dashboard</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <h2>Structure</h2>
+        
+        <div class="structure">
+<span class="highlight">waf-auto/</span>
+├── <span class="highlight">app.yaml</span>              <span class="comment"># Databricks App runtime definition (name: wafauto)</span>
+├── <span class="highlight">requirements.txt</span>      <span class="comment"># App dependencies</span>
+├── <span class="new">install.ipynb</span>         <span class="comment"># 🆕 One-click deployment notebook</span>
+└── <span class="highlight">wafauto/</span>
+    ├── __init__.py
+    └── <span class="highlight">main.py</span>           <span class="comment"># FastAPI server that renders the embedded dashboard</span>
+        </div>
+
+        <div class="endpoints">
+            <p><strong>The FastAPI service exposes three endpoints:</strong></p>
+            <ul>
+                <li><code>GET /</code> – renders an HTML page with the published AI/BI dashboard embedded in an iframe.</li>
+                <li><code>GET /api/health</code> – returns <code>{"status":"ok"}</code> for app health probes.</li>
+                <li><code>GET /api/config</code> – returns the effective dashboard URL (taken from <code>DASHBOARD_URL</code>).</li>
+            </ul>
+        </div>
+
+        <h2>Dashboard Configuration</h2>
+        
+        <p>The app loads environment variables from any <code>.env</code> file it finds (repo root preferred). It resolves the dashboard URL in this order:</p>
+        
+        <ol>
+            <li><code>DASHBOARD_URL</code> – embed a published Lakeview dashboard directly.</li>
+            <li><code>DATABRICKS_HOST</code> + <code>WAF_DASHBOARD_PATH</code> – concatenated host/path fallback.</li>
+            <li>Built-in default pointing at the demo workspace dashboard.</li>
+        </ol>
+        
+        <p>Update <code>.env</code> to point at your workspace, or configure the variables through the Databricks Apps UI before deployment.</p>
+
+        <h2>Manual Deploy Steps</h2>
+        
+        <p>If you prefer to deploy manually instead of using <code>install.ipynb</code>:</p>
+
+        <h3>Via Databricks CLI:</h3>
+        <pre><code>cd waf-auto
+databricks bundle deploy</code></pre>
+
+        <h3>Via Databricks UI:</h3>
+        
+        <ol>
+            <li>
+                <strong>Create the app</strong>
+                <ul>
+                    <li>In the Databricks workspace UI, open <strong>Apps</strong> → <strong>Create app from repo</strong>.</li>
+                    <li>Select this repository and set the path to <code>waf-auto</code>.</li>
+                    <li>The app name is already set to <code>wafauto</code> by <code>app.yaml</code>, so Databricks will label it accordingly.</li>
+                </ul>
+            </li>
+            
+            <li>
+                <strong>Configure resources (optional for this iteration)</strong>
+                <ul>
+                    <li>No Lakebase or SQL Warehouse resources are required for the embedded dashboard.</li>
+                    <li>Add a Database resource later if you want to persist additional metadata.</li>
+                </ul>
+            </li>
+            
+            <li>
+                <strong>Build & run</strong>
+                <ul>
+                    <li>Click <strong>Build</strong> to install dependencies from <code>requirements.txt</code>.</li>
+                    <li>Click <strong>Run</strong> to launch the FastAPI service with Uvicorn.</li>
+                </ul>
+            </li>
+            
+            <li>
+                <strong>Open the dashboard</strong>
+                <ul>
+                    <li>From the app detail page, click <strong>Open app</strong> to load the embedded dashboard page.</li>
+                    <li>Use <code>/api/config</code> or <code>/api/health</code> for diagnostics if necessary.</li>
+                </ul>
+            </li>
+        </ol>
+
+        <div class="note">
+            <strong>Note:</strong> The app uses FastAPI + Uvicorn exclusively, so it starts quickly and only needs outbound HTTPS access to load the dashboard content.
+        </div>
+    </div>
+</body>
+</html>
+

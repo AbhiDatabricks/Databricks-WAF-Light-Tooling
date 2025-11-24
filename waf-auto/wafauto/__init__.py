@@ -1,0 +1,2 @@
+"""wafauto package."""
+

@@ -1,0 +1,17 @@
+bundle:
+  name: wafauto
+
+workspace:
+  profile: DEFAULT
+
+resources:
+  apps:
+    wafauto:
+      name: wafauto
+      description: "Databricks WAF Dashboard App"
+      source_code_path: .
+
+targets:
+  dev:
+    mode: development
+

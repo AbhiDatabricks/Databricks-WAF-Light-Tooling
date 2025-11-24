@@ -1,0 +1,8 @@
+name: wafauto
+command: ['uvicorn', 'wafauto.main:app', '--host', '0.0.0.0', '--port', '8000']
+
+# Optional environment variables can be supplied through the Databricks Apps UI
+# or via a .env file during local development:
+#   - DASHBOARD_URL: full published dashboard URL to embed
+#   - WAF_DASHBOARD_PATH: workspace path appended to DATABRICKS_HOST
+#   - DATABRICKS_HOST: workspace URL (auto-injected in Databricks Apps)
