@@ -58,6 +58,9 @@ def _dashboard_url() -> str:
 def root() -> HTMLResponse:
     try:
         url = _dashboard_url()
+        # Convert to embed URL if it's a regular dashboard URL
+        if '/dashboardsv3/' in url and '/embed/' not in url:
+            url = url.replace('/dashboardsv3/', '/embed/dashboardsv3/')
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     html = f"""<!DOCTYPE html>
@@ -131,6 +134,11 @@ def health() -> JSONResponse:
 def config() -> JSONResponse:
     try:
         url = _dashboard_url()
+        embed_url = url.replace('/dashboardsv3/', '/embed/dashboardsv3/') if '/dashboardsv3/' in url and '/embed/' not in url else url
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return JSONResponse({"dashboard_url": url})
+    return JSONResponse({
+        "dashboard_url": url,
+        "embed_url": embed_url,
+        "iframe_code": f'<iframe src="{embed_url}" width="100%" height="600" frameborder="0"></iframe>'
+    })
