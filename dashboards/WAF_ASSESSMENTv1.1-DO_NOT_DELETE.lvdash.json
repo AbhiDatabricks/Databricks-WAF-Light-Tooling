@@ -863,7 +863,26 @@
       "name": "dbdc9433",
       "displayName": "waf_controls_c",
       "queryLines": [
-        "SELECT\n",
+        "WITH CO_01_01 AS (\n",
+        "  SELECT  \n",
+        "   'CO_01_01' AS waf_id,\n",
+        "   'Detailed' AS dataset_type,\n",
+        "    data_source_format AS tables_format,\n",
+        "    table_type,\n",
+        "    count(data_source_format) AS no_of_tables\n",
+        "    --table_type\n",
+        "  FROM system.information_schema.tables group by all \n",
+        "),\n",
+        "CO_01_01_perc AS (\n",
+        "  SELECT \n",
+        "    ROUND((SUM(CASE WHEN tables_format IN('DELTA','ICEBERG') THEN no_of_tables ELSE 0 END)\n",
+        "              /COUNT(1))*100,2) AS actual_perc,\n",
+        "    'CO-01-01' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "  FROM CO_01_01\n",
+        "),\n",
+        "waf_status AS(\n",
+        "  SELECT\n",
         "  waf_id,\n",
         "  principle,\n",
         "  best_practice,\n",
@@ -913,7 +932,23 @@
         "    ('CO-03-01', 'Monitor and control cost', 'Monitor costs'),\n",
         "    ('CO-03-02', 'Monitor and control cost', 'Tag clusters for cost attribution'),\n",
         "    ('CO-03-03', 'Monitor and control cost', 'Implement observability to track & chargeback cost')\n",
-        ") waf(waf_id, principle, best_practice);\n"
+        ") waf(waf_id, principle, best_practice)\n",
+        ")\n",
+        "SELECT\n",
+        "waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  implemented,\n",
+        "  0 AS actual_perc,\n",
+        "  0 AS required_percentage,\n",
+        "  COUNT(*) OVER (PARTITION BY principle) AS total_controls,\n",
+        "  ROW_NUMBER() OVER (PARTITION BY principle ORDER BY waf_id) AS row_num,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle)/ COUNT(*) OVER (PARTITION BY principle) , 0) AS completion_percent,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER () / COUNT(*) OVER (), 0) AS total_percentage,\n",
+        "  'Summary' AS dataset_type\n",
+        "  FROM\n",
+        "waf_status\n"
       ]
     },
     {
@@ -5060,8 +5095,7 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "waf_id"
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "principle",
@@ -5087,8 +5121,7 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "principle"
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "best_practice",
@@ -5114,8 +5147,7 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "best_practice"
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "implemented",
@@ -5141,12 +5173,219 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "implemented"
+                    "preserveWhitespace": false
                   }
                 ]
               },
-              "invisibleColumns": [],
+              "invisibleColumns": [
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "actual_perc",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100004,
+                  "title": "actual_perc",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "required_percentage",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100005,
+                  "title": "required_percentage",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "total_controls",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100006,
+                  "title": "total_controls",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "row_num",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100007,
+                  "title": "row_num",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "implemented_controls",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100008,
+                  "title": "implemented_controls",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "completion_percent",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 100009,
+                  "title": "completion_percent",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "total_percentage",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 100010,
+                  "title": "total_percentage",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dataset_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100011,
+                  "title": "dataset_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
               "allowHTMLByDefault": false,
               "itemsPerPage": 25,
               "paginationSize": "default",
@@ -5172,7 +5411,7 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "81f0a6aa",
+                  "datasetName": "dbdc9433",
                   "fields": [
                     {
                       "name": "sum(completion_percent)",
@@ -5181,6 +5420,14 @@
                     {
                       "name": "principle",
                       "expression": "`principle`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`row_num` IN (1)"
+                    },
+                    {
+                      "expression": "`dataset_type` IN ('Summary')"
                     }
                   ],
                   "disaggregated": false
@@ -5229,11 +5476,16 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "06f2987c",
+                  "datasetName": "dbdc9433",
                   "fields": [
                     {
-                      "name": "avg(completion_percent)",
-                      "expression": "AVG(`completion_percent`)"
+                      "name": "avg(total_percentage)",
+                      "expression": "AVG(`total_percentage`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`dataset_type` IN ('Summary')"
                     }
                   ],
                   "disaggregated": false
@@ -5245,7 +5497,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "avg(completion_percent)",
+                  "fieldName": "avg(total_percentage)",
                   "displayName": "Average completion_percent"
                 }
               },
@@ -8933,8 +9185,8 @@
                   "datasetName": "4745a0f9",
                   "fields": [
                     {
-                      "name": "avg(completion_percent)",
-                      "expression": "AVG(`completion_percent`)"
+                      "name": "avg(total_percentage)",
+                      "expression": "AVG(`total_percentage`)"
                     }
                   ],
                   "filters": [
@@ -8951,7 +9203,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "avg(completion_percent)",
+                  "fieldName": "avg(total_percentage)",
                   "displayName": "Average completion_percent"
                 }
               },
