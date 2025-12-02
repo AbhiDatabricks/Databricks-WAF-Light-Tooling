@@ -1,10 +1,45 @@
 {
   "datasets": [
     {
+      "name": "f05e99fe",
+      "displayName": "Date dimension",
+      "queryLines": [
+        "SELECT explode(\n",
+        "  sequence(\n",
+        "    DATE_ADD(CURRENT_DATE(), -3650),\n",
+        "    CURRENT_DATE(),\n",
+        "    INTERVAL 1 DAY\n",
+        "  )\n",
+        ") AS dt"
+      ]
+    },
+    {
       "name": "303a6758",
       "displayName": "Count of Tables",
       "queryLines": [
         "SELECT COUNT(*) FROM system.information_schema.tables;"
+      ]
+    },
+    {
+      "name": "4bef026d",
+      "displayName": "List of workspaces",
+      "queryLines": [
+        "select workspace_id,workspace_name from system.access.workspaces_latest"
+      ]
+    },
+    {
+      "name": "16facbed",
+      "displayName": "Count of table formats with table types",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*) AS count_of_tables,\n",
+        "  table_type,\n",
+        "  data_source_format\n",
+        "FROM\n",
+        "  system.information_schema.tables\n",
+        "GROUP BY\n",
+        "  table_type,\n",
+        "  data_source_format"
       ]
     },
     {
@@ -168,39 +203,6 @@
       ]
     },
     {
-      "name": "913b3827",
-      "displayName": "Pie Chart of Tagged vs. Untagged Tables",
-      "queryLines": [
-        "WITH tagged_count AS (\n",
-        "    SELECT COUNT(*) AS count FROM system.information_schema.table_tags\n",
-        ")\n",
-        "SELECT 'Tagged' AS label, count \n",
-        "FROM tagged_count\n",
-        "UNION ALL\n",
-        "SELECT 'Untagged' AS label, \n",
-        "       (SELECT COUNT(*) FROM system.information_schema.tables) - count \n",
-        "FROM tagged_count;"
-      ]
-    },
-    {
-      "name": "788914b8",
-      "displayName": "Bar Chart of Popular Tags",
-      "queryLines": [
-        "SELECT \n",
-        "  tag_name,\n",
-        "  COUNT(*) AS usage_count\n",
-        "FROM \n",
-        "  system.information_schema.table_tags\n",
-        "WHERE \n",
-        "  tag_name IS NOT NULL\n",
-        "GROUP BY \n",
-        "  tag_name\n",
-        "ORDER BY \n",
-        "  usage_count DESC\n",
-        "LIMIT 10;"
-      ]
-    },
-    {
       "name": "8d97349c",
       "displayName": "Usage Over Selected Time",
       "queryLines": [
@@ -226,10 +228,10 @@
             "range": {
               "dataType": "DATE",
               "min": {
-                "value": "now-30d/d"
+                "value": "now-3M/M"
               },
               "max": {
-                "value": "now/d"
+                "value": "now/M"
               }
             }
           }
@@ -356,53 +358,55 @@
       ]
     },
     {
-      "name": "1eab9fe1",
+      "name": "95258030",
       "displayName": "waf_controls_g",
       "queryLines": [
-        "SELECT\n",
-        "  waf_id,\n",
-        "  pillar,\n",
-        "  principle,\n",
-        "  description,\n",
-        "  check_type,\n",
-        "  source_object,\n",
-        "  CASE \n",
-        "    WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
-        "      SELECT 1 FROM system.access.table_lineage LIMIT 1 \n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
-        "      SELECT 1 FROM system.access.audit LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
+        "WITH waf_status AS (\n",
+        "  SELECT\n",
+        "   waf_id,\n",
+        "   pillar,\n",
+        "   principle,\n",
+        "   best_practice,\n",
+        "    check_type,\n",
+        "    source_object,\n",
+        "    CASE \n",
+        "      WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.access.audit where\n",
+        "          event_date BETWEEN :date_filter.min AND :date_filter.max LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
         "      SELECT 1\n",
         "          FROM system.information_schema.tables\n",
         "          WHERE table_catalog = 'system'\n",
         "          AND table_schema = 'marketplace'\n",
         "          AND table_name = 'listing_access_events'\n",
         "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.tables \n",
-        "      WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
-        "      LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.tables \n",
-        "      WHERE table_type = 'BASE TABLE'\n",
-        "      LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    ELSE 'No'\n",
-        "  END AS implemented\n",
-        "FROM (\n",
-        "  SELECT * FROM VALUES\n",
+        "      WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables \n",
+        "        WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
+        "        LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
+        "        SELECT 1 FROM system.information_schema.tables \n",
+        "        WHERE table_type = 'BASE TABLE'\n",
+        "        LIMIT 1\n",
+        "      ) THEN 'Yes'\n",
+        "      ELSE 'No'\n",
+        "    END AS implemented\n",
+        "  FROM (\n",
+        "    SELECT * FROM VALUES\n",
         "    ('DG-01-03', 'Data & AI Governance', 'Unify data and AI management', 'Track data and AI lineage', 'AUTO', 'system.access.table_lineage'),\n",
         "    ('DG-01-04', 'Data & AI Governance', 'Unify data and AI management', 'Add comments to metadata', 'AUTO', 'system.information_schema.columns'),\n",
         "    ('DG-01-05', 'Data & AI Governance', 'Unify data and AI management', 'Enable easy data discovery', 'AUTO', 'system.information_schema.table_tags'),\n",
@@ -411,133 +415,284 @@
         "    ('DG-02-03', 'Data & AI Governance', 'Unify data and AI security', 'Audit data platform events', 'AUTO', 'system.marketplace.listing_access_events'),\n",
         "    ('DG-03-02', 'Data & AI Governance', 'Establish data quality standards', 'Use data quality tools and profiling', 'PATTERN', 'system.information_schema.tables'),\n",
         "    ('DG-03-03', 'Data & AI Governance', 'Establish data quality standards', 'Enforce standardized data formats', 'AUTO', 'system.information_schema.tables')\n",
-        "  AS waf(waf_id, pillar, principle, description, check_type, source_object)\n",
-        ") waf\n"
-      ]
-    },
-    {
-      "name": "95258030",
-      "displayName": "waf_principal_percentage_g",
-      "queryLines": [
-        "WITH waf_status AS (\n",
-        "  SELECT\n",
-        "    waf_id,\n",
-        "    principle,\n",
-        "    CASE \n",
-        "      WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
-        "        SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
-        "        SELECT 1 FROM system.access.audit LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
-        "      SELECT 1\n",
-        "          FROM system.information_schema.tables\n",
-        "          WHERE table_catalog = 'system'\n",
-        "          AND table_schema = 'marketplace'\n",
-        "          AND table_name = 'listing_access_events'\n",
-        "    ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables \n",
-        "        WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
-        "        LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables \n",
-        "        WHERE table_type = 'BASE TABLE'\n",
-        "        LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      ELSE 'No'\n",
-        "    END AS implemented\n",
-        "  FROM (\n",
-        "    SELECT * FROM VALUES\n",
-        "      ('DG-01-03', 'Unify data and AI management'),\n",
-        "      ('DG-01-04', 'Unify data and AI management'),\n",
-        "      ('DG-01-05', 'Unify data and AI management'),\n",
-        "      ('DG-02-01', 'Unify data and AI security'),\n",
-        "      ('DG-02-02', 'Unify data and AI security'),\n",
-        "      ('DG-02-03', 'Unify data and AI security'),\n",
-        "      ('DG-03-02', 'Establish data quality standards'),\n",
-        "      ('DG-03-03', 'Establish data quality standards')\n",
-        "    AS waf(waf_id, principle)\n",
+        "  AS waf(waf_id, pillar, principle, best_practice, check_type, source_object)\n",
         "  )\n",
         ")\n",
         "\n",
         "SELECT\n",
+        "  waf_id,\n",
         "  principle,\n",
-        "  COUNT(*) AS total_controls,\n",
-        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM waf_status\n",
-        "GROUP BY principle\n",
-        "ORDER BY principle\n"
+        "  best_practice,\n",
+        "  implemented,\n",
+        "  COUNT(*) OVER (PARTITION BY principle) AS total_controls,\n",
+        "  ROW_NUMBER() OVER (PARTITION BY principle ORDER BY waf_id) AS row_num,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle)/ COUNT(*) OVER (PARTITION BY principle) , 0) AS completion_percent,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER () / COUNT(*) OVER (), 0) AS total_percentage,\n",
+        "  'Summary' AS dataset_type,\n",
+        "  check_type,\n",
+        "  source_object\n",
+        "FROM waf_status\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_filter",
+          "keyword": "date_filter",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
       ]
     },
     {
-      "name": "920a8759",
-      "displayName": "total_percentage_g",
+      "name": "8486d58c",
+      "displayName": "DG-01-03_tables_lineage",
       "queryLines": [
-        "WITH waf_status AS (\n",
+        "WITH lineage_tables AS (\n",
+        "  SELECT DISTINCT\n",
+        "    source_table_catalog,\n",
+        "    source_table_schema,\n",
+        "    source_table_name\n",
+        "  FROM\n",
+        "    (\n",
+        "      select distinct\n",
+        "        source_table_catalog,\n",
+        "        source_table_schema,\n",
+        "        source_table_name\n",
+        "      from\n",
+        "        system.access.table_lineage\n",
+        "      union\n",
+        "      select distinct\n",
+        "        target_table_catalog,\n",
+        "        target_table_catalog,\n",
+        "        target_table_name\n",
+        "      from\n",
+        "        system.access.table_lineage\n",
+        "    )\n",
+        "  WHERE\n",
+        "    source_table_catalog IS NOT NULL\n",
+        "),\n",
+        "table_list AS (\n",
         "  SELECT\n",
-        "    waf_id,\n",
-        "    CASE \n",
-        "      WHEN waf_id = 'DG-01-03' AND EXISTS (\n",
-        "        SELECT 1 FROM system.access.table_lineage LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-01-04' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables WHERE comment IS NOT NULL LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-01-05' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.table_tags LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-02-01' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.row_filters LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-02-02' AND EXISTS (\n",
-        "        SELECT 1 FROM system.access.audit LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-02-03' AND EXISTS (\n",
-        "      SELECT 1\n",
-        "          FROM system.information_schema.tables\n",
-        "          WHERE table_catalog = 'system'\n",
-        "          AND table_schema = 'marketplace'\n",
-        "          AND table_name = 'listing_access_events'\n",
-        "    ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-03-02' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables \n",
-        "        WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n",
-        "        LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      WHEN waf_id = 'DG-03-03' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables \n",
-        "        WHERE table_type = 'BASE TABLE'\n",
-        "        LIMIT 1\n",
-        "      ) THEN 'Yes'\n",
-        "      ELSE 'No'\n",
-        "    END AS implemented\n",
-        "  FROM (\n",
-        "    SELECT * FROM VALUES\n",
-        "      ('DG-01-03'), ('DG-01-04'), ('DG-01-05'),\n",
-        "      ('DG-02-01'), ('DG-02-02'), ('DG-02-03'),\n",
-        "      ('DG-03-02'), ('DG-03-03')\n",
-        "    AS waf(waf_id)\n",
-        "  )\n",
+        "    table_catalog,\n",
+        "    table_schema,\n",
+        "    table_name,\n",
+        "    table_type\n",
+        "  from\n",
+        "    system.information_schema.tables\n",
+        " -- where\n",
+        "   -- table_type not in ('FOREIGN')\n",
         ")\n",
-        "\n",
         "SELECT\n",
-        "  COUNT(*) AS total_controls,\n",
-        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM waf_status\n"
+        "  table_list.table_type,\n",
+        "  COUNT(*) AS total_tables,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN lineage_tables.source_table_catalog IS NULL THEN 0\n",
+        "      ELSE 1\n",
+        "    END\n",
+        "  ) AS lineage_tables\n",
+        "FROM\n",
+        "  table_list\n",
+        "    LEFT JOIN lineage_tables\n",
+        "      ON table_list.table_catalog = lineage_tables.source_table_catalog\n",
+        "      AND table_list.table_schema = lineage_tables.source_table_schema\n",
+        "      AND table_list.table_name = lineage_tables.source_table_name\n",
+        "GROUP BY\n",
+        "  table_list.table_type\n"
+      ]
+    },
+    {
+      "name": "e097b5c1",
+      "displayName": "DG-01-04_comments",
+      "queryLines": [
+        "SELECT *, count_comment/overall_count AS perc_comment\n",
+        "FROM (\n",
+        "select 'Tables' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END) AS count_comment, COUNT(*) AS overall_count FROM system.information_schema.tables \n",
+        "UNION ALL\n",
+        "--select 'Columns' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.columns \n",
+        "--UNION ALL\n",
+        "select 'Volumes' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.volumes \n",
+        "UNION ALL\n",
+        "select 'Catalogs' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.catalogs \n",
+        "UNION ALL\n",
+        "select 'Connections' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.connections \n",
+        "UNION ALL\n",
+        "select 'Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.credentials \n",
+        "UNION ALL\n",
+        "select 'External Locations' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.external_locations \n",
+        "UNION ALL\n",
+        "select 'Providers' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.providers \n",
+        "UNION ALL\n",
+        "select 'Recipients' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.recipients \n",
+        "UNION ALL\n",
+        "select 'Routines' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.routines \n",
+        "UNION ALL\n",
+        "select 'Schemas' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.schemata \n",
+        "UNION ALL\n",
+        "select 'Shares' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.shares \n",
+        "UNION ALL\n",
+        "select 'Storage Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.storage_credentials \n",
+        ")"
+      ]
+    },
+    {
+      "name": "913b3827",
+      "displayName": "DG-01-05-1_table_tags",
+      "queryLines": [
+        "WITH tagged_count AS (\n",
+        "    SELECT COUNT(*) AS count FROM system.information_schema.table_tags\n",
+        ")\n",
+        "SELECT 'Tagged' AS label, count \n",
+        "FROM tagged_count\n",
+        "UNION ALL\n",
+        "SELECT 'Untagged' AS label, \n",
+        "       (SELECT COUNT(*) FROM system.information_schema.tables) - count \n",
+        "FROM tagged_count;"
+      ]
+    },
+    {
+      "name": "788914b8",
+      "displayName": "DG-01-05-2_popular_tags",
+      "queryLines": [
+        "SELECT \n",
+        "  tag_name,\n",
+        "  COUNT(*) AS usage_count\n",
+        "FROM \n",
+        "  system.information_schema.table_tags\n",
+        "WHERE \n",
+        "  tag_name IS NOT NULL\n",
+        "GROUP BY \n",
+        "  tag_name\n",
+        "ORDER BY \n",
+        "  usage_count DESC\n",
+        "LIMIT 10;\n",
+        "\n"
+      ]
+    },
+    {
+      "name": "6b0c95c6",
+      "displayName": "DG-02-01_rbac",
+      "queryLines": [
+        "SELECT\n",
+        "  count(distinct table_catalog, table_schema, table_name) AS count,\n",
+        "  'table_with_filters' AS object_type\n",
+        "from\n",
+        "  system.information_schema.row_filters\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(distinct table_catalog, table_schema, table_name),\n",
+        "  'table_with_masks'\n",
+        "from\n",
+        "  system.information_schema.column_masks\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(*),\n",
+        "  'column_masks'\n",
+        "from\n",
+        "  system.information_schema.column_masks\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  count(*),\n",
+        "  'row_filters'\n",
+        "from\n",
+        "  system.information_schema.row_filters"
+      ]
+    },
+    {
+      "name": "5b3944b6",
+      "displayName": "DG-02-02_audit_events",
+      "queryLines": [
+        "SELECT\n",
+        "  count(*) as count_of_events,\n",
+        "  audit_level,\n",
+        "  workspace_id\n",
+        "from\n",
+        "  system.access.audit\n",
+        "where\n",
+        "  event_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        "group by\n",
+        "  audit_level,\n",
+        "  workspace_id"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_filter",
+          "keyword": "date_filter",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1ab4ec65",
+      "displayName": "DG-02-03_marketplace_events",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*) AS count_of_events,\n",
+        "  consumer_delta_sharing_recipient_name,\n",
+        "  provider_name,\n",
+        "  listing_name,\n",
+        "  event_type\n",
+        "FROM\n",
+        "  system.marketplace.listing_access_events\n",
+        "where\n",
+        "  event_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        "GROUP BY\n",
+        "  consumer_delta_sharing_recipient_name,\n",
+        "  provider_name,\n",
+        "  listing_name,\n",
+        "  event_type\n",
+        "ORDER BY\n",
+        "  count_of_events DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_filter",
+          "keyword": "date_filter",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "f7dd8a02",
+      "displayName": "DG-03-02_inference_tables",
+      "queryLines": [
+        "SELECT COUNT(*) as count_tables FROM system.information_schema.tables \n",
+        "WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics'"
       ]
     },
     {
@@ -1015,473 +1170,6 @@
         "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
         "FROM waf_status;\n"
-      ]
-    },
-    {
-      "name": "4745a0f9",
-      "displayName": "waf_controls_p",
-      "queryLines": [
-        "WITH PE_01 AS (\n",
-        "SELECT \n",
-        "    billing_origin_product\n",
-        "  , SUM(runs) AS runs_total\n",
-        "  , SUM(dbu_usage) AS dbu_usage_total\n",
-        "  , 'PE_01' AS waf_id\n",
-        "  , 'Detailed' AS dataset_type\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
-        "  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
-        "  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
-        "FROM \n",
-        "(SELECT \n",
-        "   COUNT(*) AS runs\n",
-        "  ,SUM(usage_quantity) AS dbu_usage, CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END AS billing_origin_product\n",
-        "  , CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
-        " FROM system.billing.usage \n",
-        " WHERE usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
-        " AND array_contains(:workspace_id,workspace_id)\n",
-        " AND usage_unit = 'DBU'\n",
-        " AND billing_origin_product IN ('JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
-        " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END \n",
-        ")CTE\n",
-        "GROUP BY\n",
-        "billing_origin_product \n",
-        "),\n",
-        "PE_01_01_perc AS (\n",
-        "  SELECT \n",
-        "    ROUND((SUM(sum_serverless_dbu)/SUM(dbu_usage_total))*100,2) AS actual_perc,\n",
-        "    'PE-01-01' AS waf_id,\n",
-        "    'Percentage' AS dataset_type\n",
-        "  FROM PE_01\n",
-        "  WHERE billing_origin_product <> 'MODEL_SERVING'\n",
-        "),\n",
-        "--waf_PE-02-*_cluster_metrics\n",
-        "usage AS (    \n",
-        "  SELECT usage_metadata.cluster_id AS cluster_id, account_id, workspace_id\n",
-        "  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n",
-        "    WHERE \n",
-        "     usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
-        "     AND array_contains(:workspace_id,workspace_id)\n",
-        "    AND usage_metadata.cluster_id IS NOT NULL\n",
-        "    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n",
-        "),\n",
-        "compute_met AS (\n",
-        "  SELECT * FROM \n",
-        "    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n",
-        "        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n",
-        "    from system.compute.clusters c \n",
-        "    WHERE array_contains(:workspace_id,workspace_id)\n",
-        "    AND change_date <= :date_filter.max) --TBD to check this filter\n",
-        "    WHERE rn = 1\n",
-        "),\n",
-        "PE_02 AS (\n",
-        "  SELECT \n",
-        "       *\n",
-        "      , row_number() over( order by dbu_usage desc) AS rank\n",
-        "      , 'PE_02' AS waf_id\n",
-        "      , 'Detailed' AS dataset_type\n",
-        "    FROM(\n",
-        "      SELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs, c.cluster_id, c.cluster_name, c.worker_node_type\n",
-        "            ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END AS is_multi_worker\n",
-        "            , ifnull(worker_count,ifnull(max_autoscale_workers,0)) AS max_worker_count\n",
-        "            , CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling\n",
-        "      FROM\n",
-        "      usage u\n",
-        "      INNER JOIN\n",
-        "      compute_met c\n",
-        "      ON u.cluster_id = c.cluster_id\n",
-        "      AND u.account_id = c.account_id\n",
-        "      AND u.workspace_id = c.workspace_id\n",
-        "      GROUP BY\n",
-        "      c.cluster_id, c.cluster_name, c.worker_node_type\n",
-        "      ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n",
-        "      , ifnull(worker_count,ifnull(max_autoscale_workers,0)) \n",
-        "      , CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END \n",
-        "    )\n",
-        "),\n",
-        "PE_02_02_perc AS (\n",
-        "  SELECT \n",
-        "    ROUND((SUM(CASE WHEN is_multi_worker = 'Multi-Node' THEN 1 ELSE 0 END)/COUNT(*))*100,2) AS actual_perc,\n",
-        "    'PE-02-02' AS waf_id\n",
-        "    , 'Percentage' AS dataset_type\n",
-        "  FROM PE_02\n",
-        "),\n",
-        "PE_02_04_perc AS (\n",
-        "  SELECT \n",
-        "    ROUND((SUM(CASE WHEN max_worker_count > 3 THEN 1 ELSE 0 END)/COUNT(*))*100,2) AS actual_perc,\n",
-        "    'PE-02-04' AS waf_id\n",
-        "    , 'Percentage' AS dataset_type\n",
-        "  FROM PE_02\n",
-        "),\n",
-        "PE_02_05 AS (\n",
-        "  SELECT \n",
-        "    'PE_02_05' AS waf_id,\n",
-        "    'Detailed' AS dataset_type,\n",
-        "    COUNT(*) as count_routines\n",
-        "  FROM system.information_schema.routines WHERE external_language = 'Python' \n",
-        "),\n",
-        "\n",
-        "PE_02_06 AS (\n",
-        "  SELECT \n",
-        "    'PE_02_06' AS waf_id\n",
-        "  , 'Detailed' AS dataset_type\n",
-        "  , billing_origin_product\n",
-        "  , SUM(runs) AS runs_total\n",
-        "  , SUM(dbu_usage) AS dbu_usage_total\n",
-        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END) AS sum_photon_run\n",
-        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END) AS sum_photon_dbu\n",
-        "  , SUM(CASE WHEN is_photon = false THEN runs ELSE 0 END) AS sum_non_photon_run\n",
-        "  , SUM(CASE WHEN is_photon = false THEN dbu_usage ELSE 0 END) AS sum_non_photon_dbu\n",
-        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END)/SUM(runs) AS pct_photon_runs\n",
-        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_photon_dbu\n",
-        "  FROM (\n",
-        "    SELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, billing_origin_product\n",
-        "    , CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n",
-        "    FROM system.billing.usage \n",
-        "    WHERE usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
-        "    AND array_contains(:workspace_id,workspace_id)\n",
-        "    AND billing_origin_product  IN ('JOBS','LAKEFLOW_CONNECT','VECTOR_SEARCH','DATABASE','DLT','ALL_PURPOSE','ONLINE_TABLES','INTERACTIVE')\n",
-        "    AND usage_unit = 'DBU'\n",
-        "    GROUP BY billing_origin_product, CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END \n",
-        ")\n",
-        "GROUP BY\n",
-        "billing_origin_product \n",
-        "),\n",
-        "PE_02_06_perc AS \n",
-        "(\n",
-        "  SELECT \n",
-        "    ROUND((SUM(sum_photon_dbu)/SUM(dbu_usage_total))*100,2) AS actual_perc,\n",
-        "    'PE-02-06' AS waf_id,\n",
-        "    'Percentage' AS dataset_type\n",
-        "  FROM PE_02_06\n",
-        "),\n",
-        "PE_02_07_perc AS \n",
-        "(\n",
-        "  SELECT \n",
-        "    ROUND((COUNT(DISTINCT split(worker_node_type,'[.]')[0])/COUNT(1))*100,2) AS actual_perc,\n",
-        "    'PE-02-07' AS waf_id,\n",
-        "    'Percentage' AS dataset_type\n",
-        "  FROM PE_02\n",
-        "),\n",
-        "\n",
-        "\n",
-        "waf_status AS(\n",
-        "SELECT\n",
-        "  waf.waf_id,\n",
-        "  principle,\n",
-        "  best_practice,\n",
-        "  COALESCE(p11p.actual_perc,p22p.actual_perc,p24p.actual_perc,p26p.actual_perc,p27p.actual_perc,0.00) AS actual_perc,\n",
-        "  CASE \n",
-        "    WHEN waf.waf_id = 'PE-01-02' AND EXISTS (\n",
-        "      SELECT 1 FROM PE_01 WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
-        "    ) THEN 'Yes' --TBD dbu usage limit?\n",
-        "    WHEN waf.waf_id = 'PE-02-05' AND NOT EXISTS (\n",
-        "      SELECT 1 FROM PE_02_05 LIMIT 1 \n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf.waf_id NOT IN ('PE-01-02','PE-02-05') \n",
-        "          AND  required_percentage <= COALESCE(p11p.actual_perc,p22p.actual_perc,p24p.actual_perc,p26p.actual_perc,p27p.actual_perc,0) THEN 'Yes'\n",
-        "    ELSE 'No'\n",
-        "  END AS implemented,\n",
-        "  required_percentage\n",
-        "FROM (\n",
-        "  SELECT * FROM VALUES\n",
-        "    ('PE-01-01', 'Utilize serverless capabilities', 'Use serverless architecture',30),\n",
-        "    ('PE-01-02', 'Utilize serverless capabilities', 'Use an enterprise grade model serving service',0),\n",
-        "    --('PE-02-01', 'Utilize serverless capabilities', 'Understand your data ingestion and access patterns'),\n",
-        "    ('PE-02-02', 'Design workloads for performance', 'Use parallel computation where it is beneficial',30),\n",
-        "    --('PE-02-03', 'Design workloads for performance', 'Analyze the whole chain of execution'),\n",
-        "    ('PE-02-04', 'Design workloads for performance', 'Prefer larger clusters',30),\n",
-        "    ('PE-02-05', 'Design workloads for performance', 'Use native Spark operations',0),\n",
-        "    ('PE-02-06', 'Design workloads for performance', 'Use native platform engines',30),\n",
-        "    ('PE-02-07', 'Design workloads for performance', 'Understand your hardware and workload type',20)\n",
-        "    --('PE-02-08', 'Design workloads for performance', 'Use caching'),\n",
-        "    --('PE-02-09', 'Design workloads for performance', 'Use compaction'),\n",
-        ") waf(waf_id, principle, best_practice,required_percentage)\n",
-        "LEFT JOIN \n",
-        "PE_01_01_perc p11p\n",
-        "ON waf.waf_id = p11p.waf_id\n",
-        "LEFT JOIN \n",
-        "PE_02_02_perc p22p\n",
-        "ON waf.waf_id = p22p.waf_id\n",
-        "LEFT JOIN\n",
-        "PE_02_04_perc p24p\n",
-        "ON waf.waf_id = p24p.waf_id\n",
-        "LEFT JOIN\n",
-        "PE_02_06_perc p26p\n",
-        "ON waf.waf_id = p26p.waf_id\n",
-        "LEFT JOIN\n",
-        "PE_02_07_perc p27p\n",
-        "ON waf.waf_id = p27p.waf_id\n",
-        ")\n",
-        "SELECT\n",
-        "  waf_id,\n",
-        "  principle,\n",
-        "  best_practice,\n",
-        "  implemented,\n",
-        "  actual_perc,\n",
-        "  required_percentage,\n",
-        "  COUNT(*) OVER (PARTITION BY principle) AS total_controls,\n",
-        "  ROW_NUMBER() OVER (PARTITION BY principle ORDER BY waf_id) AS row_num,\n",
-        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle) AS implemented_controls,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle)/ COUNT(*) OVER (PARTITION BY principle) , 0) AS completion_percent,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER () / COUNT(*) OVER (), 0) AS total_percentage,\n",
-        "  'Summary' AS dataset_type\n",
-        "FROM waf_status"
-      ],
-      "parameters": [
-        {
-          "displayName": "date_filter",
-          "keyword": "date_filter",
-          "dataType": "DATE",
-          "complexType": "RANGE",
-          "defaultSelection": {
-            "range": {
-              "dataType": "DATE",
-              "min": {
-                "value": "2025-10-23T00:00:00.000"
-              },
-              "max": {
-                "value": "2025-10-23T23:59:59.999"
-              }
-            }
-          }
-        },
-        {
-          "displayName": "workspace_id",
-          "keyword": "workspace_id",
-          "dataType": "STRING",
-          "complexType": "MULTI",
-          "defaultSelection": {
-            "values": {
-              "dataType": "STRING",
-              "values": [
-                {
-                  "value": "1444828305810485"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "60cfe928",
-      "displayName": "waf_controls_r",
-      "queryLines": [
-        "WITH R_01_01 AS (\n",
-        "SELECT \n",
-        "    --table_catalog AS cat_name,\n",
-        "    --table_schema AS sch_name,\n",
-        "    data_source_format AS tables_format,\n",
-        "    count(data_source_format) AS no_of_tables,\n",
-        "    'R_01_01' AS waf_id,\n",
-        "    'Detailed' AS dataset_type\n",
-        "    --table_type\n",
-        "    FROM system.information_schema.tables group by all\n",
-        "),\n",
-        "R_01_01_perc AS (\n",
-        "SELECT \n",
-        "  ROUND((cnt_acid_tables/all_tables)*100,2) AS actual_perc,\n",
-        "  'R-01-01' AS waf_id,\n",
-        "  'Percentage' AS dataset_type\n",
-        "  FROM(\n",
-        "    SELECT\n",
-        "      SUM(CASE WHEN data_source_format IN ('DELTA','ICEBERG') THEN 1 ELSE 0 END) AS cnt_acid_tables,\n",
-        "      count(*) AS all_tables\n",
-        "    FROM system.information_schema.tables \n",
-        "  )\n",
-        "),\n",
-        "R_01_04 AS ( \n",
-        "    SELECT\n",
-        "    workspace_id,\n",
-        "    cluster_id,\n",
-        "    cluster_name,\n",
-        "    owned_by,\n",
-        "    auto_termination_minutes,\n",
-        "    'R_01_04' AS waf_id,\n",
-        "    'Detailed' AS dataset_type,\n",
-        "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
-        "  FROM system.compute.clusters\n",
-        "  WHERE (cluster_source=\"UI\" OR cluster_source=\"API\") AND array_contains(:workspace_id,workspace_id)\n",
-        "  QUALIFY rn=1 AND delete_time is null\n",
-        "),\n",
-        "R_01_04_perc AS ( \n",
-        "    SELECT\n",
-        "    ROUND((cnt_termination_minutes/all_clusters)*100,2) AS actual_perc,\n",
-        "    'R-01-04' AS waf_id,\n",
-        "    'Percentage' AS dataset_type\n",
-        "    FROM \n",
-        "    (SELECT\n",
-        "        SUM(CASE WHEN auto_termination_minutes IS NOT NULL THEN 1 ELSE 0 END) AS cnt_termination_minutes,\n",
-        "        COUNT(*) AS all_clusters\n",
-        "    FROM R_01_04)\n",
-        "),\n",
-        "R_01_05 AS (\n",
-        "  select workspace_id\n",
-        "  , usage_metadata.endpoint_name endpoint_name\n",
-        "  , billing_origin_product\n",
-        "  , sum(usage_quantity) usage_dbus \n",
-        "  , 'R_01_05' AS waf_id\n",
-        "  , 'Detailed' AS dataset_type\n",
-        "  from system.billing.usage\n",
-        "  WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%'\n",
-        "  AND usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
-        "  AND array_contains(:workspace_id,workspace_id)\n",
-        "  AND usage_metadata.endpoint_name is not null\n",
-        "  group by endpoint_name, billing_origin_product,workspace_id\n",
-        "),\n",
-        "--TBD - a DBU threshold?\n",
-        "\n",
-        "\n",
-        "R_03_01 AS (\n",
-        "  select workspace_id, cluster_id, cluster_name, owned_by, worker_count, create_time  \n",
-        "  , 'R_03_01' AS waf_id\n",
-        "  , 'Detailed' AS dataset_type\n",
-        "  , max_autoscale_workers\n",
-        "    from system.compute.clusters \n",
-        "  where cluster_source = 'JOB'\n",
-        "  and create_time BETWEEN :date_filter.min AND :date_filter.max\n",
-        "  and array_contains(:workspace_id,workspace_id)\n",
-        "),\n",
-        "\n",
-        "R_03_01_perc AS (\n",
-        " SELECT\n",
-        "    ROUND((cnt_autoscale_minutes/all_clusters)*100,2) AS actual_perc,\n",
-        "    'R-03-01' AS waf_id,\n",
-        "    'Percentage' AS dataset_type\n",
-        "    FROM \n",
-        "    (SELECT\n",
-        "        SUM(CASE WHEN max_autoscale_workers IS NOT NULL THEN 1 ELSE 0 END) AS cnt_autoscale_minutes,\n",
-        "        COUNT(*) AS all_clusters\n",
-        "    FROM R_03_01) \n",
-        "\n",
-        "),\n",
-        "R_03_02 AS (\n",
-        "  SELECT\n",
-        "    workspace_id,\n",
-        "    warehouse_id,\n",
-        "    warehouse_name,\n",
-        "    warehouse_type,\n",
-        "    warehouse_size,\n",
-        "    min_clusters,\n",
-        "    max_clusters,\n",
-        "    auto_stop_minutes,\n",
-        "    'R_03_02' AS waf_id,\n",
-        "    'Detailed' AS dataset_type\n",
-        "FROM\n",
-        "    system.compute.warehouses\n",
-        "    WHERE array_contains(:workspace_id,workspace_id)\n",
-        "QUALIFY\n",
-        "    ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) = 1\n",
-        "    and delete_time is null\n",
-        "),\n",
-        "R_03_02_perc AS (\n",
-        "  SELECT\n",
-        "    ROUND((cnt_autoscale_minutes/all_clusters)*100,2) AS actual_perc,\n",
-        "    'R-03-02' AS waf_id,\n",
-        "    'Percentage' AS dataset_type\n",
-        "    FROM \n",
-        "    (SELECT\n",
-        "        SUM(CASE WHEN IFNULL(min_clusters,0) <> IFNULL(max_clusters,0) THEN 1 ELSE 0 END) AS cnt_autoscale_minutes,\n",
-        "        COUNT(*) AS all_clusters\n",
-        "    FROM R_03_02) \n",
-        "\n",
-        "),\n",
-        "waf_status AS (\n",
-        "SELECT\n",
-        "  waf.waf_id,\n",
-        "  principle,\n",
-        "  best_practice,\n",
-        "  COALESCE(r11p.actual_perc,r14p.actual_perc,r31p.actual_perc,r32p.actual_perc,0) AS actual_perc,\n",
-        "  required_percentage,\n",
-        "  CASE \n",
-        "    WHEN waf.waf_id = 'R-01-05' AND EXISTS (\n",
-        "      SELECT 1 FROM R_01_05 LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "--    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
-        "--      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
-        "--    ) THEN 'Yes'\n",
-        "    WHEN waf.waf_id <> 'R-01-05' AND required_percentage <= COALESCE(r11p.actual_perc,r14p.actual_perc,r31p.actual_perc,r32p.actual_perc,0) THEN 'Yes'\n",
-        "    ELSE 'No'\n",
-        "  END AS implemented\n",
-        "FROM (\n",
-        "  SELECT * FROM VALUES\n",
-        "    ('R-01-01', 'Design for failure', 'Use a data format that supports ACID transactions',30),\n",
-        "    --('R-01-02', 'Design for failure', 'Use a resilient distributed data engine for all workloads'),\n",
-        "    --('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data '),\n",
-        "    ('R-01-04', 'Design for failure', 'Configure jobs for automatic retries and termination',80),\n",
-        "    ('R-01-05', 'Design for failure', 'Use a scalable and production-grade model serving infrastructure',0),\n",
-        "    --('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n",
-        "    --('R-02-03', 'Manage data quality', 'Actively manage schemas'),\n",
-        "    --('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n",
-        "    ('R-03-01', 'Design for autoscaling', 'Enable autoscaling for ETL workloads',30),\n",
-        "    ('R-03-02', 'Design for autoscaling', 'Use autoscaling for SQL Warehouses',30)\n",
-        "    --('R-02-09', 'Design workloads for performance', 'Use compaction'),\n",
-        ") waf(waf_id, principle, best_practice,required_percentage)\n",
-        "LEFT JOIN \n",
-        "r_01_01_perc r11p\n",
-        "ON waf.waf_id = r11p.waf_id\n",
-        "LEFT JOIN \n",
-        "r_03_02_perc r32p\n",
-        "ON waf.waf_id = r32p.waf_id\n",
-        "LEFT JOIN\n",
-        "r_01_04_perc r14p\n",
-        "ON waf.waf_id = r14p.waf_id\n",
-        "LEFT JOIN\n",
-        "r_03_01_perc r31p\n",
-        "ON waf.waf_id = r31p.waf_id\n",
-        ")\n",
-        "SELECT\n",
-        "  waf_id,\n",
-        "  principle,\n",
-        "  best_practice,\n",
-        "  implemented,\n",
-        "  actual_perc,\n",
-        "  required_percentage,\n",
-        "  COUNT(*) OVER (PARTITION BY principle) AS total_controls,\n",
-        "  ROW_NUMBER() OVER (PARTITION BY principle ORDER BY waf_id) AS row_num,\n",
-        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle) AS implemented_controls,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle)/ COUNT(*) OVER (PARTITION BY principle) , 0) AS completion_percent,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER () / COUNT(*) OVER (), 0) AS total_percentage,\n",
-        "  'Summary' AS dataset_type\n",
-        "FROM waf_status"
-      ],
-      "parameters": [
-        {
-          "displayName": "workspace_id",
-          "keyword": "workspace_id",
-          "dataType": "STRING",
-          "complexType": "MULTI",
-          "defaultSelection": {
-            "values": {
-              "dataType": "STRING",
-              "values": [
-                {
-                  "value": "1444828305810485"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "displayName": "date_filter",
-          "keyword": "date_filter",
-          "dataType": "DATE",
-          "complexType": "RANGE",
-          "defaultSelection": {
-            "range": {
-              "dataType": "DATE",
-              "min": {
-                "value": "2025-09-27T00:00:00.000"
-              },
-              "max": {
-                "value": "2025-10-27T23:59:59.999"
-              }
-            }
-          }
-        }
       ]
     },
     {
@@ -2183,210 +1871,6 @@
       ]
     },
     {
-      "name": "8486d58c",
-      "displayName": "Count of tables with lineage",
-      "queryLines": [
-        "WITH lineage_tables AS (\n",
-        "  SELECT DISTINCT\n",
-        "    source_table_catalog,\n",
-        "    source_table_schema,\n",
-        "    source_table_name\n",
-        "  FROM\n",
-        "    (\n",
-        "      select distinct\n",
-        "        source_table_catalog,\n",
-        "        source_table_schema,\n",
-        "        source_table_name\n",
-        "      from\n",
-        "        system.access.table_lineage\n",
-        "      union\n",
-        "      select distinct\n",
-        "        target_table_catalog,\n",
-        "        target_table_catalog,\n",
-        "        target_table_name\n",
-        "      from\n",
-        "        system.access.table_lineage\n",
-        "    )\n",
-        "  WHERE\n",
-        "    source_table_catalog IS NOT NULL\n",
-        "),\n",
-        "table_list AS (\n",
-        "  SELECT\n",
-        "    table_catalog,\n",
-        "    table_schema,\n",
-        "    table_name,\n",
-        "    table_type\n",
-        "  from\n",
-        "    system.information_schema.tables\n",
-        " -- where\n",
-        "   -- table_type not in ('FOREIGN')\n",
-        ")\n",
-        "SELECT\n",
-        "  table_list.table_type,\n",
-        "  COUNT(*) AS total_tables,\n",
-        "  SUM(\n",
-        "    CASE\n",
-        "      WHEN lineage_tables.source_table_catalog IS NULL THEN 0\n",
-        "      ELSE 1\n",
-        "    END\n",
-        "  ) AS lineage_tables\n",
-        "FROM\n",
-        "  table_list\n",
-        "    LEFT JOIN lineage_tables\n",
-        "      ON table_list.table_catalog = lineage_tables.source_table_catalog\n",
-        "      AND table_list.table_schema = lineage_tables.source_table_schema\n",
-        "      AND table_list.table_name = lineage_tables.source_table_name\n",
-        "GROUP BY\n",
-        "  table_list.table_type\n"
-      ]
-    },
-    {
-      "name": "16facbed",
-      "displayName": "Count of table formats with table types",
-      "queryLines": [
-        "SELECT\n",
-        "  COUNT(*) AS count_of_tables,\n",
-        "  table_type,\n",
-        "  data_source_format\n",
-        "FROM\n",
-        "  system.information_schema.tables\n",
-        "GROUP BY\n",
-        "  table_type,\n",
-        "  data_source_format"
-      ]
-    },
-    {
-      "name": "f7dd8a02",
-      "displayName": "waf_DG-03-02_lakehouse_monitoring",
-      "queryLines": [
-        "SELECT COUNT(*) as count_tables FROM system.information_schema.tables \n",
-        "WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics'"
-      ]
-    },
-    {
-      "name": "1ab4ec65",
-      "displayName": "waf_DG-02-03_marketplace_listings",
-      "queryLines": [
-        "SELECT\n",
-        "  COUNT(*) AS count_of_events,\n",
-        "  consumer_delta_sharing_recipient_name,\n",
-        "  provider_name,\n",
-        "  listing_name,\n",
-        "  event_type\n",
-        "FROM\n",
-        "  system.marketplace.listing_access_events\n",
-        "where\n",
-        "  event_date between current_date() - 30 and current_date()\n",
-        "GROUP BY\n",
-        "  consumer_delta_sharing_recipient_name,\n",
-        "  provider_name,\n",
-        "  listing_name,\n",
-        "  event_type\n",
-        "ORDER BY\n",
-        "  count_of_events DESC"
-      ]
-    },
-    {
-      "name": "5b3944b6",
-      "displayName": "waf_DG-02-02_audit_events",
-      "queryLines": [
-        "SELECT\n",
-        "  count(*) as count_of_events,\n",
-        "  audit_level,\n",
-        "  workspace_id\n",
-        "from\n",
-        "  system.access.audit\n",
-        "where\n",
-        "  event_date between current_date() - 30 and current_date()\n",
-        "group by\n",
-        "  audit_level,\n",
-        "  workspace_id"
-      ]
-    },
-    {
-      "name": "6b0c95c6",
-      "displayName": "waf_DG-02-01_rbac_col_mask",
-      "queryLines": [
-        "SELECT\n",
-        "  count(distinct table_catalog, table_schema, table_name) AS count,\n",
-        "  'table_with_filters' AS object_type\n",
-        "from\n",
-        "  system.information_schema.row_filters\n",
-        "UNION ALL\n",
-        "SELECT\n",
-        "  count(distinct table_catalog, table_schema, table_name),\n",
-        "  'table_with_masks'\n",
-        "from\n",
-        "  system.information_schema.column_masks\n",
-        "UNION ALL\n",
-        "SELECT\n",
-        "  count(*),\n",
-        "  'column_masks'\n",
-        "from\n",
-        "  system.information_schema.column_masks\n",
-        "UNION ALL\n",
-        "SELECT\n",
-        "  count(*),\n",
-        "  'row_filters'\n",
-        "from\n",
-        "  system.information_schema.row_filters"
-      ]
-    },
-    {
-      "name": "e097b5c1",
-      "displayName": "waf_DG-01-04_comments",
-      "queryLines": [
-        "SELECT *, count_comment/overall_count AS perc_comment\n",
-        "FROM (\n",
-        "select 'Tables' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END) AS count_comment, COUNT(*) AS overall_count FROM system.information_schema.tables \n",
-        "UNION ALL\n",
-        "--select 'Columns' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.columns \n",
-        "--UNION ALL\n",
-        "select 'Volumes' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.volumes \n",
-        "UNION ALL\n",
-        "select 'Catalogs' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.catalogs \n",
-        "UNION ALL\n",
-        "select 'Connections' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.connections \n",
-        "UNION ALL\n",
-        "select 'Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.credentials \n",
-        "UNION ALL\n",
-        "select 'External Locations' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.external_locations \n",
-        "UNION ALL\n",
-        "select 'Providers' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.providers \n",
-        "UNION ALL\n",
-        "select 'Recipients' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.recipients \n",
-        "UNION ALL\n",
-        "select 'Routines' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.routines \n",
-        "UNION ALL\n",
-        "select 'Schemas' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.schemata \n",
-        "UNION ALL\n",
-        "select 'Shares' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.shares \n",
-        "UNION ALL\n",
-        "select 'Storage Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.storage_credentials \n",
-        ")"
-      ]
-    },
-    {
-      "name": "f05e99fe",
-      "displayName": "Date dimension",
-      "queryLines": [
-        "SELECT explode(\n",
-        "  sequence(\n",
-        "    DATE_ADD(CURRENT_DATE(), -3650),\n",
-        "    CURRENT_DATE(),\n",
-        "    INTERVAL 1 DAY\n",
-        "  )\n",
-        ") AS dt"
-      ]
-    },
-    {
-      "name": "4bef026d",
-      "displayName": "List of workspaces",
-      "queryLines": [
-        "select workspace_id,workspace_name from system.access.workspaces_latest"
-      ]
-    },
-    {
       "name": "a9730c2b",
       "displayName": "waf_log",
       "queryLines": [
@@ -2396,8 +1880,257 @@
       ]
     },
     {
+      "name": "4745a0f9",
+      "displayName": "waf_controls_p",
+      "queryLines": [
+        "WITH PE_01 AS (\n",
+        "SELECT \n",
+        "    billing_origin_product\n",
+        "  , SUM(runs) AS runs_total\n",
+        "  , SUM(dbu_usage) AS dbu_usage_total\n",
+        "  , 'PE_01' AS waf_id\n",
+        "  , 'Detailed' AS dataset_type\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
+        "  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
+        "  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
+        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
+        "FROM \n",
+        "(SELECT \n",
+        "   COUNT(*) AS runs\n",
+        "  ,SUM(usage_quantity) AS dbu_usage, CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END AS billing_origin_product\n",
+        "  , CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
+        " FROM system.billing.usage \n",
+        " WHERE usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
+        " AND usage_unit = 'DBU'\n",
+        " AND billing_origin_product IN ('JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
+        " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END \n",
+        ")CTE\n",
+        "GROUP BY\n",
+        "billing_origin_product \n",
+        "),\n",
+        "PE_01_01_perc AS (\n",
+        "  SELECT \n",
+        "    ROUND((SUM(sum_serverless_dbu)/SUM(dbu_usage_total))*100,2) AS actual_perc,\n",
+        "    'PE-01-01' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "  FROM PE_01\n",
+        "  WHERE billing_origin_product <> 'MODEL_SERVING'\n",
+        "),\n",
+        "--waf_PE-02-*_cluster_metrics\n",
+        "usage AS (    \n",
+        "  SELECT usage_metadata.cluster_id AS cluster_id, account_id, workspace_id\n",
+        "  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n",
+        "    WHERE \n",
+        "     usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
+        "    AND usage_metadata.cluster_id IS NOT NULL\n",
+        "    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n",
+        "),\n",
+        "compute_met AS (\n",
+        "  SELECT * FROM \n",
+        "    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n",
+        "        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n",
+        "    from system.compute.clusters c \n",
+        "    WHERE array_contains(:workspace_id,workspace_id)\n",
+        "    AND change_date <= :date_filter.max) --TBD to check this filter\n",
+        "    WHERE rn = 1\n",
+        "),\n",
+        "PE_02 AS (\n",
+        "  SELECT \n",
+        "       *\n",
+        "      , row_number() over( order by dbu_usage desc) AS rank\n",
+        "      , 'PE_02' AS waf_id\n",
+        "      , 'Detailed' AS dataset_type\n",
+        "    FROM(\n",
+        "      SELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs, c.cluster_id, c.cluster_name, c.worker_node_type\n",
+        "            ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END AS is_multi_worker\n",
+        "            , ifnull(worker_count,ifnull(max_autoscale_workers,0)) AS max_worker_count\n",
+        "            , CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling\n",
+        "      FROM\n",
+        "      usage u\n",
+        "      INNER JOIN\n",
+        "      compute_met c\n",
+        "      ON u.cluster_id = c.cluster_id\n",
+        "      AND u.account_id = c.account_id\n",
+        "      AND u.workspace_id = c.workspace_id\n",
+        "      GROUP BY\n",
+        "      c.cluster_id, c.cluster_name, c.worker_node_type\n",
+        "      ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n",
+        "      , ifnull(worker_count,ifnull(max_autoscale_workers,0)) \n",
+        "      , CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END \n",
+        "    )\n",
+        "),\n",
+        "PE_02_02_perc AS (\n",
+        "  SELECT \n",
+        "    ROUND((SUM(CASE WHEN is_multi_worker = 'Multi-Node' THEN 1 ELSE 0 END)/COUNT(*))*100,2) AS actual_perc,\n",
+        "    'PE-02-02' AS waf_id\n",
+        "    , 'Percentage' AS dataset_type\n",
+        "  FROM PE_02\n",
+        "),\n",
+        "PE_02_04_perc AS (\n",
+        "  SELECT \n",
+        "    ROUND((SUM(CASE WHEN max_worker_count > 3 THEN 1 ELSE 0 END)/COUNT(*))*100,2) AS actual_perc,\n",
+        "    'PE-02-04' AS waf_id\n",
+        "    , 'Percentage' AS dataset_type\n",
+        "  FROM PE_02\n",
+        "),\n",
+        "PE_02_05 AS (\n",
+        "  SELECT \n",
+        "    'PE_02_05' AS waf_id,\n",
+        "    'Detailed' AS dataset_type,\n",
+        "    COUNT(*) as count_routines\n",
+        "  FROM system.information_schema.routines WHERE external_language = 'Python' \n",
+        "),\n",
+        "\n",
+        "PE_02_06 AS (\n",
+        "  SELECT \n",
+        "    'PE_02_06' AS waf_id\n",
+        "  , 'Detailed' AS dataset_type\n",
+        "  , billing_origin_product\n",
+        "  , SUM(runs) AS runs_total\n",
+        "  , SUM(dbu_usage) AS dbu_usage_total\n",
+        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END) AS sum_photon_run\n",
+        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END) AS sum_photon_dbu\n",
+        "  , SUM(CASE WHEN is_photon = false THEN runs ELSE 0 END) AS sum_non_photon_run\n",
+        "  , SUM(CASE WHEN is_photon = false THEN dbu_usage ELSE 0 END) AS sum_non_photon_dbu\n",
+        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END)/SUM(runs) AS pct_photon_runs\n",
+        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_photon_dbu\n",
+        "  FROM (\n",
+        "    SELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, billing_origin_product\n",
+        "    , CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n",
+        "    FROM system.billing.usage \n",
+        "    WHERE usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        "    AND array_contains(:workspace_id,workspace_id)\n",
+        "    AND billing_origin_product  IN ('JOBS','LAKEFLOW_CONNECT','VECTOR_SEARCH','DATABASE','DLT','ALL_PURPOSE','ONLINE_TABLES','INTERACTIVE')\n",
+        "    AND usage_unit = 'DBU'\n",
+        "    GROUP BY billing_origin_product, CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END \n",
+        ")\n",
+        "GROUP BY\n",
+        "billing_origin_product \n",
+        "),\n",
+        "PE_02_06_perc AS \n",
+        "(\n",
+        "  SELECT \n",
+        "    ROUND((SUM(sum_photon_dbu)/SUM(dbu_usage_total))*100,2) AS actual_perc,\n",
+        "    'PE-02-06' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "  FROM PE_02_06\n",
+        "),\n",
+        "PE_02_07_perc AS \n",
+        "(\n",
+        "  SELECT \n",
+        "    ROUND((COUNT(DISTINCT split(worker_node_type,'[.]')[0])/COUNT(1))*100,2) AS actual_perc,\n",
+        "    'PE-02-07' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "  FROM PE_02\n",
+        "),\n",
+        "\n",
+        "\n",
+        "waf_status AS(\n",
+        "SELECT\n",
+        "  waf.waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  COALESCE(p11p.actual_perc,p22p.actual_perc,p24p.actual_perc,p26p.actual_perc,p27p.actual_perc,0.00) AS actual_perc,\n",
+        "  CASE \n",
+        "    WHEN waf.waf_id = 'PE-01-02' AND EXISTS (\n",
+        "      SELECT 1 FROM PE_01 WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
+        "    ) THEN 'Yes' --TBD dbu usage limit?\n",
+        "    WHEN waf.waf_id = 'PE-02-05' AND NOT EXISTS (\n",
+        "      SELECT 1 FROM PE_02_05 LIMIT 1 \n",
+        "    ) THEN 'Yes'\n",
+        "    WHEN waf.waf_id NOT IN ('PE-01-02','PE-02-05') \n",
+        "          AND  required_percentage <= COALESCE(p11p.actual_perc,p22p.actual_perc,p24p.actual_perc,p26p.actual_perc,p27p.actual_perc,0) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented,\n",
+        "  required_percentage\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('PE-01-01', 'Utilize serverless capabilities', 'Use serverless architecture',30),\n",
+        "    ('PE-01-02', 'Utilize serverless capabilities', 'Use an enterprise grade model serving service',0),\n",
+        "    --('PE-02-01', 'Utilize serverless capabilities', 'Understand your data ingestion and access patterns'),\n",
+        "    ('PE-02-02', 'Design workloads for performance', 'Use parallel computation where it is beneficial',30),\n",
+        "    --('PE-02-03', 'Design workloads for performance', 'Analyze the whole chain of execution'),\n",
+        "    ('PE-02-04', 'Design workloads for performance', 'Prefer larger clusters',30),\n",
+        "    ('PE-02-05', 'Design workloads for performance', 'Use native Spark operations',0),\n",
+        "    ('PE-02-06', 'Design workloads for performance', 'Use native platform engines',30),\n",
+        "    ('PE-02-07', 'Design workloads for performance', 'Understand your hardware and workload type',20)\n",
+        "    --('PE-02-08', 'Design workloads for performance', 'Use caching'),\n",
+        "    --('PE-02-09', 'Design workloads for performance', 'Use compaction'),\n",
+        ") waf(waf_id, principle, best_practice,required_percentage)\n",
+        "LEFT JOIN \n",
+        "PE_01_01_perc p11p\n",
+        "ON waf.waf_id = p11p.waf_id\n",
+        "LEFT JOIN \n",
+        "PE_02_02_perc p22p\n",
+        "ON waf.waf_id = p22p.waf_id\n",
+        "LEFT JOIN\n",
+        "PE_02_04_perc p24p\n",
+        "ON waf.waf_id = p24p.waf_id\n",
+        "LEFT JOIN\n",
+        "PE_02_06_perc p26p\n",
+        "ON waf.waf_id = p26p.waf_id\n",
+        "LEFT JOIN\n",
+        "PE_02_07_perc p27p\n",
+        "ON waf.waf_id = p27p.waf_id\n",
+        ")\n",
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  implemented,\n",
+        "  actual_perc,\n",
+        "  required_percentage,\n",
+        "  COUNT(*) OVER (PARTITION BY principle) AS total_controls,\n",
+        "  ROW_NUMBER() OVER (PARTITION BY principle ORDER BY waf_id) AS row_num,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle)/ COUNT(*) OVER (PARTITION BY principle) , 0) AS completion_percent,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER () / COUNT(*) OVER (), 0) AS total_percentage,\n",
+        "  'Summary' AS dataset_type\n",
+        "FROM waf_status"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_filter",
+          "keyword": "date_filter",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "2025-10-23T00:00:00.000"
+              },
+              "max": {
+                "value": "2025-10-23T23:59:59.999"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "7fbe58c5",
-      "displayName": "PE-01",
+      "displayName": "PE-01_serverless_usage",
       "queryLines": [
         "WITH PE_01 AS (\n",
         "SELECT \n",
@@ -2479,7 +2212,7 @@
     },
     {
       "name": "a54e94d2",
-      "displayName": "PE-02",
+      "displayName": "PE-02_cluster_metrics",
       "queryLines": [
         "\n",
         "--waf_PE-02-*_cluster_metrics\n",
@@ -2580,7 +2313,7 @@
     },
     {
       "name": "612efd0a",
-      "displayName": "PE-02-05",
+      "displayName": "PE-02-05_python_routines",
       "queryLines": [
         "WITH PE_02_05 AS (\n",
         "  SELECT \n",
@@ -2598,7 +2331,7 @@
     },
     {
       "name": "623dda51",
-      "displayName": "PE-02-06",
+      "displayName": "PE-02-06_photon_usage",
       "queryLines": [
         "WITH PE_02_06 AS (\n",
         "  SELECT \n",
@@ -2677,8 +2410,226 @@
       ]
     },
     {
+      "name": "60cfe928",
+      "displayName": "waf_controls_r",
+      "queryLines": [
+        "WITH R_01_01 AS (\n",
+        "SELECT \n",
+        "    --table_catalog AS cat_name,\n",
+        "    --table_schema AS sch_name,\n",
+        "    data_source_format AS tables_format,\n",
+        "    count(data_source_format) AS no_of_tables,\n",
+        "    'R_01_01' AS waf_id,\n",
+        "    'Detailed' AS dataset_type\n",
+        "    --table_type\n",
+        "    FROM system.information_schema.tables group by all\n",
+        "),\n",
+        "R_01_01_perc AS (\n",
+        "SELECT \n",
+        "  ROUND((cnt_acid_tables/all_tables)*100,2) AS actual_perc,\n",
+        "  'R-01-01' AS waf_id,\n",
+        "  'Percentage' AS dataset_type\n",
+        "  FROM(\n",
+        "    SELECT\n",
+        "      SUM(CASE WHEN data_source_format IN ('DELTA','ICEBERG') THEN 1 ELSE 0 END) AS cnt_acid_tables,\n",
+        "      count(*) AS all_tables\n",
+        "    FROM system.information_schema.tables \n",
+        "  )\n",
+        "),\n",
+        "R_01_04 AS ( \n",
+        "    SELECT\n",
+        "    workspace_id,\n",
+        "    cluster_id,\n",
+        "    cluster_name,\n",
+        "    owned_by,\n",
+        "    auto_termination_minutes,\n",
+        "    'R_01_04' AS waf_id,\n",
+        "    'Detailed' AS dataset_type,\n",
+        "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
+        "  FROM system.compute.clusters\n",
+        "  WHERE (cluster_source=\"UI\" OR cluster_source=\"API\") AND array_contains(:workspace_id,workspace_id)\n",
+        "  QUALIFY rn=1 AND delete_time is null\n",
+        "),\n",
+        "R_01_04_perc AS ( \n",
+        "    SELECT\n",
+        "    ROUND((cnt_termination_minutes/all_clusters)*100,2) AS actual_perc,\n",
+        "    'R-01-04' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "    FROM \n",
+        "    (SELECT\n",
+        "        SUM(CASE WHEN auto_termination_minutes IS NOT NULL THEN 1 ELSE 0 END) AS cnt_termination_minutes,\n",
+        "        COUNT(*) AS all_clusters\n",
+        "    FROM R_01_04)\n",
+        "),\n",
+        "R_01_05 AS (\n",
+        "  select workspace_id\n",
+        "  , usage_metadata.endpoint_name endpoint_name\n",
+        "  , billing_origin_product\n",
+        "  , sum(usage_quantity) usage_dbus \n",
+        "  , 'R_01_05' AS waf_id\n",
+        "  , 'Detailed' AS dataset_type\n",
+        "  from system.billing.usage\n",
+        "  WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%'\n",
+        "  AND usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
+        "  AND usage_metadata.endpoint_name is not null\n",
+        "  group by endpoint_name, billing_origin_product,workspace_id\n",
+        "),\n",
+        "--TBD - a DBU threshold?\n",
+        "\n",
+        "\n",
+        "R_03_01 AS (\n",
+        "  select workspace_id, cluster_id, cluster_name, owned_by, worker_count, create_time  \n",
+        "  , 'R_03_01' AS waf_id\n",
+        "  , 'Detailed' AS dataset_type\n",
+        "  , max_autoscale_workers\n",
+        "    from system.compute.clusters \n",
+        "  where cluster_source = 'JOB'\n",
+        "  and create_time BETWEEN :date_filter.min AND :date_filter.max\n",
+        "  and array_contains(:workspace_id,workspace_id)\n",
+        "),\n",
+        "\n",
+        "R_03_01_perc AS (\n",
+        " SELECT\n",
+        "    ROUND((cnt_autoscale_minutes/all_clusters)*100,2) AS actual_perc,\n",
+        "    'R-03-01' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "    FROM \n",
+        "    (SELECT\n",
+        "        SUM(CASE WHEN max_autoscale_workers IS NOT NULL THEN 1 ELSE 0 END) AS cnt_autoscale_minutes,\n",
+        "        COUNT(*) AS all_clusters\n",
+        "    FROM R_03_01) \n",
+        "\n",
+        "),\n",
+        "R_03_02 AS (\n",
+        "  SELECT\n",
+        "    workspace_id,\n",
+        "    warehouse_id,\n",
+        "    warehouse_name,\n",
+        "    warehouse_type,\n",
+        "    warehouse_size,\n",
+        "    min_clusters,\n",
+        "    max_clusters,\n",
+        "    auto_stop_minutes,\n",
+        "    'R_03_02' AS waf_id,\n",
+        "    'Detailed' AS dataset_type\n",
+        "FROM\n",
+        "    system.compute.warehouses\n",
+        "    WHERE array_contains(:workspace_id,workspace_id)\n",
+        "QUALIFY\n",
+        "    ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) = 1\n",
+        "    and delete_time is null\n",
+        "),\n",
+        "R_03_02_perc AS (\n",
+        "  SELECT\n",
+        "    ROUND((cnt_autoscale_minutes/all_clusters)*100,2) AS actual_perc,\n",
+        "    'R-03-02' AS waf_id,\n",
+        "    'Percentage' AS dataset_type\n",
+        "    FROM \n",
+        "    (SELECT\n",
+        "        SUM(CASE WHEN IFNULL(min_clusters,0) <> IFNULL(max_clusters,0) THEN 1 ELSE 0 END) AS cnt_autoscale_minutes,\n",
+        "        COUNT(*) AS all_clusters\n",
+        "    FROM R_03_02) \n",
+        "\n",
+        "),\n",
+        "waf_status AS (\n",
+        "SELECT\n",
+        "  waf.waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  COALESCE(r11p.actual_perc,r14p.actual_perc,r31p.actual_perc,r32p.actual_perc,0) AS actual_perc,\n",
+        "  required_percentage,\n",
+        "  CASE \n",
+        "    WHEN waf.waf_id = 'R-01-05' AND EXISTS (\n",
+        "      SELECT 1 FROM R_01_05 LIMIT 1\n",
+        "    ) THEN 'Yes'\n",
+        "--    WHEN waf_id = 'R-01-06' AND EXISTS (\n",
+        "--      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS%' OR sku_name LIKE '%DLT%' LIMIT 1\n",
+        "--    ) THEN 'Yes'\n",
+        "    WHEN waf.waf_id <> 'R-01-05' AND required_percentage <= COALESCE(r11p.actual_perc,r14p.actual_perc,r31p.actual_perc,r32p.actual_perc,0) THEN 'Yes'\n",
+        "    ELSE 'No'\n",
+        "  END AS implemented\n",
+        "FROM (\n",
+        "  SELECT * FROM VALUES\n",
+        "    ('R-01-01', 'Design for failure', 'Use a data format that supports ACID transactions',30),\n",
+        "    --('R-01-02', 'Design for failure', 'Use a resilient distributed data engine for all workloads'),\n",
+        "    --('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data '),\n",
+        "    ('R-01-04', 'Design for failure', 'Configure jobs for automatic retries and termination',80),\n",
+        "    ('R-01-05', 'Design for failure', 'Use a scalable and production-grade model serving infrastructure',0),\n",
+        "    --('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n",
+        "    --('R-02-03', 'Manage data quality', 'Actively manage schemas'),\n",
+        "    --('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n",
+        "    ('R-03-01', 'Design for autoscaling', 'Enable autoscaling for ETL workloads',30),\n",
+        "    ('R-03-02', 'Design for autoscaling', 'Use autoscaling for SQL Warehouses',30)\n",
+        "    --('R-02-09', 'Design workloads for performance', 'Use compaction'),\n",
+        ") waf(waf_id, principle, best_practice,required_percentage)\n",
+        "LEFT JOIN \n",
+        "r_01_01_perc r11p\n",
+        "ON waf.waf_id = r11p.waf_id\n",
+        "LEFT JOIN \n",
+        "r_03_02_perc r32p\n",
+        "ON waf.waf_id = r32p.waf_id\n",
+        "LEFT JOIN\n",
+        "r_01_04_perc r14p\n",
+        "ON waf.waf_id = r14p.waf_id\n",
+        "LEFT JOIN\n",
+        "r_03_01_perc r31p\n",
+        "ON waf.waf_id = r31p.waf_id\n",
+        ")\n",
+        "SELECT\n",
+        "  waf_id,\n",
+        "  principle,\n",
+        "  best_practice,\n",
+        "  implemented,\n",
+        "  actual_perc,\n",
+        "  required_percentage,\n",
+        "  COUNT(*) OVER (PARTITION BY principle) AS total_controls,\n",
+        "  ROW_NUMBER() OVER (PARTITION BY principle ORDER BY waf_id) AS row_num,\n",
+        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle) AS implemented_controls,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER (PARTITION BY principle)/ COUNT(*) OVER (PARTITION BY principle) , 0) AS completion_percent,\n",
+        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) OVER () / COUNT(*) OVER (), 0) AS total_percentage,\n",
+        "  'Summary' AS dataset_type\n",
+        "FROM waf_status"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "date_filter",
+          "keyword": "date_filter",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "2025-09-27T00:00:00.000"
+              },
+              "max": {
+                "value": "2025-10-27T23:59:59.999"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "6216cfde",
-      "displayName": "R-01-01",
+      "displayName": "R-01-01_table_formats",
       "queryLines": [
         "WITH R_01_01 AS (\n",
         "SELECT \n",
@@ -2701,7 +2652,7 @@
     },
     {
       "name": "56602917",
-      "displayName": "R-01-04",
+      "displayName": "R-01-04_cluster_auto_termination",
       "queryLines": [
         "WITH \n",
         "R_01_04 AS ( \n",
@@ -2749,7 +2700,7 @@
     },
     {
       "name": "a3cee0bf",
-      "displayName": "R-01-05",
+      "displayName": "R-01-05_model_serving_usage",
       "queryLines": [
         "WITH\n",
         "R_01_05 AS (\n",
@@ -2813,7 +2764,7 @@
     },
     {
       "name": "52cdd95b",
-      "displayName": "R-03-01",
+      "displayName": "R-03-01_cluster_auto_scaling",
       "queryLines": [
         "WITH R_03_01 AS (\n",
         "  select workspace_id, cluster_id, cluster_name, owned_by, worker_count, create_time  \n",
@@ -2875,7 +2826,7 @@
     },
     {
       "name": "03f96717",
-      "displayName": "R-03-02",
+      "displayName": "R-03-02_cluster_sizing",
       "queryLines": [
         "WITH \n",
         "R_03_02 AS (\n",
@@ -3060,11 +3011,11 @@
                     "rules": [
                       {
                         "condition": {
-                          "operator": "=",
                           "operand": {
                             "type": "data-value",
                             "value": "0"
-                          }
+                          },
+                          "operator": "="
                         },
                         "color": "#888888"
                       }
@@ -3076,13 +3027,13 @@
               "frame": {
                 "showTitle": true,
                 "showDescription": false,
-                "title": "Total Tables"
+                "title": "Total Tables (4)"
               }
             }
           },
           "position": {
             "x": 0,
-            "y": 16,
+            "y": 18,
             "width": 2,
             "height": 3
           }
@@ -3115,11 +3066,11 @@
                     "rules": [
                       {
                         "condition": {
-                          "operator": "=",
                           "operand": {
                             "type": "data-value",
                             "value": "0"
-                          }
+                          },
+                          "operator": "="
                         },
                         "color": "#888888"
                       }
@@ -3130,14 +3081,14 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Total Volumes",
+                "title": "Total Volumes (4)",
                 "contentAlignment": "center"
               }
             }
           },
           "position": {
             "x": 2,
-            "y": 16,
+            "y": 18,
             "width": 2,
             "height": 3
           }
@@ -3170,11 +3121,11 @@
                     "rules": [
                       {
                         "condition": {
-                          "operator": "=",
                           "operand": {
                             "type": "data-value",
                             "value": "0"
-                          }
+                          },
+                          "operator": "="
                         },
                         "color": "#888888"
                       }
@@ -3185,13 +3136,13 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Total Functions"
+                "title": "Total Functions (4)"
               }
             }
           },
           "position": {
             "x": 4,
-            "y": 16,
+            "y": 18,
             "width": 2,
             "height": 3
           }
@@ -3227,13 +3178,13 @@
                 "showTitle": true,
                 "showDescription": true,
                 "description": "See the count of tables with no reads",
-                "title": "Unused Tables (Last 30 Days)"
+                "title": "Unused Tables (3)"
               }
             }
           },
           "position": {
             "x": 0,
-            "y": 26,
+            "y": 28,
             "width": 2,
             "height": 3
           }
@@ -3266,11 +3217,11 @@
                     "rules": [
                       {
                         "condition": {
-                          "operator": "=",
                           "operand": {
                             "type": "data-value",
                             "value": "0"
-                          }
+                          },
+                          "operator": "="
                         },
                         "color": "#888888"
                       }
@@ -3281,7 +3232,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Active Tables (Last 30 days)",
+                "title": "Active Tables (3)",
                 "showDescription": true,
                 "description": "See the count of tables with reads"
               }
@@ -3289,7 +3240,7 @@
           },
           "position": {
             "x": 2,
-            "y": 26,
+            "y": 28,
             "width": 2,
             "height": 3
           }
@@ -3322,11 +3273,11 @@
                     "rules": [
                       {
                         "condition": {
-                          "operator": "=",
                           "operand": {
                             "type": "data-value",
                             "value": "0"
-                          }
+                          },
+                          "operator": "="
                         },
                         "color": "#000000"
                       }
@@ -3337,7 +3288,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Active Users (Last 30 Days)",
+                "title": "Active Users (3)",
                 "showDescription": true,
                 "description": "See the count of users who read from tables"
               }
@@ -3345,7 +3296,7 @@
           },
           "position": {
             "x": 4,
-            "y": 26,
+            "y": 28,
             "width": 2,
             "height": 3
           }
@@ -3379,7 +3330,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Ungoverned Tables",
+                "title": "Ungoverned Tables (4)",
                 "showDescription": true,
                 "description": "See the count of tables to which all users have read access"
               }
@@ -3387,7 +3338,7 @@
           },
           "position": {
             "x": 0,
-            "y": 36,
+            "y": 38,
             "width": 3,
             "height": 3
           }
@@ -3421,7 +3372,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Sensitive Tables",
+                "title": "Sensitive Tables (4)",
                 "showDescription": true,
                 "description": "See the count of tables with either row filters or column masks"
               }
@@ -3429,7 +3380,7 @@
           },
           "position": {
             "x": 3,
-            "y": 36,
+            "y": 38,
             "width": 3,
             "height": 3
           }
@@ -3462,20 +3413,20 @@
               "encodings": {
                 "x": {
                   "fieldName": "sum(read_count)",
+                  "displayName": "Usage Count",
                   "scale": {
                     "type": "quantitative"
-                  },
-                  "displayName": "Usage Count"
+                  }
                 },
                 "y": {
                   "fieldName": "table_full_name",
+                  "displayName": "Table Name",
                   "scale": {
                     "type": "categorical",
                     "sort": {
                       "by": "x-reversed"
                     }
-                  },
-                  "displayName": "Table Name"
+                  }
                 },
                 "label": {
                   "show": false
@@ -3483,7 +3434,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Most Popular Tables",
+                "title": "Most Popular Tables (4)",
                 "showDescription": true,
                 "description": "Identify the 10 most read from tables and see when they were last written to"
               }
@@ -3491,7 +3442,7 @@
           },
           "position": {
             "x": 0,
-            "y": 29,
+            "y": 31,
             "width": 6,
             "height": 7
           }
@@ -3524,30 +3475,30 @@
               "encodings": {
                 "x": {
                   "fieldName": "monthly(usage_date)",
+                  "displayName": "Period",
                   "scale": {
                     "type": "temporal"
-                  },
-                  "displayName": "Period"
+                  }
                 },
                 "y": {
                   "fieldName": "sum(usage_count)",
+                  "displayName": "Read Events",
                   "scale": {
                     "type": "quantitative"
-                  },
-                  "displayName": "Read Events"
+                  }
                 }
               },
               "frame": {
                 "showTitle": true,
                 "showDescription": true,
-                "title": "Table Usage (Last 12 Months)",
+                "title": "Table Usage (3)",
                 "description": "See read events for tables over time"
               }
             }
           },
           "position": {
             "x": 0,
-            "y": 19,
+            "y": 21,
             "width": 6,
             "height": 7
           }
@@ -3559,27 +3510,23 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "1eab9fe1",
+                  "datasetName": "95258030",
                   "fields": [
                     {
                       "name": "waf_id",
                       "expression": "`waf_id`"
                     },
                     {
-                      "name": "implemented",
-                      "expression": "`implemented`"
-                    },
-                    {
-                      "name": "pillar",
-                      "expression": "`pillar`"
-                    },
-                    {
                       "name": "principle",
                       "expression": "`principle`"
                     },
                     {
-                      "name": "description",
-                      "expression": "`description`"
+                      "name": "best_practice",
+                      "expression": "`best_practice`"
+                    },
+                    {
+                      "name": "implemented",
+                      "expression": "`implemented`"
                     },
                     {
                       "name": "check_type",
@@ -3601,84 +3548,319 @@
                 "columns": [
                   {
                     "fieldName": "waf_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
                     "title": "waf_id",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "type": "string",
-                    "displayAs": "string",
-                    "displayName": "waf_id"
-                  },
-                  {
-                    "fieldName": "implemented",
-                    "title": "implemented",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "type": "string",
-                    "displayAs": "string",
-                    "displayName": "implemented"
-                  },
-                  {
-                    "fieldName": "pillar",
-                    "title": "pillar",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "type": "string",
-                    "displayAs": "string",
-                    "displayName": "pillar"
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "principle",
-                    "title": "principle",
                     "booleanValues": [
                       "false",
                       "true"
                     ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
                     "type": "string",
                     "displayAs": "string",
-                    "displayName": "principle"
+                    "visible": true,
+                    "order": 6,
+                    "title": "principle",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   },
                   {
-                    "fieldName": "description",
-                    "title": "description",
+                    "fieldName": "best_practice",
                     "booleanValues": [
                       "false",
                       "true"
                     ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
                     "type": "string",
                     "displayAs": "string",
-                    "displayName": "description"
+                    "visible": true,
+                    "order": 7,
+                    "title": "best_practice",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "implemented",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 8,
+                    "title": "implemented",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "check_type",
-                    "title": "check_type",
                     "booleanValues": [
                       "false",
                       "true"
                     ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
                     "type": "string",
                     "displayAs": "string",
-                    "displayName": "check_type"
+                    "visible": true,
+                    "order": 10,
+                    "title": "check_type",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "source_object",
-                    "title": "source_object",
                     "booleanValues": [
                       "false",
                       "true"
                     ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
                     "type": "string",
                     "displayAs": "string",
-                    "displayName": "source_object"
+                    "visible": true,
+                    "order": 11,
+                    "title": "source_object",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   }
                 ]
               },
-              "invisibleColumns": [],
+              "invisibleColumns": [
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "total_controls",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 0,
+                  "title": "total_controls",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "row_num",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 1,
+                  "title": "row_num",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "implemented_controls",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 2,
+                  "title": "implemented_controls",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "total_percentage",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 3,
+                  "title": "total_percentage",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dataset_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 4,
+                  "title": "dataset_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "completion_percent",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 9,
+                  "title": "completion_percent",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
               "allowHTMLByDefault": false,
               "itemsPerPage": 25,
               "paginationSize": "default",
@@ -3715,6 +3897,11 @@
                       "expression": "`principle`"
                     }
                   ],
+                  "filters": [
+                    {
+                      "expression": "`row_num` IN (1)"
+                    }
+                  ],
                   "disaggregated": false
                 }
               }
@@ -3725,20 +3912,20 @@
               "encodings": {
                 "x": {
                   "fieldName": "sum(completion_percent)",
+                  "displayName": "Sum of completion_percent",
                   "scale": {
                     "type": "quantitative"
-                  },
-                  "displayName": "Sum of completion_percent"
+                  }
                 },
                 "y": {
                   "fieldName": "principle",
+                  "displayName": "principle",
                   "scale": {
                     "type": "categorical",
                     "sort": {
                       "by": "x-reversed"
                     }
-                  },
-                  "displayName": "principle"
+                  }
                 }
               },
               "frame": {
@@ -3761,11 +3948,11 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "920a8759",
+                  "datasetName": "95258030",
                   "fields": [
                     {
-                      "name": "avg(completion_percent)",
-                      "expression": "AVG(`completion_percent`)"
+                      "name": "avg(total_percentage)",
+                      "expression": "AVG(`total_percentage`)"
                     }
                   ],
                   "disaggregated": false
@@ -3777,7 +3964,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "avg(completion_percent)",
+                  "fieldName": "avg(total_percentage)",
                   "displayName": "Average completion_percent"
                 }
               },
@@ -3805,7 +3992,7 @@
           },
           "position": {
             "x": 0,
-            "y": 39,
+            "y": 41,
             "width": 1,
             "height": 1
           }
@@ -3821,7 +4008,7 @@
           },
           "position": {
             "x": 1,
-            "y": 39,
+            "y": 41,
             "width": 5,
             "height": 1
           }
@@ -3844,7 +4031,7 @@
           },
           "position": {
             "x": 0,
-            "y": 40,
+            "y": 42,
             "width": 1,
             "height": 6
           }
@@ -3896,15 +4083,15 @@
                 },
                 "y": {
                   "fieldName": "table_type",
+                  "displayName": "table_type",
                   "scale": {
                     "type": "categorical"
-                  },
-                  "displayName": "table_type"
+                  }
                 }
               },
               "frame": {
                 "showDescription": true,
-                "description": "Objects with captured lineage information"
+                "description": "Objects with captured lineage information (4)"
               },
               "mark": {
                 "layout": "group"
@@ -3913,7 +4100,7 @@
           },
           "position": {
             "x": 1,
-            "y": 40,
+            "y": 42,
             "width": 5,
             "height": 6
           }
@@ -3934,7 +4121,7 @@
           },
           "position": {
             "x": 0,
-            "y": 47,
+            "y": 49,
             "width": 1,
             "height": 6
           }
@@ -3950,7 +4137,7 @@
           },
           "position": {
             "x": 0,
-            "y": 46,
+            "y": 48,
             "width": 6,
             "height": 1
           }
@@ -3966,7 +4153,7 @@
           },
           "position": {
             "x": 0,
-            "y": 53,
+            "y": 55,
             "width": 6,
             "height": 1
           }
@@ -3987,7 +4174,7 @@
           },
           "position": {
             "x": 0,
-            "y": 54,
+            "y": 56,
             "width": 1,
             "height": 6
           }
@@ -4027,6 +4214,7 @@
                 },
                 "color": {
                   "fieldName": "label",
+                  "displayName": "Legend",
                   "scale": {
                     "type": "categorical",
                     "mappings": [
@@ -4039,8 +4227,7 @@
                         "color": "#00A972"
                       }
                     ]
-                  },
-                  "displayName": "Legend"
+                  }
                 },
                 "label": {
                   "show": true
@@ -4048,7 +4235,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Table Tag Usage",
+                "title": "Table Tag Usage (4)",
                 "showDescription": false,
                 "description": "See the breakdown of tagged and untagged tables"
               }
@@ -4056,7 +4243,7 @@
           },
           "position": {
             "x": 1,
-            "y": 54,
+            "y": 56,
             "width": 2,
             "height": 6
           }
@@ -4089,20 +4276,20 @@
               "encodings": {
                 "x": {
                   "fieldName": "sum(usage_count)",
+                  "displayName": "Usage Count",
                   "scale": {
                     "type": "quantitative"
-                  },
-                  "displayName": "Usage Count"
+                  }
                 },
                 "y": {
                   "fieldName": "tag_name",
+                  "displayName": "Tag Name",
                   "scale": {
                     "type": "categorical",
                     "sort": {
                       "by": "x-reversed"
                     }
-                  },
-                  "displayName": "Tag Name"
+                  }
                 },
                 "label": {
                   "show": false
@@ -4110,7 +4297,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Most Popular Table Tags",
+                "title": "Most Popular Table Tags (4)",
                 "showDescription": false,
                 "description": ""
               },
@@ -4132,7 +4319,7 @@
           },
           "position": {
             "x": 3,
-            "y": 54,
+            "y": 56,
             "width": 3,
             "height": 6
           }
@@ -4148,7 +4335,7 @@
           },
           "position": {
             "x": 0,
-            "y": 60,
+            "y": 62,
             "width": 6,
             "height": 1
           }
@@ -4171,7 +4358,7 @@
           },
           "position": {
             "x": 0,
-            "y": 61,
+            "y": 63,
             "width": 1,
             "height": 6
           }
@@ -4187,7 +4374,7 @@
           },
           "position": {
             "x": 0,
-            "y": 67,
+            "y": 69,
             "width": 6,
             "height": 1
           }
@@ -4210,7 +4397,7 @@
           },
           "position": {
             "x": 0,
-            "y": 68,
+            "y": 70,
             "width": 1,
             "height": 6
           }
@@ -4226,7 +4413,7 @@
           },
           "position": {
             "x": 0,
-            "y": 74,
+            "y": 76,
             "width": 6,
             "height": 1
           }
@@ -4249,7 +4436,7 @@
           },
           "position": {
             "x": 0,
-            "y": 75,
+            "y": 77,
             "width": 1,
             "height": 6
           }
@@ -4265,7 +4452,7 @@
           },
           "position": {
             "x": 0,
-            "y": 81,
+            "y": 83,
             "width": 6,
             "height": 1
           }
@@ -4288,7 +4475,7 @@
           },
           "position": {
             "x": 0,
-            "y": 82,
+            "y": 84,
             "width": 1,
             "height": 6
           }
@@ -4304,7 +4491,7 @@
           },
           "position": {
             "x": 0,
-            "y": 88,
+            "y": 90,
             "width": 6,
             "height": 1
           }
@@ -4326,7 +4513,7 @@
           },
           "position": {
             "x": 0,
-            "y": 89,
+            "y": 91,
             "width": 1,
             "height": 6
           }
@@ -4366,17 +4553,21 @@
                 },
                 "color": {
                   "fieldName": "data_source_format",
+                  "displayName": "data_source_format",
                   "scale": {
                     "type": "categorical"
-                  },
-                  "displayName": "data_source_format"
+                  }
                 }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Table Formats (4)"
               }
             }
           },
           "position": {
             "x": 1,
-            "y": 89,
+            "y": 91,
             "width": 2,
             "height": 6
           }
@@ -4457,12 +4648,16 @@
                     }
                   ]
                 }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Table formats (4)"
               }
             }
           },
           "position": {
             "x": 3,
-            "y": 89,
+            "y": 91,
             "width": 3,
             "height": 6
           }
@@ -4501,7 +4696,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Streaming Tables",
+                "title": "Streaming Tables (4)",
                 "showDescription": true,
                 "description": "See the count of Streaming Tables"
               }
@@ -4509,7 +4704,7 @@
           },
           "position": {
             "x": 1,
-            "y": 82,
+            "y": 84,
             "width": 2,
             "height": 3
           }
@@ -4548,7 +4743,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Materialized Views",
+                "title": "Materialized Views (4)",
                 "showDescription": true,
                 "description": "See the count of materialized views"
               }
@@ -4556,7 +4751,7 @@
           },
           "position": {
             "x": 1,
-            "y": 85,
+            "y": 87,
             "width": 2,
             "height": 3
           }
@@ -4590,7 +4785,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Lakehouse Monitoring",
+                "title": "Lakehouse Monitoring (4)",
                 "showDescription": true,
                 "description": "See the count of drift metrics or profile metrics tables"
               }
@@ -4598,7 +4793,7 @@
           },
           "position": {
             "x": 3,
-            "y": 82,
+            "y": 84,
             "width": 3,
             "height": 6
           }
@@ -4631,28 +4826,28 @@
               "encodings": {
                 "x": {
                   "fieldName": "sum(count_of_events)",
+                  "displayName": "Sum of count_of_events",
                   "scale": {
                     "type": "quantitative"
-                  },
-                  "displayName": "Sum of count_of_events"
+                  }
                 },
                 "y": {
                   "fieldName": "consumer_delta_sharing_recipient_name",
+                  "displayName": "consumer_delta_sharing_recipient_name",
                   "scale": {
                     "type": "categorical"
-                  },
-                  "displayName": "consumer_delta_sharing_recipient_name"
+                  }
                 }
               },
               "frame": {
                 "showTitle": true,
-                "title": "Delta share events in the last 30 days"
+                "title": "Delta share events (3)"
               }
             }
           },
           "position": {
             "x": 1,
-            "y": 75,
+            "y": 77,
             "width": 3,
             "height": 6
           }
@@ -4692,24 +4887,24 @@
                 },
                 "color": {
                   "fieldName": "event_type",
+                  "displayName": "event_type",
                   "scale": {
                     "type": "categorical"
-                  },
-                  "displayName": "event_type"
+                  }
                 },
                 "label": {
                   "show": true
                 }
               },
               "frame": {
-                "title": "Event Type Distribution",
+                "title": "Event Type Distribution (3)",
                 "showTitle": true
               }
             }
           },
           "position": {
             "x": 4,
-            "y": 75,
+            "y": 77,
             "width": 2,
             "height": 6
           }
@@ -4742,31 +4937,31 @@
               "encodings": {
                 "x": {
                   "fieldName": "audit_level",
+                  "displayName": "audit_level",
                   "scale": {
                     "type": "categorical",
                     "sort": {
                       "by": "y-reversed"
                     }
-                  },
-                  "displayName": "audit_level"
+                  }
                 },
                 "y": {
                   "fieldName": "sum(count_of_events)",
+                  "displayName": "Sum of count_of_events",
                   "scale": {
                     "type": "quantitative"
-                  },
-                  "displayName": "Sum of count_of_events"
+                  }
                 }
               },
               "frame": {
-                "title": "Count of audit events by type (Last 30 days)",
+                "title": "Count of audit events by type (3)",
                 "showTitle": true
               }
             }
           },
           "position": {
             "x": 1,
-            "y": 68,
+            "y": 70,
             "width": 3,
             "height": 6
           }
@@ -4804,37 +4999,37 @@
               "encodings": {
                 "x": {
                   "fieldName": "sum(count_of_events)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
                   "axis": {
                     "title": "Count of Events"
                   },
-                  "displayName": "Count of Events"
+                  "displayName": "Count of Events",
+                  "scale": {
+                    "type": "quantitative"
+                  }
                 },
                 "y": {
                   "fieldName": "workspace_id",
+                  "axis": {
+                    "title": "Workspace ID"
+                  },
+                  "displayName": "Workspace ID",
                   "scale": {
                     "type": "categorical",
                     "sort": {
                       "by": "x-reversed"
                     }
-                  },
-                  "axis": {
-                    "title": "Workspace ID"
-                  },
-                  "displayName": "Workspace ID"
+                  }
                 }
               },
               "frame": {
-                "title": "Most popular workspace (Last 30 days)",
+                "title": "Most popular workspace (3)",
                 "showTitle": true
               }
             }
           },
           "position": {
             "x": 4,
-            "y": 68,
+            "y": 70,
             "width": 2,
             "height": 6
           }
@@ -4873,13 +5068,13 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Number of total row filters"
+                "title": "Number of total row filters (4)"
               }
             }
           },
           "position": {
             "x": 1,
-            "y": 61,
+            "y": 63,
             "width": 2,
             "height": 6
           }
@@ -4917,23 +5112,23 @@
               "encodings": {
                 "x": {
                   "fieldName": "object_type",
-                  "scale": {
-                    "type": "categorical"
-                  },
                   "axis": {
                     "hideTitle": true
                   },
-                  "displayName": "object_type"
+                  "displayName": "object_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
                 },
                 "y": {
                   "fieldName": "sum(count)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
                   "axis": {
                     "title": "Count"
                   },
-                  "displayName": "Count"
+                  "displayName": "Count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
                 },
                 "label": {
                   "show": false
@@ -4941,13 +5136,13 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Number of column masks and number of tables with column masks"
+                "title": "Number of column masks and number of tables with column masks (4)"
               }
             }
           },
           "position": {
             "x": 3,
-            "y": 61,
+            "y": 63,
             "width": 3,
             "height": 6
           }
@@ -5011,8 +5206,7 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "object_type"
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "count_comment",
@@ -5039,8 +5233,7 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "count_comment"
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "overall_count",
@@ -5067,8 +5260,7 @@
                     "allowHTML": false,
                     "highlightLinks": false,
                     "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "overall_count"
+                    "preserveWhitespace": false
                   },
                   {
                     "fieldName": "perc_comment",
@@ -5096,8 +5288,7 @@
                     "highlightLinks": false,
                     "useMonospaceFont": false,
                     "preserveWhitespace": false,
-                    "scalePercentBy100": true,
-                    "displayName": "perc_comment"
+                    "scalePercentBy100": true
                   }
                 ]
               },
@@ -5108,15 +5299,34 @@
               "condensed": true,
               "withRowNumber": true,
               "frame": {
-                "showTitle": false
+                "showTitle": true,
+                "title": "Comments % (4)"
               }
             }
           },
           "position": {
             "x": 1,
-            "y": 47,
+            "y": 49,
             "width": 5,
             "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e199a90d",
+            "multilineTextboxSpec": {
+              "lines": [
+                "#### Filter Guidelines:\n",
+                "\n",
+                "(1) Filtered by both date range and workspace ID<br>(2) Filtered by workspace id only<br>(3) Filtered by date range only<br>(4) Filtered by none"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 6,
+            "height": 2
           }
         }
       ],
@@ -8612,590 +8822,6 @@
                   "highlightLinks": false,
                   "useMonospaceFont": false,
                   "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "billing_origin_product",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 12,
-                  "title": "billing_origin_product",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "runs_total",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 13,
-                  "title": "runs_total",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "dbu_usage_total",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 14,
-                  "title": "dbu_usage_total",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_serverless_run",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 15,
-                  "title": "sum_serverless_run",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_serverless_dbu",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 16,
-                  "title": "sum_serverless_dbu",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_non_serverless_run",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 17,
-                  "title": "sum_non_serverless_run",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_non_serverless_dbu",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 18,
-                  "title": "sum_non_serverless_dbu",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0.00",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "pct_serverless_runs",
-                  "type": "float",
-                  "displayAs": "number",
-                  "order": 19,
-                  "title": "pct_serverless_runs",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "pct_serverless_dbu",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 20,
-                  "title": "pct_serverless_dbu",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "cluster_id",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 21,
-                  "title": "cluster_id",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "cluster_name",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 22,
-                  "title": "cluster_name",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "worker_node_type",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 23,
-                  "title": "worker_node_type",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "is_multi_worker",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 24,
-                  "title": "is_multi_worker",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "max_worker_count",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 25,
-                  "title": "max_worker_count",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "is_autoscaling",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 26,
-                  "title": "is_autoscaling",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "rank",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 27,
-                  "title": "rank",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "count_routines",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 28,
-                  "title": "count_routines",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_photon_run",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 29,
-                  "title": "sum_photon_run",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_photon_dbu",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 30,
-                  "title": "sum_photon_dbu",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_non_photon_run",
-                  "type": "integer",
-                  "displayAs": "number",
-                  "order": 31,
-                  "title": "sum_non_photon_run",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "sum_non_photon_dbu",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 32,
-                  "title": "sum_non_photon_dbu",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0.00",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "pct_photon_runs",
-                  "type": "float",
-                  "displayAs": "number",
-                  "order": 33,
-                  "title": "pct_photon_runs",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "pct_photon_dbu",
-                  "type": "decimal",
-                  "displayAs": "number",
-                  "order": 34,
-                  "title": "pct_photon_dbu",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
                 }
               ],
               "allowHTMLByDefault": false,
@@ -12320,7 +11946,7 @@
             "name": "be476867",
             "queries": [
               {
-                "name": "dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0cc5289001007ba377697e600e299_dt",
+                "name": "dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d47b5ecbcc5d30bc03a_dt",
                 "query": {
                   "datasetName": "f05e99fe",
                   "fields": [
@@ -12337,7 +11963,7 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0cc5288ff1f08a6673c9af1e90b3f_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1c42849a417c6964f9cc_date_filter",
                 "query": {
                   "datasetName": "60cfe928",
                   "parameters": [
@@ -12350,7 +11976,7 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0cc5288ff1efb954ae5b81ca97460_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1c3894e7a20d1e633d9a_date_filter",
                 "query": {
                   "datasetName": "4745a0f9",
                   "parameters": [
@@ -12363,7 +11989,7 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce8083c31a89a49bedf99aaf5cf9_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d5cbe573ffc025690db_date_filter",
                 "query": {
                   "datasetName": "7fbe58c5",
                   "parameters": [
@@ -12376,7 +12002,7 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce8158f11a7183d00323c0514120_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d65b168990a45d8b2e5_date_filter",
                 "query": {
                   "datasetName": "a54e94d2",
                   "parameters": [
@@ -12389,7 +12015,7 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce82e02612128b81873c18fad10b_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d75bfa9986ee137f7f7_date_filter",
                 "query": {
                   "datasetName": "623dda51",
                   "parameters": [
@@ -12402,7 +12028,7 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce861a5615928e046a45b791fbdc_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d869111c3b5b99c08d8_date_filter",
                 "query": {
                   "datasetName": "a3cee0bf",
                   "parameters": [
@@ -12415,9 +12041,113 @@
                 }
               },
               {
-                "name": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce8654db12878a9a47c98440e3e1_date_filter",
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d8bb4f47519207feb76_date_filter",
                 "query": {
                   "datasetName": "52cdd95b",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1b8095a434b097ffc068_date_filter",
+                "query": {
+                  "datasetName": "a92ace17",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1b8cb158a61178f9ecd6_date_filter",
+                "query": {
+                  "datasetName": "55e66413",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1b95978b90a6f5ed7303_date_filter",
+                "query": {
+                  "datasetName": "90d7e6f1",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1bc08b4717c8f8bb7d10_date_filter",
+                "query": {
+                  "datasetName": "8d97349c",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1bc9982872570a1c6013_date_filter",
+                "query": {
+                  "datasetName": "763a2da9",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1be5b88e72701588de69_date_filter",
+                "query": {
+                  "datasetName": "95258030",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d339a55fd009b32d5da_date_filter",
+                "query": {
+                  "datasetName": "5b3944b6",
+                  "parameters": [
+                    {
+                      "name": "date_filter",
+                      "keyword": "date_filter"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d2eb803f40cba8703df_date_filter",
+                "query": {
+                  "datasetName": "1ab4ec65",
                   "parameters": [
                     {
                       "name": "date_filter",
@@ -12435,35 +12165,67 @@
                 "fields": [
                   {
                     "fieldName": "dt",
-                    "queryName": "dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0cc5289001007ba377697e600e299_dt"
+                    "queryName": "dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d47b5ecbcc5d30bc03a_dt"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0cc5288ff1f08a6673c9af1e90b3f_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1c42849a417c6964f9cc_date_filter"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0cc5288ff1efb954ae5b81ca97460_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1c3894e7a20d1e633d9a_date_filter"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce8083c31a89a49bedf99aaf5cf9_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d5cbe573ffc025690db_date_filter"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce8158f11a7183d00323c0514120_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d65b168990a45d8b2e5_date_filter"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce82e02612128b81873c18fad10b_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d75bfa9986ee137f7f7_date_filter"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce861a5615928e046a45b791fbdc_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d869111c3b5b99c08d8_date_filter"
                   },
                   {
                     "parameterName": "date_filter",
-                    "queryName": "parameter_dashboards/01f0cc5288ff199391999a54fb887fd6/datasets/01f0ce8654db12878a9a47c98440e3e1_date_filter"
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d8bb4f47519207feb76_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1b8095a434b097ffc068_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1b8cb158a61178f9ecd6_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1b95978b90a6f5ed7303_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1bc08b4717c8f8bb7d10_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1bc9982872570a1c6013_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1be5b88e72701588de69_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d339a55fd009b32d5da_date_filter"
+                  },
+                  {
+                    "parameterName": "date_filter",
+                    "queryName": "parameter_dashboards/01f0ce8b4b3e160383f5fbf464794e1d/datasets/01f0ce8b4b3e1d2eb803f40cba8703df_date_filter"
                   }
                 ]
               },
