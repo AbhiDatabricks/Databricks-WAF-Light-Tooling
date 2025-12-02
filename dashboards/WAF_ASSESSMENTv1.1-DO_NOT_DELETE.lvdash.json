@@ -17,7 +17,12 @@
       "name": "303a6758",
       "displayName": "Count of Tables",
       "queryLines": [
-        "SELECT COUNT(*) FROM system.information_schema.tables;"
+        "SELECT\n",
+        "  COUNT(1) AS total_tables,\n",
+        "  SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END) AS managed_table_count,\n",
+        "  SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END)/COUNT(1) AS managed_table_perc\n",
+        "FROM\n",
+        "  system.information_schema.tables\n"
       ]
     },
     {
@@ -35,6 +40,7 @@
         "  COUNT(*) AS count_of_tables,\n",
         "  table_type,\n",
         "  data_source_format\n",
+        "\n",
         "FROM\n",
         "  system.information_schema.tables\n",
         "GROUP BY\n",
@@ -2130,35 +2136,42 @@
     },
     {
       "name": "7fbe58c5",
-      "displayName": "PE-01_serverless_usage",
+      "displayName": "PE-01_01_PE_02_dbu_usage",
       "queryLines": [
         "WITH PE_01 AS (\n",
         "SELECT \n",
         "    billing_origin_product\n",
         "  , SUM(runs) AS runs_total\n",
         "  , SUM(dbu_usage) AS dbu_usage_total\n",
+        "  , CASE WHEN is_serverless = true THEN 'SERVERLESS' ELSE 'CLASSIC' END AS classic_or_serverless\n",
         "  , 'PE_01' AS waf_id\n",
         "  , 'Detailed' AS dataset_type\n",
         "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
         "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
         "  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
         "  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
+        "  --, SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
+        "  --, SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
         "FROM \n",
         "(SELECT \n",
         "   COUNT(*) AS runs\n",
-        "  ,SUM(usage_quantity) AS dbu_usage, CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END AS billing_origin_product\n",
-        "  , CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
+        "  ,SUM(usage_quantity) AS dbu_usage, \n",
+        "   CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n",
+        "        WHEN billing_origin_product = 'DATABASE' THEN 'LAKEBASE' \n",
+        "        ELSE billing_origin_product END AS billing_origin_product\n",
+        "  ,CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
         " FROM system.billing.usage \n",
         " WHERE usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
         " AND array_contains(:workspace_id,workspace_id)\n",
         " AND usage_unit = 'DBU'\n",
-        " AND billing_origin_product IN ('JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
-        " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END \n",
+        " AND billing_origin_product IN ('LAKEFLOW_CONNECT','DATA_QUALITY_MONITORING','PREDICTIVE_OPTIMIZATION','DATABASE','APPS','VECTOR_SEARCH','JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
+        " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n",
+        "               WHEN billing_origin_product = 'DATABASE' THEN 'LAKEBASE' \n",
+        "          ELSE billing_origin_product END\n",
+        "          , CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END\n",
         ")CTE\n",
         "GROUP BY\n",
-        "billing_origin_product \n",
+        "billing_origin_product,is_serverless \n",
         ")\n",
         "SELECT\n",
         "  waf_id,\n",
@@ -2170,8 +2183,9 @@
         "  sum_serverless_dbu,\n",
         "  sum_non_serverless_run,\n",
         "  sum_non_serverless_dbu,\n",
-        "  pct_serverless_runs,\n",
-        "  pct_serverless_dbu\n",
+        "  classic_or_serverless\n",
+        "  --pct_serverless_runs,\n",
+        "  --pct_serverless_dbu\n",
         "FROM PE_01\n"
       ],
       "parameters": [
@@ -2188,6 +2202,94 @@
               },
               "max": {
                 "value": "2025-10-23T23:59:59.999"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1cc9767e",
+      "displayName": "PE-01-02_serving_usage",
+      "queryLines": [
+        "SELECT \n",
+        "    AVG(input_token_count) AS avg_input_token\n",
+        "  , AVG(output_token_count) AS avg_output_token\n",
+        "  , COUNT(1) AS number_requests\n",
+        "  , eu.workspace_id\n",
+        "  , se.entity_type\n",
+        "  , se.entity_name\n",
+        "  , se.custom_model_config.min_concurrency AS custom_model_min_concurrency\n",
+        "  , se.custom_model_config.max_concurrency AS custom_model_max_concurrency\n",
+        "  , se.custom_model_config.compute_type AS custom_model_compute_type\n",
+        "  , CASE WHEN se.entity_type = 'CUSTOM_MODEL' THEN se.endpoint_name ELSE '' END AS endpoint_name \n",
+        "  , SUM(bu.dbu) AS dbu\n",
+        " FROM system.serving.endpoint_usage eu\n",
+        "INNER JOIN system.serving.served_entities se\n",
+        "ON eu.served_entity_id = se.served_entity_id\n",
+        "LEFT JOIN \n",
+        "(SELECT \n",
+        "    SUM(usage_quantity) AS dbu\n",
+        "  ,  workspace_id\n",
+        "  , usage_metadata.endpoint_id As endpoint_id\n",
+        "FROM system.billing.usage\n",
+        "WHERE billing_origin_product = 'MODEL_SERVING'\n",
+        "AND usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
+        "AND usage_metadata.endpoint_id IS NOT NULL \n",
+        "AND usage_unit = 'DBU'\n",
+        "GROUP BY\n",
+        "    workspace_id\n",
+        "  , usage_metadata.endpoint_id\n",
+        ")bu\n",
+        "ON    eu.workspace_id = bu.workspace_id \n",
+        "  AND se.endpoint_id = bu.endpoint_id\n",
+        "WHERE request_time BETWEEN :date_filter.min AND :date_filter.max\n",
+        "AND array_contains(:workspace_id,eu.workspace_id)\n",
+        "AND eu.status_code = 200\n",
+        "AND entity_type IN ('FOUNDATION_MODEL','CUSTOM_MODEL')\n",
+        "GROUP BY \n",
+        "    eu.workspace_id\n",
+        "  , se.entity_type\n",
+        "  , se.entity_name\n",
+        "  , se.custom_model_config.min_concurrency\n",
+        "  , se.custom_model_config.max_concurrency\n",
+        "  , se.custom_model_config.compute_type\n",
+        "  , CASE WHEN se.entity_type = 'CUSTOM_MODEL' THEN se.endpoint_name ELSE '' END\n",
+        "\n",
+        "ORDER BY dbu DESC\n",
+        "\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "date_filter",
+          "keyword": "date_filter",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
               }
             }
           }
@@ -2993,8 +3095,8 @@
                   "datasetName": "303a6758",
                   "fields": [
                     {
-                      "name": "count(1)",
-                      "expression": "`count(1)`"
+                      "name": "total_tables",
+                      "expression": "`total_tables`"
                     }
                   ],
                   "disaggregated": true
@@ -3006,7 +3108,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "count(1)",
+                  "fieldName": "total_tables",
                   "style": {
                     "rules": [
                       {
@@ -8954,33 +9056,17 @@
         },
         {
           "widget": {
-            "name": "218a4cb9",
+            "name": "cd03885b",
             "multilineTextboxSpec": {
               "lines": [
-                "### Principle"
+                "### PE-01-01 - Use [serverless](https://www.databricks.com/glossary/serverless-computing) architecture"
               ]
             }
           },
           "position": {
             "x": 0,
             "y": 17,
-            "width": 1,
-            "height": 1
-          }
-        },
-        {
-          "widget": {
-            "name": "cd03885b",
-            "multilineTextboxSpec": {
-              "lines": [
-                "### Signal"
-              ]
-            }
-          },
-          "position": {
-            "x": 1,
-            "y": 17,
-            "width": 5,
+            "width": 6,
             "height": 1
           }
         },
@@ -9001,30 +9087,7 @@
           },
           "position": {
             "x": 0,
-            "y": 25,
-            "width": 1,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "eb907528",
-            "multilineTextboxSpec": {
-              "lines": [
-                "#### PE-01-01\n",
-                "&nbsp;\n",
-                "Use [serverless](https://www.databricks.com/glossary/serverless-computing) architecture\n",
-                "\n",
-                "\n",
-                "#### PE-01-02\n",
-                "&nbsp;\n",
-                "Use an enterprise grade [model serving](https://www.databricks.com/product/model-serving) service\n"
-              ]
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 18,
+            "y": 48,
             "width": 1,
             "height": 6
           }
@@ -9039,21 +9102,17 @@
                   "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "sum(sum_serverless_dbu)",
-                      "expression": "SUM(`sum_serverless_dbu`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
-                      "name": "sum(sum_non_serverless_dbu)",
-                      "expression": "SUM(`sum_non_serverless_dbu`)"
-                    },
-                    {
-                      "name": "billing_origin_product",
-                      "expression": "`billing_origin_product`"
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
                     }
                   ],
                   "filters": [
                     {
-                      "expression": "`billing_origin_product` IS NULL OR `billing_origin_product` NOT IN ('MODEL_SERVING')"
+                      "expression": "`billing_origin_product` IN ('DLT', 'JOBS')"
                     }
                   ],
                   "disaggregated": false
@@ -9062,91 +9121,72 @@
             ],
             "spec": {
               "version": 3,
-              "widgetType": "bar",
+              "widgetType": "pie",
               "encodings": {
-                "x": {
-                  "fields": [
-                    {
-                      "fieldName": "sum(sum_serverless_dbu)",
-                      "displayName": "Serverless DBU"
-                    },
-                    {
-                      "fieldName": "sum(sum_non_serverless_dbu)",
-                      "displayName": "Non-Serverless DBU"
-                    }
-                  ],
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "classic_or_serverless",
+                  "legend": {
+                    "hide": true
+                  },
+                  "displayName": "Classic Or Serverless",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": true,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      },
+                      {
+                        "value": false,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "CLASSIC",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "SERVERLESS",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      }
+                    ]
                   }
                 },
-                "y": {
-                  "fieldName": "billing_origin_product",
-                  "axis": {
-                    "title": "Product",
-                    "hideTitle": true
-                  },
-                  "displayName": "Product",
-                  "scale": {
-                    "type": "categorical"
-                  }
+                "label": {
+                  "show": true
                 }
               },
               "frame": {
-                "title": "Serverless vs Non-Serverless Usage(1)",
-                "showTitle": true
-              }
-            }
-          },
-          "position": {
-            "x": 1,
-            "y": 18,
-            "width": 3,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "44a94f85",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "7fbe58c5",
-                  "fields": [
-                    {
-                      "name": "dbu_usage_total",
-                      "expression": "`dbu_usage_total`"
-                    }
-                  ],
-                  "filters": [
-                    {
-                      "expression": "`billing_origin_product` IN ('MODEL_SERVING')"
-                    }
-                  ],
-                  "disaggregated": true
-                }
-              }
-            ],
-            "spec": {
-              "version": 2,
-              "widgetType": "counter",
-              "encodings": {
-                "value": {
-                  "fieldName": "dbu_usage_total",
-                  "displayName": "dbu_usage_total"
-                }
-              },
-              "frame": {
+                "title": "SDP and Lakeflow Jobs(1)",
                 "showTitle": true,
-                "title": "Model Serving Usage in DBUs (1)"
+                "showDescription": true,
+                "description": "Ratio of Classic vs Serverless"
               }
             }
           },
           "position": {
-            "x": 4,
-            "y": 18,
+            "x": 0,
+            "y": 19,
             "width": 2,
-            "height": 6
+            "height": 3
           }
         },
         {
@@ -9205,7 +9245,7 @@
           },
           "position": {
             "x": 1,
-            "y": 25,
+            "y": 48,
             "width": 1,
             "height": 6
           }
@@ -9282,7 +9322,7 @@
           },
           "position": {
             "x": 2,
-            "y": 25,
+            "y": 48,
             "width": 1,
             "height": 6
           }
@@ -9354,25 +9394,9 @@
           },
           "position": {
             "x": 3,
-            "y": 25,
+            "y": 48,
             "width": 3,
             "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "bb63359e",
-            "multilineTextboxSpec": {
-              "lines": [
-                "---"
-              ]
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 24,
-            "width": 6,
-            "height": 1
           }
         },
         {
@@ -9386,7 +9410,7 @@
           },
           "position": {
             "x": 0,
-            "y": 31,
+            "y": 54,
             "width": 6,
             "height": 1
           }
@@ -9413,7 +9437,7 @@
           },
           "position": {
             "x": 0,
-            "y": 32,
+            "y": 55,
             "width": 1,
             "height": 6
           }
@@ -9488,7 +9512,7 @@
           },
           "position": {
             "x": 1,
-            "y": 32,
+            "y": 55,
             "width": 3,
             "height": 6
           }
@@ -9559,7 +9583,7 @@
           },
           "position": {
             "x": 4,
-            "y": 39,
+            "y": 62,
             "width": 2,
             "height": 6
           }
@@ -9586,7 +9610,7 @@
           },
           "position": {
             "x": 0,
-            "y": 39,
+            "y": 62,
             "width": 1,
             "height": 6
           }
@@ -9602,7 +9626,7 @@
           },
           "position": {
             "x": 0,
-            "y": 38,
+            "y": 61,
             "width": 6,
             "height": 1
           }
@@ -9642,7 +9666,7 @@
           },
           "position": {
             "x": 4,
-            "y": 32,
+            "y": 55,
             "width": 2,
             "height": 6
           }
@@ -9712,7 +9736,7 @@
           },
           "position": {
             "x": 1,
-            "y": 39,
+            "y": 62,
             "width": 3,
             "height": 6
           }
@@ -9732,6 +9756,1511 @@
             "x": 0,
             "y": 10,
             "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "cdc27dda",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('INTERACTIVE')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "classic_or_serverless",
+                  "legend": {
+                    "hide": true
+                  },
+                  "displayName": "Classic Or Serverless",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": true,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      },
+                      {
+                        "value": false,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "CLASSIC",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "SERVERLESS",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "title": "Notebooks(1)",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Ratio of classic vs serverless"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "a62e53c2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('SQL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "classic_or_serverless",
+                  "legend": {
+                    "hide": true
+                  },
+                  "displayName": "Classic Or Serverless",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": true,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      },
+                      {
+                        "value": false,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "CLASSIC",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "SERVERLESS",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "title": "DBSQL(1)",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Ratio of SQL Classic/Pro vs Serverless"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 24,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c6148e09",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "billing_origin_product",
+                      "expression": "`billing_origin_product`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('APPS', 'LAKEBASE', 'VECTOR_SEARCH')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "displayName": "DBU",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "billing_origin_product",
+                  "displayName": "SKU",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "title": "GenAI / Applications(1)",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Usage over selected date range"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 24,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "3644923a",
+            "multilineTextboxSpec": {
+              "lines": [
+                "1. Serverless jobs can outperform classic based jobs in Performance & TCO\n",
+                "2. Serverless eliminates the need for admin - cluster sizing and tuning"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "cb3d528e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "1. Serverless Notebooks benefit from auto scaling to the user's needs\n",
+                "2. Serverless NBs use intelligent workload management to reduce under utilization, reducing TCO"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "02e50677",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Serverless SQL benefits from Intelligent Workload Managfement and Predictive Optimization that boosts query performance and user experience"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 22,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "4fc8fae2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "GenAI description placeholder"
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 22,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "cffb26f5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a54e94d2",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`rank` IN ('Top 10')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "axis": {
+                    "title": "DBU",
+                    "hideTitle": true
+                  },
+                  "displayName": "DBU",
+                  "scale": {
+                    "type": "quantitative",
+                    "domain": {
+                      "min": 5000
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "cluster_id",
+                  "displayName": "cluster_id",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 clusters by Classic DBU (1)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 19,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "2d309819",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-01-02 - Use an enterprise grade [model serving](https://www.databricks.com/product/model-serving) service"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 27,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "aea88750",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder"
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 19,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "fm-api-usage",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1cc9767e",
+                  "fields": [
+                    {
+                      "name": "entity_name",
+                      "expression": "`entity_name`"
+                    },
+                    {
+                      "name": "dbu",
+                      "expression": "`dbu`"
+                    },
+                    {
+                      "name": "number_requests",
+                      "expression": "`number_requests`"
+                    },
+                    {
+                      "name": "avg_input_token",
+                      "expression": "`avg_input_token`"
+                    },
+                    {
+                      "name": "avg_output_token",
+                      "expression": "`avg_output_token`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`entity_type` IN ('FOUNDATION_MODEL')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "entity_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0,
+                    "title": "entity_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "dbu",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 1,
+                    "title": "DBU",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "number_requests",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2,
+                    "title": "# Requests",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "avg_input_token",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3,
+                    "title": "Input Tokens (avg)",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "avg_output_token",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 4,
+                    "title": "Output Tokens (avg)",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 5,
+                  "title": "workspace_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "entity_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "entity_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "custom_model_min_concurrency",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 7,
+                  "title": "custom_model_min_concurrency",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "custom_model_max_concurrency",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 8,
+                  "title": "custom_model_max_concurrency",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "custom_model_compute_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 9,
+                  "title": "custom_model_compute_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "endpoint_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 10,
+                  "title": "endpoint_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "FM API usage(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 28,
+            "width": 5,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "model-serving-usage",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1cc9767e",
+                  "fields": [
+                    {
+                      "name": "endpoint_name",
+                      "expression": "`endpoint_name`"
+                    },
+                    {
+                      "name": "dbu",
+                      "expression": "`dbu`"
+                    },
+                    {
+                      "name": "number_requests",
+                      "expression": "`number_requests`"
+                    },
+                    {
+                      "name": "custom_model_compute_type",
+                      "expression": "`custom_model_compute_type`"
+                    },
+                    {
+                      "name": "custom_model_min_concurrency",
+                      "expression": "`custom_model_min_concurrency`"
+                    },
+                    {
+                      "name": "custom_model_max_concurrency",
+                      "expression": "`custom_model_max_concurrency`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`entity_type` IN ('CUSTOM_MODEL')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "endpoint_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0,
+                    "title": "endpoint_name",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "dbu",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2,
+                    "title": "DBU",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "number_requests",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3,
+                    "title": "# Requests",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "custom_model_compute_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 8,
+                    "title": "Compute",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "custom_model_min_concurrency",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 9,
+                    "title": "Min Concurrency",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "custom_model_max_concurrency",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 10,
+                    "title": "Max Concurrency",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "entity_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "entity_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0,0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "avg_input_token",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 4,
+                  "title": "Input Tokens (avg)",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0,0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "avg_output_token",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 5,
+                  "title": "Output Tokens (avg)",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "workspace_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "entity_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 7,
+                  "title": "entity_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Model Serving Usage(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 33,
+            "width": 5,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "9fde3077",
+            "multilineTextboxSpec": {
+              "lines": [
+                "FM API usage can be governed with AI Gateway for rate limiting and usage monitoring"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 28,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "4cf7a943",
+            "multilineTextboxSpec": {
+              "lines": [
+                "1. High utilization should be mitigated with upsizing the serving t-shirt size \n",
+                "2. CPU/GPU utilization should be considered and deliberated over (whether GPUs are needed or not)"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 33,
+            "width": 1,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "cabaa517",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-02 - **Use parallel computation where it is beneficial**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 47,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "3803072f",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-01 - Understand your data ingestion and access patterns"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 38,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "b71b07df",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('LAKEFLOW_CONNECT')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBU Usage for LakeFlow \nConnect(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 40,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "57ac2c25",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Usage of Lakeflow connect simplifies data ingestion. We can perform wizard based CDC"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 39,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "82bc82b2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('PREDICTIVE_OPTIMIZATION')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBU Usage for Predictive Optimization(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 40,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "2719c39b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Managed Tables & Predictive Optimization helps tables get optimized for evolving data access patterns. This increases performance"
+              ]
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 39,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "58b18082",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "303a6758",
+                  "fields": [
+                    {
+                      "name": "managed_table_perc",
+                      "expression": "`managed_table_perc`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "managed_table_perc",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% of Managed Tables(4)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 42,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "6e39322f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    },
+                    {
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('FOREIGN')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "data_source_format",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Federated Tables(4)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 43,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "ee4a09ce",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Federated sources should eventually be onboarded as ingestion sources for better performance and lakehouse capabilities"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 42,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "53f2de46",
+            "multilineTextboxSpec": {
+              "lines": [
+                "DQ Monitoring can help identify data quality issues proactively and find remediation"
+              ]
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 44,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "562f92de",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('DATA_QUALITY_MONITORING')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBU Usage for Predictive Optimization(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 45,
+            "width": 3,
             "height": 2
           }
         }
