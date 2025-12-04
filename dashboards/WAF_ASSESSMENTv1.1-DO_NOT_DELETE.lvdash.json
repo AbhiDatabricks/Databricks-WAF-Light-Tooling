@@ -2144,12 +2144,14 @@
         "  , SUM(runs) AS runs_total\n",
         "  , SUM(dbu_usage) AS dbu_usage_total\n",
         "  , CASE WHEN is_serverless = true THEN 'SERVERLESS' ELSE 'CLASSIC' END AS classic_or_serverless\n",
+        "  , CASE WHEN is_photon = true THEN 'PHOTON' ELSE 'NON-PHOTON' END AS photon_or_non_photon\n",
+        "  , CASE WHEN performance_target = 'COST_OPTIMIZED' THEN 'STANDARD' ELSE performance_target END AS performance_target\n",
         "  , 'PE_01' AS waf_id\n",
         "  , 'Detailed' AS dataset_type\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
-        "  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
-        "  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
+        "  --, SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
+        "  --, SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
+        "  --, SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
+        "  --, SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
         "  --, SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
         "  --, SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
         "FROM \n",
@@ -2160,6 +2162,8 @@
         "        WHEN billing_origin_product = 'DATABASE' THEN 'LAKEBASE' \n",
         "        ELSE billing_origin_product END AS billing_origin_product\n",
         "  ,CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
+        "  ,CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n",
+        "  ,CASE WHEN product_features.performance_target IS NULL THEN 'UNDEFINED' ELSE product_features.performance_target END AS performance_target\n",
         " FROM system.billing.usage \n",
         " WHERE usage_date BETWEEN :date_filter.min AND :date_filter.max\n",
         " AND array_contains(:workspace_id,workspace_id)\n",
@@ -2169,9 +2173,11 @@
         "               WHEN billing_origin_product = 'DATABASE' THEN 'LAKEBASE' \n",
         "          ELSE billing_origin_product END\n",
         "          , CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END\n",
+        "          ,CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END\n",
+        "          ,CASE WHEN product_features.performance_target IS NULL THEN 'UNDEFINED' ELSE product_features.performance_target END\n",
         ")CTE\n",
         "GROUP BY\n",
-        "billing_origin_product,is_serverless \n",
+        "billing_origin_product,is_serverless,is_photon,performance_target\n",
         ")\n",
         "SELECT\n",
         "  waf_id,\n",
@@ -2179,11 +2185,13 @@
         "  billing_origin_product,\n",
         "  runs_total,\n",
         "  dbu_usage_total, \n",
-        "  sum_serverless_run,\n",
-        "  sum_serverless_dbu,\n",
-        "  sum_non_serverless_run,\n",
-        "  sum_non_serverless_dbu,\n",
-        "  classic_or_serverless\n",
+        "  classic_or_serverless,\n",
+        "  photon_or_non_photon,\n",
+        "  performance_target\n",
+        "  --sum_serverless_run,\n",
+        "  --sum_serverless_dbu,\n",
+        "  --sum_non_serverless_run,\n",
+        "  --sum_non_serverless_dbu,\n",
         "  --pct_serverless_runs,\n",
         "  --pct_serverless_dbu\n",
         "FROM PE_01\n"
@@ -2336,6 +2344,26 @@
         "    AND change_date <= :date_filter.max) --TBD to check this filter\n",
         "    WHERE rn = 1\n",
         "),\n",
+        "node_timeline AS (\n",
+        "  SELECT\n",
+        "    workspace_id,\n",
+        "    cluster_id,\n",
+        "    AVG(cpu_user_percent + cpu_system_percent) AS Avg_CPU_Utilization,\n",
+        "    MAX(cpu_user_percent + cpu_system_percent) AS Peak_CPU_Utilization,\n",
+        "    AVG(cpu_wait_percent) AS Avg_CPU_Wait,\n",
+        "    MAX(cpu_wait_percent) AS Max_CPU_Wait,\n",
+        "    AVG(mem_used_percent) AS Avg_Memory_Utilization,\n",
+        "    MAX(mem_used_percent) AS Max_Memory_Utilization,\n",
+        "    AVG(network_received_bytes) / (1024 ^ 2) AS Avg_Network_MB_Received_per_Minute,\n",
+        "    AVG(network_sent_bytes) / (1024 ^ 2) AS Avg_Network_MB_Sent_per_Minute\n",
+        "  FROM system.compute.node_timeline\n",
+        "  WHERE\n",
+        "    start_time >= :date_filter.min\n",
+        "    AND driver = false\n",
+        "  GROUP BY \n",
+        "    workspace_id,\n",
+        "    cluster_id\n",
+        "), --TBD single node\n",
         "PE_02 AS (\n",
         "  SELECT \n",
         "       *\n",
@@ -2343,7 +2371,14 @@
         "      , 'PE_02' AS waf_id\n",
         "      , 'Detailed' AS dataset_type\n",
         "    FROM(\n",
-        "      SELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs, c.cluster_id, c.cluster_name, c.worker_node_type\n",
+        "      SELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs,\n",
+        "             AVG(n.Avg_CPU_Utilization) AS avg_cpu_utilization,\n",
+        "             AVG(n.Peak_CPU_Utilization) AS peak_cpu_utilization,\n",
+        "             AVG(n.Avg_Memory_Utilization) AS avg_memory_utilization,\n",
+        "             AVG(n.Max_Memory_Utilization) AS max_memory_utilization,\n",
+        "             c.cluster_id, \n",
+        "             c.cluster_name, \n",
+        "             c.worker_node_type\n",
         "            ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END AS is_multi_worker\n",
         "            , ifnull(worker_count,ifnull(max_autoscale_workers,0)) AS max_worker_count\n",
         "            , CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling\n",
@@ -2354,6 +2389,10 @@
         "      ON u.cluster_id = c.cluster_id\n",
         "      AND u.account_id = c.account_id\n",
         "      AND u.workspace_id = c.workspace_id\n",
+        "      LEFT JOIN\n",
+        "      node_timeline n\n",
+        "      ON c.cluster_id = n.cluster_id\n",
+        "      AND c.workspace_id = n.workspace_id\n",
         "      GROUP BY\n",
         "      c.cluster_id, c.cluster_name, c.worker_node_type\n",
         "      ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n",
@@ -2368,6 +2407,10 @@
         "  dataset_type,\n",
         "  runs AS runs_total,\n",
         "  dbu_usage AS dbu_usage_total, \n",
+        "  avg_cpu_Utilization,\n",
+        "  peak_cpu_utilization,\n",
+        "  avg_memory_utilization,\n",
+        "  max_memory_utilization,\n",
         "  cluster_id,\n",
         "  cluster_name,\n",
         "  worker_node_type,\n",
@@ -2375,7 +2418,8 @@
         "  max_worker_count,\n",
         "  is_autoscaling,\n",
         "  CASE WHEN rank <= 10 THEN 'Top 10' ELSE 'Others' END AS rank\n",
-        "FROM PE_02\n"
+        "FROM PE_02\n",
+        "ORDER BY dbu_usage_total DESC\n"
       ],
       "parameters": [
         {
@@ -9087,7 +9131,7 @@
           },
           "position": {
             "x": 0,
-            "y": 48,
+            "y": 57,
             "width": 1,
             "height": 6
           }
@@ -9171,14 +9215,14 @@
                   }
                 },
                 "label": {
-                  "show": true
+                  "show": false
                 }
               },
               "frame": {
                 "title": "SDP and Lakeflow Jobs(1)",
                 "showTitle": true,
                 "showDescription": true,
-                "description": "Ratio of Classic vs Serverless"
+                "description": "Classic vs Serverless"
               }
             }
           },
@@ -9186,7 +9230,7 @@
             "x": 0,
             "y": 19,
             "width": 2,
-            "height": 3
+            "height": 4
           }
         },
         {
@@ -9245,7 +9289,7 @@
           },
           "position": {
             "x": 1,
-            "y": 48,
+            "y": 57,
             "width": 1,
             "height": 6
           }
@@ -9322,7 +9366,7 @@
           },
           "position": {
             "x": 2,
-            "y": 48,
+            "y": 57,
             "width": 1,
             "height": 6
           }
@@ -9337,12 +9381,20 @@
                   "datasetName": "a54e94d2",
                   "fields": [
                     {
-                      "name": "sum(dbu_usage_total)",
-                      "expression": "SUM(`dbu_usage_total`)"
-                    },
-                    {
                       "name": "cluster_id",
                       "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "dbu_usage_total",
+                      "expression": "`dbu_usage_total`"
+                    },
+                    {
+                      "name": "avg_cpu_Utilization",
+                      "expression": "`avg_cpu_Utilization`"
+                    },
+                    {
+                      "name": "avg_memory_utilization",
+                      "expression": "`avg_memory_utilization`"
                     }
                   ],
                   "filters": [
@@ -9350,42 +9402,412 @@
                       "expression": "`rank` IN ('Top 10')"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
             "spec": {
-              "version": 3,
-              "widgetType": "bar",
+              "version": 1,
+              "widgetType": "table",
               "encodings": {
-                "x": {
-                  "fieldName": "sum(dbu_usage_total)",
-                  "axis": {
-                    "title": "DBU",
-                    "hideTitle": true
+                "columns": [
+                  {
+                    "fieldName": "cluster_id",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   },
-                  "displayName": "DBU",
-                  "scale": {
-                    "type": "quantitative",
-                    "domain": {
-                      "min": 5000
-                    }
+                  {
+                    "fieldName": "dbu_usage_total",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 4,
+                    "title": "dbu_usage_total",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "avg_cpu_Utilization",
+                    "numberFormat": "0%",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 11,
+                    "title": "avg_cpu_Utilization",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "avg_memory_utilization",
+                    "numberFormat": "0%",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 13,
+                    "title": "avg_memory_utilization",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
                   }
-                },
-                "y": {
-                  "fieldName": "cluster_id",
-                  "displayName": "cluster_id",
-                  "scale": {
-                    "type": "categorical",
-                    "sort": {
-                      "by": "x-reversed"
-                    }
-                  }
-                },
-                "label": {
-                  "show": false
-                }
+                ]
               },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "waf_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "waf_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dataset_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "dataset_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "runs_total",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 2,
+                  "title": "runs_total",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 5,
+                  "title": "cluster_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_node_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "worker_node_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_multi_worker",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 7,
+                  "title": "is_multi_worker",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "max_worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 8,
+                  "title": "max_worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 9,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "rank",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 10,
+                  "title": "rank",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "peak_cpu_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 12,
+                  "title": "peak_cpu_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "max_memory_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 14,
+                  "title": "max_memory_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
               "frame": {
                 "showTitle": true,
                 "title": "Top 10 clusters by DBU (1)"
@@ -9394,25 +9816,9 @@
           },
           "position": {
             "x": 3,
-            "y": 48,
+            "y": 57,
             "width": 3,
             "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "2d3e0091",
-            "multilineTextboxSpec": {
-              "lines": [
-                "---"
-              ]
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 54,
-            "width": 6,
-            "height": 1
           }
         },
         {
@@ -9437,7 +9843,7 @@
           },
           "position": {
             "x": 0,
-            "y": 55,
+            "y": 65,
             "width": 1,
             "height": 6
           }
@@ -9512,7 +9918,7 @@
           },
           "position": {
             "x": 1,
-            "y": 55,
+            "y": 65,
             "width": 3,
             "height": 6
           }
@@ -9582,53 +9988,10 @@
             }
           },
           "position": {
-            "x": 4,
-            "y": 62,
+            "x": 0,
+            "y": 105,
             "width": 2,
             "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "52d248f8",
-            "multilineTextboxSpec": {
-              "lines": [
-                "#### PE-02-06\n",
-                "&nbsp;\n",
-                "**Use native platform engines** - [Photon](https://www.databricks.com/product/photon) makes your queries blazing fast.\n",
-                "\n",
-                "\n",
-                "#### PE-02-07\n",
-                "&nbsp;\n",
-                "**Understand your hardware and workload type** - Do you know how to choose the right VM for your workload? Go serverless when you don't.\n",
-                "\n",
-                "\n",
-                "\n",
-                "\n"
-              ]
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 62,
-            "width": 1,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "62979752",
-            "multilineTextboxSpec": {
-              "lines": [
-                "---"
-              ]
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 61,
-            "width": 6,
-            "height": 1
           }
         },
         {
@@ -9665,10 +10028,10 @@
             }
           },
           "position": {
-            "x": 4,
-            "y": 55,
+            "x": 0,
+            "y": 72,
             "width": 2,
-            "height": 6
+            "height": 4
           }
         },
         {
@@ -9678,19 +10041,23 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "623dda51",
+                  "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "sum(sum_photon_dbu)",
-                      "expression": "SUM(`sum_photon_dbu`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
-                      "name": "sum(sum_non_photon_dbu)",
-                      "expression": "SUM(`sum_non_photon_dbu`)"
+                      "name": "photon_or_non_photon",
+                      "expression": "`photon_or_non_photon`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('JOBS', 'DLT')"
                     },
                     {
-                      "name": "billing_origin_product",
-                      "expression": "`billing_origin_product`"
+                      "expression": "`classic_or_serverless` IN ('CLASSIC')"
                     }
                   ],
                   "disaggregated": false
@@ -9699,46 +10066,34 @@
             ],
             "spec": {
               "version": 3,
-              "widgetType": "bar",
+              "widgetType": "pie",
               "encodings": {
-                "x": {
-                  "fields": [
-                    {
-                      "fieldName": "sum(sum_photon_dbu)",
-                      "displayName": "Photon DBU"
-                    },
-                    {
-                      "fieldName": "sum(sum_non_photon_dbu)",
-                      "displayName": "Non-Photon DBU"
-                    }
-                  ],
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
-                  }
-                },
-                "y": {
-                  "fieldName": "billing_origin_product",
-                  "axis": {
-                    "title": "Product",
-                    "hideTitle": true
                   },
-                  "displayName": "Product",
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "photon_or_non_photon",
+                  "displayName": "Photon/Non-Photon",
                   "scale": {
                     "type": "categorical"
                   }
                 }
               },
               "frame": {
-                "title": "Photon vs Non-Photon Usage (1)",
+                "title": "Photon vs Non-Photon Usage for Classic Jobs & SDP(1)",
                 "showTitle": true
               }
             }
           },
           "position": {
-            "x": 1,
-            "y": 62,
-            "width": 3,
-            "height": 6
+            "x": 0,
+            "y": 78,
+            "width": 2,
+            "height": 4
           }
         },
         {
@@ -9838,7 +10193,7 @@
                   }
                 },
                 "label": {
-                  "show": true
+                  "show": false
                 }
               },
               "frame": {
@@ -9851,9 +10206,9 @@
           },
           "position": {
             "x": 0,
-            "y": 24,
+            "y": 30,
             "width": 2,
-            "height": 3
+            "height": 4
           }
         },
         {
@@ -9935,7 +10290,7 @@
                   }
                 },
                 "label": {
-                  "show": true
+                  "show": false
                 }
               },
               "frame": {
@@ -9948,9 +10303,9 @@
           },
           "position": {
             "x": 2,
-            "y": 24,
+            "y": 30,
             "width": 2,
-            "height": 3
+            "height": 4
           }
         },
         {
@@ -10012,9 +10367,9 @@
           },
           "position": {
             "x": 4,
-            "y": 24,
+            "y": 30,
             "width": 2,
-            "height": 3
+            "height": 4
           }
         },
         {
@@ -10046,7 +10401,7 @@
           },
           "position": {
             "x": 0,
-            "y": 22,
+            "y": 28,
             "width": 2,
             "height": 2
           }
@@ -10062,7 +10417,7 @@
           },
           "position": {
             "x": 2,
-            "y": 22,
+            "y": 28,
             "width": 2,
             "height": 2
           }
@@ -10078,81 +10433,9 @@
           },
           "position": {
             "x": 4,
-            "y": 22,
+            "y": 28,
             "width": 2,
             "height": 2
-          }
-        },
-        {
-          "widget": {
-            "name": "cffb26f5",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "a54e94d2",
-                  "fields": [
-                    {
-                      "name": "sum(dbu_usage_total)",
-                      "expression": "SUM(`dbu_usage_total`)"
-                    },
-                    {
-                      "name": "cluster_id",
-                      "expression": "`cluster_id`"
-                    }
-                  ],
-                  "filters": [
-                    {
-                      "expression": "`rank` IN ('Top 10')"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "bar",
-              "encodings": {
-                "x": {
-                  "fieldName": "sum(dbu_usage_total)",
-                  "axis": {
-                    "title": "DBU",
-                    "hideTitle": true
-                  },
-                  "displayName": "DBU",
-                  "scale": {
-                    "type": "quantitative",
-                    "domain": {
-                      "min": 5000
-                    }
-                  }
-                },
-                "y": {
-                  "fieldName": "cluster_id",
-                  "displayName": "cluster_id",
-                  "scale": {
-                    "type": "categorical",
-                    "sort": {
-                      "by": "x-reversed"
-                    }
-                  }
-                },
-                "label": {
-                  "show": false
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "Top 10 clusters by Classic DBU (1)"
-              }
-            }
-          },
-          "position": {
-            "x": 2,
-            "y": 19,
-            "width": 2,
-            "height": 3
           }
         },
         {
@@ -10166,7 +10449,7 @@
           },
           "position": {
             "x": 0,
-            "y": 27,
+            "y": 34,
             "width": 6,
             "height": 1
           }
@@ -10176,15 +10459,15 @@
             "name": "aea88750",
             "multilineTextboxSpec": {
               "lines": [
-                "Placeholder"
+                "List of Jobs"
               ]
             }
           },
           "position": {
-            "x": 4,
+            "x": 2,
             "y": 19,
-            "width": 2,
-            "height": 3
+            "width": 4,
+            "height": 4
           }
         },
         {
@@ -10533,9 +10816,9 @@
             }
           },
           "position": {
-            "x": 1,
-            "y": 28,
-            "width": 5,
+            "x": 0,
+            "y": 36,
+            "width": 6,
             "height": 5
           }
         },
@@ -10890,9 +11173,9 @@
             }
           },
           "position": {
-            "x": 1,
-            "y": 33,
-            "width": 5,
+            "x": 0,
+            "y": 42,
+            "width": 6,
             "height": 5
           }
         },
@@ -10907,9 +11190,9 @@
           },
           "position": {
             "x": 0,
-            "y": 28,
-            "width": 1,
-            "height": 5
+            "y": 35,
+            "width": 6,
+            "height": 1
           }
         },
         {
@@ -10924,9 +11207,9 @@
           },
           "position": {
             "x": 0,
-            "y": 33,
-            "width": 1,
-            "height": 5
+            "y": 41,
+            "width": 6,
+            "height": 1
           }
         },
         {
@@ -10940,7 +11223,7 @@
           },
           "position": {
             "x": 0,
-            "y": 47,
+            "y": 56,
             "width": 6,
             "height": 1
           }
@@ -10956,7 +11239,7 @@
           },
           "position": {
             "x": 0,
-            "y": 38,
+            "y": 47,
             "width": 6,
             "height": 1
           }
@@ -11001,7 +11284,7 @@
           },
           "position": {
             "x": 0,
-            "y": 40,
+            "y": 49,
             "width": 3,
             "height": 2
           }
@@ -11017,7 +11300,7 @@
           },
           "position": {
             "x": 0,
-            "y": 39,
+            "y": 48,
             "width": 3,
             "height": 1
           }
@@ -11062,9 +11345,9 @@
           },
           "position": {
             "x": 3,
-            "y": 40,
-            "width": 3,
-            "height": 2
+            "y": 52,
+            "width": 2,
+            "height": 4
           }
         },
         {
@@ -11078,7 +11361,7 @@
           },
           "position": {
             "x": 3,
-            "y": 39,
+            "y": 51,
             "width": 3,
             "height": 1
           }
@@ -11124,10 +11407,10 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 42,
-            "width": 3,
-            "height": 2
+            "x": 5,
+            "y": 52,
+            "width": 1,
+            "height": 4
           }
         },
         {
@@ -11182,7 +11465,7 @@
           },
           "position": {
             "x": 0,
-            "y": 43,
+            "y": 52,
             "width": 3,
             "height": 4
           }
@@ -11198,7 +11481,7 @@
           },
           "position": {
             "x": 0,
-            "y": 42,
+            "y": 51,
             "width": 3,
             "height": 1
           }
@@ -11214,7 +11497,7 @@
           },
           "position": {
             "x": 3,
-            "y": 44,
+            "y": 48,
             "width": 3,
             "height": 1
           }
@@ -11253,15 +11536,1830 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "DBU Usage for Predictive Optimization(1)"
+                "title": "DBU Usage for DQ Monitoring(1)"
               }
             }
           },
           "position": {
             "x": 3,
-            "y": 45,
+            "y": 49,
             "width": 3,
             "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "6d9d265b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-03 - **Analyze the whole chain of execution**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 63,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "648f2c71",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-04 - **Prefer larger clusters**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 64,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "75b5718c",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-05 - Use native Spark operations"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 71,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "a7ea0c56",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder for links"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 72,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "ca3a1584",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-06 - **Use native platform engines**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 76,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f03beaf0",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-07 - **Understand your hardware and workload type**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 97,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "909a91f8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "photon_or_non_photon",
+                      "expression": "`photon_or_non_photon`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('INTERACTIVE')"
+                    },
+                    {
+                      "expression": "`classic_or_serverless` IN ('CLASSIC')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "photon_or_non_photon",
+                  "displayName": "Photon/Non-Photon",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "title": "Photon vs Non-Photon Usage for All-Purpose compute(1)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 83,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "ae8fac5c",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Photon can significantly reduce TCO and improve performance for certain workloads, however care must be taken to evaluate"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 77,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "b169b504",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Photon can signficantly improve performance but care must be taken in enabling them for all purpose notebook usage"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 82,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "786e11ad",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Using standard mode can significantly reduce the overall TCO of workloads"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 87,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f5b281cf",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "performance_target",
+                      "expression": "`performance_target`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('JOBS', 'DLT')"
+                    },
+                    {
+                      "expression": "`classic_or_serverless` IN ('SERVERLESS')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "performance_target",
+                  "displayName": "Mode",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "title": "Performance/Standard Mode for Serverless SDP and Jobs(1)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 88,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "1ea8cd1f",
+            "multilineTextboxSpec": {
+              "lines": [
+                "All BI tooling should always connect to DB SQL Serverless to unlock better TCO and Performance"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 92,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "6d211af3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "photon_or_non_photon",
+                      "expression": "`photon_or_non_photon`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('SQL')"
+                    },
+                    {
+                      "expression": "`classic_or_serverless` IN ('CLASSIC')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "photon_or_non_photon",
+                  "displayName": "Photon/Non-Photon",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "title": "Placeholder(1)",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 93,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "1a361da7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "performance_target",
+                      "expression": "`performance_target`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('DLT', 'JOBS')"
+                    },
+                    {
+                      "expression": "`classic_or_serverless` IN ('SERVERLESS')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "DBU"
+                },
+                "color": {
+                  "fieldName": "performance_target",
+                  "legend": {
+                    "hide": true
+                  },
+                  "displayName": "Mode",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": true,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      },
+                      {
+                        "value": false,
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "CLASSIC",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "SERVERLESS",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "frame": {
+                "title": "SDP and Lakeflow Jobs(1)",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Standard vs Performance Mode"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "fd4cfc97",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Performance mode can increase the performance significantly, but its gains must be deliberated with the TCO impact"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "9c9e5926",
+            "multilineTextboxSpec": {
+              "lines": [
+                "List of Jobs"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 24,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "e6f3f14e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder for list"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 78,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "fd43c5fe",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder for list"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 83,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "64cdcd94",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder for list"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 93,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "806e60cf",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder for list"
+              ]
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 88,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "e045e77f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a54e94d2",
+                  "fields": [
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "avg_cpu_Utilization",
+                      "expression": "`avg_cpu_Utilization`"
+                    },
+                    {
+                      "name": "dbu_usage_total",
+                      "expression": "`dbu_usage_total`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`rank` IN ('Top 10')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "cluster_id",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "avg_cpu_Utilization",
+                    "numberFormat": "0%",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 4,
+                    "title": "avg_cpu_Utilization",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "dbu_usage_total",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5,
+                    "title": "DBU",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "waf_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "waf_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dataset_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "dataset_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "runs_total",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 2,
+                  "title": "runs_total",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "cluster_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_node_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 7,
+                  "title": "worker_node_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_multi_worker",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 8,
+                  "title": "is_multi_worker",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "max_worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 9,
+                  "title": "max_worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 10,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "rank",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 11,
+                  "title": "rank",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "peak_cpu_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 12,
+                  "title": "peak_cpu_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0%",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "avg_memory_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 13,
+                  "title": "avg_memory_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "max_memory_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 14,
+                  "title": "max_memory_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 clusters by DBU (1)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 98,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "f9dce17c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a54e94d2",
+                  "fields": [
+                    {
+                      "name": "cluster_id",
+                      "expression": "`cluster_id`"
+                    },
+                    {
+                      "name": "avg_memory_utilization",
+                      "expression": "`avg_memory_utilization`"
+                    },
+                    {
+                      "name": "dbu_usage_total",
+                      "expression": "`dbu_usage_total`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`rank` IN ('Top 10')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "cluster_id",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "cluster_id",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "avg_memory_utilization",
+                    "numberFormat": "0%",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5,
+                    "title": "avg_memory_utilization",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "dbu_usage_total",
+                    "numberFormat": "0,0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 6,
+                    "title": "DBU",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "waf_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "waf_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dataset_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "dataset_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "runs_total",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 2,
+                  "title": "runs_total",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0%",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "avg_cpu_Utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 4,
+                  "title": "avg_cpu_Utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 7,
+                  "title": "cluster_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_node_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 8,
+                  "title": "worker_node_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_multi_worker",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 9,
+                  "title": "is_multi_worker",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "max_worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 10,
+                  "title": "max_worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 11,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "rank",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 12,
+                  "title": "rank",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "peak_cpu_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 13,
+                  "title": "peak_cpu_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "max_memory_utilization",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 14,
+                  "title": "max_memory_utilization",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 clusters by DBU (1)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 98,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "d1a01adb",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-02-08 - PE-02-16 **Design data layout for performance**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 111,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "1e57e4bc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    },
+                    {
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('FOREIGN')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "data_source_format",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Federated Tables(4)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 114,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "3fee9fd8",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Federated sources should eventually be onboarded as ingestion sources for better performance and lakehouse capabilities"
+              ]
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 112,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "368265d3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Managed tables reduce tech debt by unlocking automatic maintenance, indexing, anomaly detection and classification"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 112,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "21b2d81b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "16facbed",
+                  "fields": [
+                    {
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
+                    },
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`table_type` IN ('EXTERNAL', 'MANAGED')"
+                    },
+                    {
+                      "expression": "`data_source_format` IN ('DELTA', 'DELTA_UNIFORM_ICEBERG', 'DELTASHARING', 'ICEBERG')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(count_of_tables)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "table_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Managed vs External Tables(4)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 114,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "bbf66b10",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('DATA_QUALITY_MONITORING')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBU Usage for DQ Monitoring(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 119,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "4d8ce957",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('PREDICTIVE_OPTIMIZATION')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBU Usage for Predictive Optimization(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 119,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "533cce2b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "DQ Monitoring can help identify data quality issues proactively and find remediation"
+              ]
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 118,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "bf52a58d",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Predictive optimization automatically takes care of caching, compaction, skipping, clustering and join tuning"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 118,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "51462dd5",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-03-02 Take pre-warming of resources into account"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 121,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "d2c70f33",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Placeholder"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 122,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "b8286710",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-03-03 Identify bottlenecks. See [best practices](https://docs.databricks.com/gcp/en/data-engineering/observability-best-practices)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 126,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "a895fabd",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-04-01 Monitor query performanance. See [query profile](https://docs.databricks.com/aws/en/sql/user/queries/query-profile), [DB SQL Advisor](https://medium.com/dbsql-sme-engineering/the-new-databricks-sql-warehouse-advisor-dashboard-a89771bbee3e)"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 127,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "2336418b",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-04-02 Monitor streaming workloads. See [best practices](https://docs.databricks.com/aws/en/data-engineering/best-practices)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 128,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "02fa849e",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### PE-04-03 Monitor job performance. See [monitoring and observability](https://docs.databricks.com/aws/en/jobs/monitor) for Lakeflow Jobs."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 129,
+            "width": 6,
+            "height": 1
           }
         }
       ],
