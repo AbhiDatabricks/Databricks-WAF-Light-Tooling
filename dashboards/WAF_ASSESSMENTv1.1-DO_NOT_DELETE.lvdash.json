@@ -1226,10 +1226,16 @@
         "SELECT \n",
         "    --table_catalog AS cat_name,\n",
         "    --table_schema AS sch_name,\n",
-        "    data_source_format AS tables_format,\n",
+        "    case \n",
+        "        when data_source_format in ('DELTA' ,'DELTA_UNIFORM_ICEBERG','DELTASHARING') then 'Delta'\n",
+        "        when data_source_format = 'ICEBERG' then 'Iceberg'\n",
+        "        else 'Other' \n",
+        "        end AS tables_format,\n",
         "    count(data_source_format) AS no_of_tables\n",
         "    --table_type\n",
-        "    FROM system.information_schema.tables group by all order by no_of_tables desc;"
+        "    FROM system.information_schema.tables\n",
+        "    where table_schema not in ('information_schema') \n",
+        "    group by all order by no_of_tables desc;"
       ]
     },
     {
@@ -1240,9 +1246,25 @@
         "    table_type,\n",
         "    round(count(table_type)/(select count(*) from system.information_schema.tables) * 100) as percent_of_tables\n",
         "    FROM system.information_schema.tables\n",
+        "    where table_type in (\"MANAGED\", \"FOREIGN\")\n",
         "    group by ALL\n",
         "    having percent_of_tables > 0\n",
         "    order by percent_of_tables desc"
+      ]
+    },
+    {
+      "name": "4c66d137",
+      "displayName": "waf_CO-01-01_federated formats",
+      "queryLines": [
+        "SELECT \n",
+        "    --table_catalog AS cat_name,\n",
+        "    --table_schema AS sch_name,\n",
+        "   data_source_format AS table_format,\n",
+        "    count(data_source_format) AS no_of_tables\n",
+        "    --table_type\n",
+        "    FROM system.information_schema.tables\n",
+        "    where table_type =\"FOREIGN\" and data_source_format like \"%_FORMAT\"\n",
+        "     group by all order by no_of_tables desc;"
       ]
     },
     {
@@ -1276,6 +1298,26 @@
         "    INNER JOIN clusters t2 USING (workspace_id, cluster_id)\n",
         ")\n",
         "SELECT * FROM all_purpose_cluster_jobs LIMIT 10;"
+      ]
+    },
+    {
+      "name": "bffd704f",
+      "displayName": "waf_CO-01-02_job_vs_all_purpose",
+      "queryLines": [
+        "select billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage \n",
+        "where usage_date >= current_date() - interval 30 days \n",
+        "and billing_origin_product in (\"JOBS\", \"ALL_PURPOSE\")\n",
+        "group by billing_origin_product;"
+      ]
+    },
+    {
+      "name": "c0ddfef0",
+      "displayName": "waf_CO-01-02_job_classic_vs_serverless",
+      "queryLines": [
+        "select product_features.is_serverless, billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage \n",
+        "where usage_date >= current_date() - interval 30 days \n",
+        "and billing_origin_product in (\"JOBS\", \"DLT\")\n",
+        "group by 1,2;"
       ]
     },
     {
@@ -1384,61 +1426,183 @@
     },
     {
       "name": "31958c67",
-      "displayName": "waf_CO-01-08_cluster_utilization",
+      "displayName": "waf_CO-01-08_cluster_utilization_cpu",
       "queryLines": [
         "-- based on: https://community.databricks.com/t5/data-engineering/cpu-usage-and-idle-time-metrics-from-system-tables/td-p/116314\n",
         "WITH per_cluster_daily AS (\n",
         "  SELECT\n",
         "    cluster_id,\n",
-        "    DATE_TRUNC('DAY', start_time) AS day,\n",
-        "    AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_usage_percent, -- Average CPU usage as the sum of user and system CPU\n",
+        "    \n",
+        "    -- DATE_TRUNC('DAY', start_time) AS day,\n",
+        "    AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_usage_percent -- Average CPU usage as the sum of user and system CPU\n",
         "    --100 - AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_idle_percent,                      -- Average CPU idle time percentage\n",
-        "    AVG(mem_used_percent) AS avg_memory_usage_percent                   -- Average memory usage percentage\n",
+        "  --  , AVG(mem_used_percent) AS avg_memory_usage_percent                   -- Average memory usage percentage\n",
         "  FROM\n",
         "    system.compute.node_timeline\n",
         "  WHERE\n",
-        "    start_time >= CURRENT_DATE - INTERVAL 28 DAYS -- Limit data to the last 30 days (optional)\n",
+        "    start_time >= CURRENT_DATE - INTERVAL 30 DAYS -- Limit data to the last 30 days (optional)\n",
         "  GROUP BY\n",
-        "    cluster_id,\n",
-        "    DATE_TRUNC('DAY', start_time)\n",
+        "    cluster_id\n",
+        "    -- , DATE_TRUNC('DAY', start_time)\n",
         ")\n",
-        "SELECT\n",
-        "  percentile(avg_cpu_usage_percent, 0.75) as cpu_usage_percent_p75,\n",
-        "  percentile(avg_memory_usage_percent, 0.75) as memory_usage_percent_p75\n",
-        "FROM\n",
-        "  per_cluster_daily\n",
-        "  group by all;"
+        "select c.cluster_name, cd.* from \n",
+        "per_cluster_daily cd join system.compute.clusters c on cd.cluster_id = c.cluster_id\n",
+        "\n",
+        "-- SELECT\n",
+        "--   percentile(avg_cpu_usage_percent, 0.75) as cpu_usage_percent_p75,\n",
+        "--   percentile(avg_memory_usage_percent, 0.75) as memory_usage_percent_p75\n",
+        "-- FROM\n",
+        "--   per_cluster_daily\n",
+        "--   group by all;"
+      ]
+    },
+    {
+      "name": "7b6885de",
+      "displayName": "waf_CO-01-09_AP_photon",
+      "queryLines": [
+        "select ju.usage_metadata.cluster_id,\n",
+        "c.cluster_name,\n",
+        "ju.product_features.is_photon, \n",
+        "sum(ju.usage_quantity) as dbu \n",
+        "from system.billing.usage ju \n",
+        "join system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n",
+        "-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
+        "where ju.usage_date >= current_date() - interval 30 days \n",
+        "and ju.billing_origin_product in (\"ALL_PURPOSE\")\n",
+        "and ju.product_features.is_serverless = false\n",
+        "group by 1,2,3\n"
       ]
     },
     {
       "name": "951a00c5",
-      "displayName": "waf_CO-01-09_photon",
+      "displayName": "waf_CO-01-09_jobs_photon",
       "queryLines": [
-        "select 'Coming Soon...'  as message;\n"
+        "select ju.usage_metadata.job_id,\n",
+        "j.name,\n",
+        "ju.product_features.is_photon, \n",
+        "sum(ju.usage_quantity) as dbu \n",
+        "from system.billing.usage ju \n",
+        "join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
+        "where ju.usage_date >= current_date() - interval 30 days \n",
+        "and ju.billing_origin_product in (\"JOBS\")\n",
+        "and ju.product_features.is_serverless = false\n",
+        "group by 1,2,3\n"
+      ]
+    },
+    {
+      "name": "f2159309",
+      "displayName": "waf_CO-02-01_AP_auto_scaling",
+      "queryLines": [
+        "select workspace_id,cluster_id,cluster_name\n",
+        ", max_autoscale_workers\n",
+        ",case when max_autoscale_workers is null then \"Autoscaling Disabled\" else \"Autoscaling Enabled\" end as autoscaling_enabled\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"API\", \"UI\")\n"
+      ]
+    },
+    {
+      "name": "20d31cc7",
+      "displayName": "waf_CO-02-01_warehouse_autoscaling",
+      "queryLines": [
+        "SELECT\n",
+        "    warehouse_id,\n",
+        "    warehouse_name,\n",
+        "    warehouse_type,\n",
+        "    warehouse_size,\n",
+        "    min_clusters,\n",
+        "    max_clusters,\n",
+        "    case when max_clusters > min_clusters then 'Yes' else 'No' end as autoscaling_enabled\n",
+        "FROM\n",
+        "    system.compute.warehouses\n",
+        "QUALIFY\n",
+        "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
+        "    and delete_time is null\n",
+        "\n",
+        "\n",
+        "\n",
+        "\n"
       ]
     },
     {
       "name": "b54341e5",
-      "displayName": "waf_CO-02-01_auto_scaling",
+      "displayName": "waf_CO-02-01_jobs_auto_scaling",
       "queryLines": [
-        "with autoscaling_count as (select count(*) as autoscaling_count from system.compute.clusters where max_autoscale_workers is not null and delete_time is null),\n",
-        "total_clusters_count as (select count(*) as total_clusters_count from system.compute.clusters where delete_time is null)\n",
-        "select autoscaling_count.autoscaling_count * 100 / total_clusters_count.total_clusters_count as autoscaling_percent from total_clusters_count cross join autoscaling_count;"
+        "select workspace_id,cluster_id,cluster_name\n",
+        ", max_autoscale_workers\n",
+        ",case when max_autoscale_workers is null then \"No\" else \"Yes\" end as autoscaling_enabled\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"JOB\")\n",
+        "\n",
+        "\n",
+        "\n"
       ]
     },
     {
       "name": "d0192813",
-      "displayName": "waf_CO-02-02_auto_termination",
+      "displayName": "waf_CO-02-02_AP_auto_termination",
       "queryLines": [
-        "-- UI and API are All Purpose classic clusters.\n",
-        "select percentile(c.auto_termination_minutes, 0.75) as p_75_auto_termination_minutes, max(c.auto_termination_minutes) as max_auto_termination_minutes, count_if(c.auto_termination_minutes is null) as count_clusters_without_autoterminations, count_if(c.auto_termination_minutes is not null) as count_clusters_with_autoterminations, (count_clusters_without_autoterminations*100)/count(*) as percent_clusters_without_autoterminations from system.compute.clusters c where c.cluster_source in ('UI','API'/*Only UI and API are All Purpose classic clusters,'JOB'*/) and c.delete_time is null;\n"
+        "select workspace_id,cluster_id,cluster_name\n",
+        ", auto_termination_minutes\n",
+        ",case when auto_termination_minutes is null then \"No\" else \"Yes\" end as autotermination_enabled\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"API\", \"UI\")\n"
+      ]
+    },
+    {
+      "name": "8d9caaf0",
+      "displayName": "waf_CO-02-02_warehouse_auto_termination",
+      "queryLines": [
+        "SELECT\n",
+        "    warehouse_id,\n",
+        "    warehouse_name,\n",
+        "    warehouse_type,\n",
+        "    warehouse_size,\n",
+        "    case when auto_stop_minutes is not null then 'Yes' else 'No' end as autotermination_enabled\n",
+        "FROM\n",
+        "    system.compute.warehouses\n",
+        "QUALIFY\n",
+        "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
+        "    and delete_time is null\n",
+        "\n"
       ]
     },
     {
       "name": "cc24226f",
-      "displayName": "waf_CO-02-03_cluster_policies",
+      "displayName": "waf_CO-02-03_job_cluster_policy",
       "queryLines": [
-        "select 'Coming Soon...'  as message;"
+        "select workspace_id\n",
+        ",cluster_id\n",
+        ",cluster_name\n",
+        ",policy_id\n",
+        ",case when policy_id is null then \"No\" else \"Yes\" end as cluster_policy\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"JOB\")\n"
+      ]
+    },
+    {
+      "name": "c4bbec8a",
+      "displayName": "waf_CO-02-03_AP_policy",
+      "queryLines": [
+        "select workspace_id,cluster_id,cluster_name\n",
+        ",policy_id\n",
+        ",case when policy_id is null then \"No\" else \"Yes\" end as cluster_policy\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"API\", \"UI\")\n"
       ]
     },
     {
@@ -1463,40 +1627,29 @@
     },
     {
       "name": "bb77bb31",
-      "displayName": "waf_CO-03-02_tagging_compute",
+      "displayName": "waf_CO-03-02_clusters_tagging",
       "queryLines": [
-        "-- Enhancement: use CASE statement and segment by number of tags\n",
-        "select array_size(map_entries(tags)) as number_of_tags, count(*) as count \n",
-        "from system.compute.clusters \n",
-        "where tags.ResourceClass is null \n",
-        "and delete_time is null\n",
-        "group by number_of_tags\n",
-        "order by count desc, number_of_tags desc;"
+        "select workspace_id,cluster_id,cluster_name, cluster_source\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and array_size(map_entries(tags))  = 0\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"API\", \"UI\", \"JOB\")\n",
+        "\n"
       ]
     },
     {
       "name": "7abec3c3",
-      "displayName": "waf_CO-03-02_popular_tags",
+      "displayName": "waf_CO-03-02_warehouses_tagging",
       "queryLines": [
-        "with tag_counts as (\n",
-        "  select\n",
-        "    explode(map_keys(tags)) as tag,\n",
-        "    count(*) as count\n",
-        "  from\n",
-        "    system.compute.clusters\n",
-        "  group by\n",
-        "    1\n",
-        "),\n",
-        "cluster_count as (select count(*) as count from system.compute.clusters)\n",
-        "select\n",
-        "  tag_counts.tag,\n",
-        "  sum(tag_counts.count) / any_value(cluster_count.count) *100 as percent\n",
-        "from\n",
-        "  tag_counts cross join cluster_count\n",
-        "group by\n",
-        "  tag_counts.tag\n",
-        "order by\n",
-        "  percent desc;"
+        "select workspace_id,warehouse_id,warehouse_name\n",
+        "from system.compute.warehouses\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
+        "and array_size(map_entries(tags))  = 0\n",
+        "and delete_time is null \n",
+        "\n"
       ]
     },
     {
@@ -1524,14 +1677,37 @@
       "name": "d0a01e50",
       "displayName": "waf_CO-04-01_streaming_triggers",
       "queryLines": [
-        "select 'Coming Soon...'  as message;"
+        "select workspace_id, pipeline_id, name, pipeline_type, settings from system.lakeflow.pipelines\n",
+        "qualify \n",
+        "row_number() over (partition by workspace_id, pipeline_id order by change_time desc) = 1\n",
+        "and delete_time is null\n",
+        "and settings.continuous = \"true\""
       ]
     },
     {
       "name": "67073248",
-      "displayName": "waf_CO-04-02_spot_and_cost_optimized",
+      "displayName": "waf_CO-04-02_spot_AP",
       "queryLines": [
-        "select 'Coming Soon...'  as message;"
+        "select workspace_id, cluster_id, cluster_name,\n",
+        "case when aws_attributes is not null then aws_attributes.availability else azure_attributes.availability end as spot_placement\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"API\", \"UI\")\n"
+      ]
+    },
+    {
+      "name": "93059b06",
+      "displayName": "waf_CO-04-02_spot_job",
+      "queryLines": [
+        "select workspace_id, cluster_id, cluster_name,\n",
+        "case when aws_attributes is not null then aws_attributes.availability else azure_attributes.availability end as spot_placement\n",
+        "from system.compute.clusters\n",
+        "qualify\n",
+        "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
+        "and delete_time is null \n",
+        "and cluster_source in (\"JOB\")"
       ]
     },
     {
@@ -2464,6 +2640,126 @@
         "AND usage_metadata.endpoint_name is not null\n",
         "group by endpoint_name, billing_origin_product\n",
         "order by usage_dbus desc"
+      ]
+    },
+    {
+      "name": "4a8990a5",
+      "displayName": "waf_CO-01-01_vector_db",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "0614745b",
+      "displayName": "waf_CO-01-03_bi_tools_connection",
+      "queryLines": [
+        "select 'Coming Soon...'  as message;"
+      ]
+    },
+    {
+      "name": "cbef45da",
+      "displayName": "waf_CO-01-03_SQL_tier",
+      "queryLines": [
+        "select\n",
+        " case \n",
+        "    when product_features.is_serverless = true then 'SERVERLESS'\n",
+        "    else product_features.sql_tier\n",
+        "    end as Tier, sum(usage_quantity) as dbu from system.billing.usage where billing_origin_product in ('SQL') and usage_date >= current_date() - interval 30 days \n",
+        "group by 1;"
+      ]
+    },
+    {
+      "name": "e7e2af6d",
+      "displayName": "waf_CO-01-08_cluster_utilization_memory",
+      "queryLines": [
+        "-- based on: https://community.databricks.com/t5/data-engineering/cpu-usage-and-idle-time-metrics-from-system-tables/td-p/116314\n",
+        "WITH per_cluster_daily AS (\n",
+        "  SELECT\n",
+        "    cluster_id,\n",
+        "    \n",
+        "    -- DATE_TRUNC('DAY', start_time) AS day,\n",
+        "    -- AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_usage_percent -- Average CPU usage as the sum of user and system CPU\n",
+        "    --100 - AVG(cpu_user_percent + cpu_system_percent) AS avg_cpu_idle_percent,                      -- Average CPU idle time percentage\n",
+        "    AVG(mem_used_percent) AS avg_memory_usage_percent                   -- Average memory usage percentage\n",
+        "  FROM\n",
+        "    system.compute.node_timeline\n",
+        "  WHERE\n",
+        "    start_time >= CURRENT_DATE - INTERVAL 30 DAYS -- Limit data to the last 30 days (optional)\n",
+        "  GROUP BY\n",
+        "    cluster_id\n",
+        "    -- , DATE_TRUNC('DAY', start_time)\n",
+        ")\n",
+        "select c.cluster_name, cd.* from \n",
+        "per_cluster_daily cd join system.compute.clusters c on cd.cluster_id = c.cluster_id\n",
+        "\n",
+        "-- SELECT\n",
+        "--   percentile(avg_cpu_usage_percent, 0.75) as cpu_usage_percent_p75,\n",
+        "--   percentile(avg_memory_usage_percent, 0.75) as memory_usage_percent_p75\n",
+        "-- FROM\n",
+        "--   per_cluster_daily\n",
+        "--   group by all;"
+      ]
+    },
+    {
+      "name": "d706c80b",
+      "displayName": "waf_CO-01-08_warehouse_utilization",
+      "queryLines": [
+        "use catalog `system`;\n",
+        "\n",
+        "SELECT\n",
+        "   warehouse_id,\n",
+        "   SUM(TIMESTAMPDIFF(MINUTE, upscaled_time, downscaled_time)) / 60.0 AS upscaled_hours\n",
+        "FROM (\n",
+        "   SELECT\n",
+        "      upscaled.warehouse_id,\n",
+        "      upscaled.event_time AS upscaled_time,\n",
+        "      (\n",
+        "         SELECT\n",
+        "            MIN(downscaled.event_time)\n",
+        "         FROM\n",
+        "            compute.warehouse_events AS downscaled\n",
+        "         WHERE\n",
+        "            downscaled.warehouse_id = upscaled.warehouse_id\n",
+        "            AND (downscaled.event_type = 'SCALED_DOWN' OR downscaled.event_type = 'STOPPED')\n",
+        "            AND downscaled.event_time > upscaled.event_time\n",
+        "      ) AS downscaled_time\n",
+        "   FROM\n",
+        "      compute.warehouse_events AS upscaled\n",
+        "   WHERE\n",
+        "      upscaled.event_type = 'SCALED_UP'\n",
+        "      AND upscaled.cluster_count >= 2\n",
+        "      AND upscaled.event_time >= CURRENT_DATE - INTERVAL 30 DAYS\n",
+        ") AS warehouse_upscaled\n",
+        "WHERE\n",
+        "   downscaled_time IS NOT NULL\n",
+        "GROUP BY\n",
+        "   warehouse_id\n",
+        "ORDER BY\n",
+        "   upscaled_hours DESC"
+      ]
+    },
+    {
+      "name": "634f0653",
+      "displayName": "waf_CO-01-09_jobs_standard_perf_opt",
+      "queryLines": [
+        "select * from \n",
+        " system.billing.usage where billing_origin_product in ('JOBS', 'DLT')\n",
+        " and product_features.is_serverless = true\n",
+        "  and date_diff(day, usage_date, now()) <28\n",
+        "  limit 10\n"
+      ]
+    },
+    {
+      "name": "6a1510c5",
+      "displayName": "Untitled dataset",
+      "queryLines": [
+        "-- select product_features.is_serverless, billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage \n",
+        "-- where usage_date >= current_date() - interval 30 days \n",
+        "-- and billing_origin_product in (\"JOBS\", \"DLT\")\n",
+        "-- group by 1,2;\n",
+        "\n",
+        "\n",
+        "select distinct billing_origin_product from system.billing.usage"
       ]
     }
   ],
@@ -9838,6 +10134,7 @@
   "uiSettings": {
     "theme": {
       "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
-    }
+    },
+    "applyModeEnabled": false
   }
 }
