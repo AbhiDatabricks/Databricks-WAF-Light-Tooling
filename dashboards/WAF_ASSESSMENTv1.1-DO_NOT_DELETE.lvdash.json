@@ -21396,8 +21396,8 @@
                   "datasetName": "7784e89e",
                   "fields": [
                     {
-                      "name": "sum(completion_percent)",
-                      "expression": "SUM(`completion_percent`)"
+                      "name": "completion_percent",
+                      "expression": "`completion_percent`"
                     },
                     {
                       "name": "principle",
@@ -21412,7 +21412,7 @@
                       "expression": "`dataset_type` IN ('Summary')"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
@@ -21421,7 +21421,7 @@
               "widgetType": "bar",
               "encodings": {
                 "x": {
-                  "fieldName": "sum(completion_percent)",
+                  "fieldName": "completion_percent",
                   "displayName": "Sum of completion_percent",
                   "scale": {
                     "type": "quantitative"
@@ -21463,6 +21463,14 @@
                     {
                       "name": "current_percent",
                       "expression": "`current_percent`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`pillar` IN ('reliability')"
+                    },
+                    {
+                      "expression": "`rn` IN (1)"
                     }
                   ],
                   "disaggregated": true
@@ -25067,6 +25075,14 @@
                       "expression": "`prev_percent`"
                     }
                   ],
+                  "filters": [
+                    {
+                      "expression": "`pillar` IN ('reliability')"
+                    },
+                    {
+                      "expression": "`rn` IN (1)"
+                    }
+                  ],
                   "disaggregated": true
                 }
               }
@@ -25106,6 +25122,14 @@
                       "expression": "`percent_change`"
                     }
                   ],
+                  "filters": [
+                    {
+                      "expression": "`pillar` IN ('reliability')"
+                    },
+                    {
+                      "expression": "`rn` IN (1)"
+                    }
+                  ],
                   "disaggregated": true
                 }
               }
@@ -25133,45 +25157,6 @@
         },
         {
           "widget": {
-            "name": "2bc145db",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "a9730c2b",
-                  "fields": [
-                    {
-                      "name": "current_percent",
-                      "expression": "`current_percent`"
-                    }
-                  ],
-                  "disaggregated": true
-                }
-              }
-            ],
-            "spec": {
-              "version": 2,
-              "widgetType": "counter",
-              "encodings": {
-                "value": {
-                  "fieldName": "current_percent"
-                }
-              },
-              "frame": {
-                "title": "Completion Percentage - Current",
-                "showTitle": true
-              }
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 4,
-            "width": 2,
-            "height": 3
-          }
-        },
-        {
-          "widget": {
             "name": "6397cec2",
             "queries": [
               {
@@ -25179,6 +25164,14 @@
                 "query": {
                   "datasetName": "a9730c2b",
                   "fields": [
+                    {
+                      "name": "run_date",
+                      "expression": "`run_date`"
+                    },
+                    {
+                      "name": "current_percent",
+                      "expression": "`current_percent`"
+                    },
                     {
                       "name": "prev_percent",
                       "expression": "`prev_percent`"
@@ -25190,7 +25183,7 @@
                   ],
                   "filters": [
                     {
-                      "expression": "`run_id` IN (`run_id`) OR TRUE"
+                      "expression": "`pillar` IN ('reliability')"
                     }
                   ],
                   "disaggregated": true
@@ -25202,6 +25195,60 @@
               "widgetType": "table",
               "encodings": {
                 "columns": [
+                  {
+                    "fieldName": "run_date",
+                    "dateTimeFormat": "DD/MM/YYYY HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "run_date",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "current_percent",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "current_percent",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
                   {
                     "fieldName": "prev_percent",
                     "numberFormat": "0.00",
@@ -25319,58 +25366,6 @@
                   "preserveWhitespace": false
                 },
                 {
-                  "dateTimeFormat": "DD/MM/YYYY HH:mm:ss.SSS",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "run_date",
-                  "type": "datetime",
-                  "displayAs": "datetime",
-                  "order": 100001,
-                  "title": "run_date",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
-                  "numberFormat": "0.00",
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "current_percent",
-                  "type": "float",
-                  "displayAs": "number",
-                  "order": 100002,
-                  "title": "current_percent",
-                  "allowSearch": false,
-                  "alignContent": "right",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                },
-                {
                   "booleanValues": [
                     "false",
                     "true"
@@ -25394,6 +25389,32 @@
                   "highlightLinks": false,
                   "useMonospaceFont": false,
                   "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "rn",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100006,
+                  "title": "rn",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
                 }
               ],
               "allowHTMLByDefault": false,
@@ -25404,9 +25425,9 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 0,
             "y": 4,
-            "width": 2,
+            "width": 6,
             "height": 3
           }
         }
