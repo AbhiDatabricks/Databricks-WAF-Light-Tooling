@@ -35005,7 +35005,7 @@
         },
         {
           "widget": {
-            "name": "38b673f1",
+            "name": "waf-score-history",
             "queries": [
               {
                 "name": "main_query",
@@ -35236,7 +35236,11 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "WAF Performance Efficiency Score - History"
+              }
             }
           },
           "position": {
