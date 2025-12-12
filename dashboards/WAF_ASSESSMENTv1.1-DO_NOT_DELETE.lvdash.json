@@ -1594,7 +1594,6 @@
         "  join cluster_name cn on nt.cluster_id = cn.cluster_id\n",
         "  WHERE\n",
         "    nt.start_time >= CURRENT_DATE - INTERVAL 90 DAYS \n",
-
         "  group by 1,2\n",
         "  order by 3 desc;\n"
       ],
@@ -1818,7 +1817,7 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -1854,7 +1853,7 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -1889,7 +1888,7 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"JOB\")\n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -1922,7 +1921,7 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -1954,7 +1953,7 @@
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\", \"JOB\")\n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -1985,7 +1984,7 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -2035,8 +2034,7 @@
         "qualify \n",
         "row_number() over (partition by workspace_id, pipeline_id order by change_time desc) = 1\n",
         "and delete_time is null\n",
-        "and settings.continuous = \"true\"",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        "and settings.continuous = \"true\" AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -2068,7 +2066,7 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -2099,8 +2097,7 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "and cluster_source in (\"JOB\")",
-        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+        "and cluster_source in (\"JOB\") AND array_contains(:workspace_id,workspace_id)\n"
       ],
       "parameters": [
         {
@@ -6728,7 +6725,12 @@
           "widget": {
             "name": "24e2c544",
             "multilineTextboxSpec": {
-              "lines": [ "### CO-01-01 - Use performance optimized data formats ([Delta Lake](https://docs.databricks.com/aws/en/delta/))\n", "<p>&nbsp;</p>\n", "\n", "Those metrics are at a Unity Catalog metastore level, and cannot be filtered down at a workspace level." ]
+              "lines": [
+                "### CO-01-01 - Use performance optimized data formats ([Delta Lake](https://docs.databricks.com/aws/en/delta/))\n",
+                "<p>&nbsp;</p>\n",
+                "\n",
+                "Those metrics are at a Unity Catalog metastore level, and cannot be filtered down at a workspace level."
+              ]
             }
           },
           "position": {
