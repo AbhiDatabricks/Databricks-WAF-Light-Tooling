@@ -39,7 +39,8 @@
         "SELECT\n",
         "  COUNT(*) AS count_of_tables,\n",
         "  table_type,\n",
-        "  data_source_format\n",
+        "  data_source_format,\n",
+        "  CASE WHEN data_source_format NOT IN ('DELTA','ICEBERG') THEN 'OTHERS' ELSE data_source_format END AS data_lake_format\n",
         "\n",
         "FROM\n",
         "  system.information_schema.tables\n",
@@ -1162,54 +1163,6 @@
         "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
         "FROM waf_status;\n"
-      ]
-    },
-    {
-      "name": "a5da7a83",
-      "displayName": "waf_CO-01-01_table_formats",
-      "queryLines": [
-        "SELECT \n",
-        "    --table_catalog AS cat_name,\n",
-        "    --table_schema AS sch_name,\n",
-        "    case \n",
-        "        when data_source_format in ('DELTA' ,'DELTA_UNIFORM_ICEBERG','DELTASHARING') then 'Delta'\n",
-        "        when data_source_format = 'ICEBERG' then 'Iceberg'\n",
-        "        else 'Other' \n",
-        "        end AS tables_format,\n",
-        "    count(data_source_format) AS no_of_tables\n",
-        "    --table_type\n",
-        "    FROM system.information_schema.tables\n",
-        "    where table_schema not in ('information_schema') \n",
-        "    group by all order by no_of_tables desc;"
-      ]
-    },
-    {
-      "name": "c436a496",
-      "displayName": "waf_CO-01-01_managed_tables",
-      "queryLines": [
-        "SELECT \n",
-        "    table_type,\n",
-        "    round(count(table_type)/(select count(*) from system.information_schema.tables) * 100) as percent_of_tables\n",
-        "    FROM system.information_schema.tables\n",
-        "    where table_type in (\"MANAGED\", \"FOREIGN\")\n",
-        "    group by ALL\n",
-        "    having percent_of_tables > 0\n",
-        "    order by percent_of_tables desc"
-      ]
-    },
-    {
-      "name": "4c66d137",
-      "displayName": "waf_CO-01-01_federated formats",
-      "queryLines": [
-        "SELECT \n",
-        "    --table_catalog AS cat_name,\n",
-        "    --table_schema AS sch_name,\n",
-        "   data_source_format AS table_format,\n",
-        "    count(data_source_format) AS no_of_tables\n",
-        "    --table_type\n",
-        "    FROM system.information_schema.tables\n",
-        "    where table_type =\"FOREIGN\" and data_source_format like \"%_FORMAT\"\n",
-        "     group by all order by no_of_tables desc;"
       ]
     },
     {
@@ -3025,6 +2978,7 @@
         "  product_tier,\n",
         "  unique_id,\n",
         "  compute_id,\n",
+        "  cluster_source,\n",
         "  instance_pool_id,\n",
         "  instance_pool_present\n",
         "FROM PE_01 usage\n",
@@ -6752,15 +6706,15 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "a5da7a83",
+                  "datasetName": "16facbed",
                   "fields": [
                     {
-                      "name": "sum(no_of_tables)",
-                      "expression": "SUM(`no_of_tables`)"
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
                     },
                     {
-                      "name": "tables_format",
-                      "expression": "`tables_format`"
+                      "name": "data_lake_format",
+                      "expression": "`data_lake_format`"
                     }
                   ],
                   "disaggregated": false
@@ -6772,14 +6726,14 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(no_of_tables)",
+                  "fieldName": "sum(count_of_tables)",
                   "scale": {
                     "type": "quantitative"
                   },
                   "displayName": "Table formats"
                 },
                 "color": {
-                  "fieldName": "tables_format",
+                  "fieldName": "data_lake_format",
                   "legend": {
                     "hideTitle": true
                   },
@@ -6814,15 +6768,20 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "c436a496",
+                  "datasetName": "16facbed",
                   "fields": [
                     {
-                      "name": "sum(percent_of_tables)",
-                      "expression": "SUM(`percent_of_tables`)"
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
                     },
                     {
                       "name": "table_type",
                       "expression": "`table_type`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`data_lake_format` IN ('DELTA', 'ICEBERG')"
                     }
                   ],
                   "disaggregated": false
@@ -6834,7 +6793,7 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(percent_of_tables)",
+                  "fieldName": "sum(count_of_tables)",
                   "scale": {
                     "type": "quantitative"
                   },
@@ -6858,7 +6817,7 @@
                 "showDescription": false,
                 "description": "",
                 "showTitle": true,
-                "title": "Managed Lakehouse"
+                "title": "Managed Lakehouse (Delta and Iceberg)"
               }
             }
           },
@@ -7086,7 +7045,7 @@
           },
           "position": {
             "x": 0,
-            "y": 52,
+            "y": 51,
             "width": 6,
             "height": 6
           }
@@ -7102,7 +7061,7 @@
           },
           "position": {
             "x": 0,
-            "y": 58,
+            "y": 57,
             "width": 6,
             "height": 1
           }
@@ -7173,8 +7132,8 @@
           "position": {
             "x": 0,
             "y": 59,
-            "width": 3,
-            "height": 6
+            "width": 6,
+            "height": 4
           }
         },
         {
@@ -7188,7 +7147,7 @@
           },
           "position": {
             "x": 0,
-            "y": 77,
+            "y": 69,
             "width": 6,
             "height": 1
           }
@@ -7247,7 +7206,7 @@
           },
           "position": {
             "x": 0,
-            "y": 80,
+            "y": 72,
             "width": 6,
             "height": 6
           }
@@ -7265,7 +7224,7 @@
           },
           "position": {
             "x": 0,
-            "y": 78,
+            "y": 70,
             "width": 6,
             "height": 2
           }
@@ -7281,7 +7240,7 @@
           },
           "position": {
             "x": 0,
-            "y": 92,
+            "y": 84,
             "width": 6,
             "height": 1
           }
@@ -7347,7 +7306,7 @@
           },
           "position": {
             "x": 0,
-            "y": 93,
+            "y": 85,
             "width": 3,
             "height": 6
           }
@@ -7363,7 +7322,7 @@
           },
           "position": {
             "x": 0,
-            "y": 99,
+            "y": 91,
             "width": 6,
             "height": 1
           }
@@ -7385,7 +7344,7 @@
           },
           "position": {
             "x": 0,
-            "y": 114,
+            "y": 106,
             "width": 6,
             "height": 3
           }
@@ -7516,7 +7475,7 @@
           },
           "position": {
             "x": 0,
-            "y": 119,
+            "y": 111,
             "width": 6,
             "height": 5
           }
@@ -7587,7 +7546,7 @@
           },
           "position": {
             "x": 0,
-            "y": 125,
+            "y": 117,
             "width": 6,
             "height": 3
           }
@@ -7603,7 +7562,7 @@
           },
           "position": {
             "x": 0,
-            "y": 145,
+            "y": 137,
             "width": 6,
             "height": 1
           }
@@ -7661,7 +7620,7 @@
           },
           "position": {
             "x": 0,
-            "y": 173,
+            "y": 165,
             "width": 3,
             "height": 7
           }
@@ -7677,7 +7636,7 @@
           },
           "position": {
             "x": 0,
-            "y": 170,
+            "y": 162,
             "width": 6,
             "height": 1
           }
@@ -7747,7 +7706,7 @@
           },
           "position": {
             "x": 3,
-            "y": 194,
+            "y": 186,
             "width": 3,
             "height": 6
           }
@@ -7763,7 +7722,7 @@
           },
           "position": {
             "x": 0,
-            "y": 200,
+            "y": 192,
             "width": 6,
             "height": 1
           }
@@ -7779,7 +7738,7 @@
           },
           "position": {
             "x": 0,
-            "y": 221,
+            "y": 213,
             "width": 6,
             "height": 1
           }
@@ -7799,7 +7758,7 @@
           },
           "position": {
             "x": 0,
-            "y": 241,
+            "y": 233,
             "width": 6,
             "height": 2
           }
@@ -7826,7 +7785,7 @@
           },
           "position": {
             "x": 0,
-            "y": 249,
+            "y": 247,
             "width": 6,
             "height": 6
           }
@@ -7860,7 +7819,7 @@
           },
           "position": {
             "x": 0,
-            "y": 255,
+            "y": 263,
             "width": 6,
             "height": 6
           }
@@ -7876,7 +7835,7 @@
           },
           "position": {
             "x": 0,
-            "y": 261,
+            "y": 281,
             "width": 6,
             "height": 1
           }
@@ -7892,7 +7851,7 @@
           },
           "position": {
             "x": 0,
-            "y": 270,
+            "y": 282,
             "width": 6,
             "height": 1
           }
@@ -7904,20 +7863,20 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "4c66d137",
+                  "datasetName": "16facbed",
                   "fields": [
                     {
-                      "name": "sum(no_of_tables)",
-                      "expression": "SUM(`no_of_tables`)"
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
                     },
                     {
-                      "name": "table_format",
-                      "expression": "`table_format`"
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
                     }
                   ],
                   "filters": [
                     {
-                      "expression": "`table_format` IN (`table_format`) OR TRUE"
+                      "expression": "`table_type` IN ('FOREIGN')"
                     }
                   ],
                   "disaggregated": false
@@ -7929,14 +7888,14 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(no_of_tables)",
+                  "fieldName": "sum(count_of_tables)",
                   "scale": {
                     "type": "quantitative"
                   },
                   "displayName": "Number of tables"
                 },
                 "color": {
-                  "fieldName": "table_format",
+                  "fieldName": "data_source_format",
                   "scale": {
                     "type": "categorical"
                   }
@@ -8012,15 +7971,23 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "bffd704f",
+                  "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "sum(dbu)",
-                      "expression": "SUM(`dbu`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
                       "name": "billing_origin_product",
                       "expression": "`billing_origin_product`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('JOBS', 'INTERACTIVE')"
+                    },
+                    {
+                      "expression": "`classic_or_serverless` IN ('CLASSIC')"
                     }
                   ],
                   "disaggregated": false
@@ -8032,7 +7999,7 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(dbu)",
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
                   },
@@ -8052,7 +8019,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "All Purpose vs Job clusters - Last 90 days"
+                "title": "All Purpose vs Job clusters (Classic Compute)"
               }
             }
           },
@@ -8259,15 +8226,20 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "c0ddfef0",
+                  "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "sum(dbu)",
-                      "expression": "SUM(`dbu`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
-                      "name": "is_serverless",
-                      "expression": "`is_serverless`"
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('JOBS')"
                     }
                   ],
                   "disaggregated": false
@@ -8279,7 +8251,7 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(dbu)",
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
                   },
@@ -8288,7 +8260,7 @@
                   }
                 },
                 "color": {
-                  "fieldName": "is_serverless",
+                  "fieldName": "classic_or_serverless",
                   "legend": {
                     "title": "Serverless"
                   },
@@ -8339,7 +8311,7 @@
             "x": 0,
             "y": 50,
             "width": 6,
-            "height": 2
+            "height": 1
           }
         },
         {
@@ -8349,15 +8321,20 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "557d200d",
+                  "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "count(*)",
-                      "expression": "COUNT(`*`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
-                      "name": "warehouse_type",
-                      "expression": "`warehouse_type`"
+                      "name": "product_tier",
+                      "expression": "`product_tier`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('SQL')"
                     }
                   ],
                   "disaggregated": false
@@ -8369,20 +8346,22 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "count(*)",
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
                   },
                   "axis": {
                     "title": "Warehouse type"
-                  }
+                  },
+                  "displayName": "DBU"
                 },
                 "color": {
-                  "fieldName": "warehouse_type",
+                  "fieldName": "product_tier",
                   "legend": {
                     "title": "",
                     "hideTitle": true
                   },
+                  "displayName": "Warehouse Type",
                   "scale": {
                     "type": "categorical"
                   }
@@ -8396,9 +8375,9 @@
           },
           "position": {
             "x": 0,
-            "y": 65,
+            "y": 64,
             "width": 3,
-            "height": 6
+            "height": 5
           }
         },
         {
@@ -8406,15 +8385,15 @@
             "name": "90dcf258",
             "multilineTextboxSpec": {
               "lines": [
-                "1. All BI usage should be powered by serverless to unlock better TCO and Performanc"
+                "1. All BI usage should be powered by serverless to unlock better TCO and Performance"
               ]
             }
           },
           "position": {
-            "x": 3,
-            "y": 65,
-            "width": 3,
-            "height": 2
+            "x": 0,
+            "y": 63,
+            "width": 6,
+            "height": 1
           }
         },
         {
@@ -8427,171 +8406,10 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 59,
-            "width": 3,
-            "height": 2
-          }
-        },
-        {
-          "widget": {
-            "name": "warehouses-on-classic-or-pro",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "557d200d",
-                  "fields": [
-                    {
-                      "name": "warehouse_id",
-                      "expression": "`warehouse_id`"
-                    },
-                    {
-                      "name": "warehouse_name",
-                      "expression": "`warehouse_name`"
-                    },
-                    {
-                      "name": "warehouse_type",
-                      "expression": "`warehouse_type`"
-                    }
-                  ],
-                  "filters": [
-                    {
-                      "expression": "`warehouse_type` IS NULL OR `warehouse_type` NOT IN ('SERVERLESS')"
-                    }
-                  ],
-                  "disaggregated": true
-                }
-              }
-            ],
-            "spec": {
-              "version": 1,
-              "widgetType": "table",
-              "encodings": {
-                "columns": [
-                  {
-                    "fieldName": "warehouse_id",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 100000,
-                    "title": "warehouse_id",
-                    "allowSearch": false,
-                    "alignContent": "left",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false
-                  },
-                  {
-                    "fieldName": "warehouse_name",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 100001,
-                    "title": "warehouse_name",
-                    "allowSearch": false,
-                    "alignContent": "left",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false
-                  },
-                  {
-                    "fieldName": "warehouse_type",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 100002,
-                    "title": "warehouse_type",
-                    "allowSearch": false,
-                    "alignContent": "left",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false
-                  }
-                ]
-              },
-              "invisibleColumns": [
-                {
-                  "booleanValues": [
-                    "false",
-                    "true"
-                  ],
-                  "imageUrlTemplate": "{{ @ }}",
-                  "imageTitleTemplate": "{{ @ }}",
-                  "imageWidth": "",
-                  "imageHeight": "",
-                  "linkUrlTemplate": "{{ @ }}",
-                  "linkTextTemplate": "{{ @ }}",
-                  "linkTitleTemplate": "{{ @ }}",
-                  "linkOpenInNewTab": true,
-                  "name": "workspace_id",
-                  "type": "string",
-                  "displayAs": "string",
-                  "order": 100003,
-                  "title": "workspace_id",
-                  "allowSearch": false,
-                  "alignContent": "left",
-                  "allowHTML": false,
-                  "highlightLinks": false,
-                  "useMonospaceFont": false,
-                  "preserveWhitespace": false
-                }
-              ],
-              "allowHTMLByDefault": false,
-              "itemsPerPage": 25,
-              "paginationSize": "default",
-              "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "showTitle": true,
-                "title": "Warehouses on Classic or Pro"
-              }
-            }
-          },
-          "position": {
             "x": 0,
-            "y": 71,
+            "y": 58,
             "width": 6,
-            "height": 6
+            "height": 1
           }
         },
         {
@@ -8741,7 +8559,7 @@
           },
           "position": {
             "x": 0,
-            "y": 86,
+            "y": 78,
             "width": 6,
             "height": 6
           }
@@ -8753,15 +8571,20 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "c0ddfef0",
+                  "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "sum(dbu)",
-                      "expression": "SUM(`dbu`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
-                      "name": "is_serverless",
-                      "expression": "`is_serverless`"
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('JOBS')"
                     }
                   ],
                   "disaggregated": false
@@ -8773,7 +8596,7 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(dbu)",
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
                   },
@@ -8782,7 +8605,7 @@
                   }
                 },
                 "color": {
-                  "fieldName": "is_serverless",
+                  "fieldName": "classic_or_serverless",
                   "legend": {
                     "title": "Serverless"
                   },
@@ -8799,121 +8622,7 @@
           },
           "position": {
             "x": 0,
-            "y": 102,
-            "width": 3,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "bc5440c1",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "557d200d",
-                  "fields": [
-                    {
-                      "name": "count(*)",
-                      "expression": "COUNT(`*`)"
-                    },
-                    {
-                      "name": "warehouse_type",
-                      "expression": "`warehouse_type`"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "pie",
-              "encodings": {
-                "angle": {
-                  "fieldName": "count(*)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
-                  "axis": {
-                    "title": "Warehouse type"
-                  }
-                },
-                "color": {
-                  "fieldName": "warehouse_type",
-                  "legend": {
-                    "title": "",
-                    "hideTitle": true
-                  },
-                  "scale": {
-                    "type": "categorical"
-                  }
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "SQL warehouse sku"
-              }
-            }
-          },
-          "position": {
-            "x": 3,
-            "y": 102,
-            "width": 3,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "serverless-vs-classic-notebook-1",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "a36b2899",
-                  "fields": [
-                    {
-                      "name": "sum(dbu)",
-                      "expression": "SUM(`dbu`)"
-                    },
-                    {
-                      "name": "product",
-                      "expression": "`product`"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "pie",
-              "encodings": {
-                "angle": {
-                  "fieldName": "sum(dbu)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
-                  "axis": {
-                    "title": "DBU"
-                  }
-                },
-                "color": {
-                  "fieldName": "product",
-                  "scale": {
-                    "type": "categorical"
-                  }
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "Serverless vs Classic notebook"
-              }
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 108,
+            "y": 94,
             "width": 3,
             "height": 6
           }
@@ -8929,7 +8638,7 @@
           },
           "position": {
             "x": 0,
-            "y": 100,
+            "y": 92,
             "width": 3,
             "height": 2
           }
@@ -8945,7 +8654,7 @@
           },
           "position": {
             "x": 3,
-            "y": 100,
+            "y": 92,
             "width": 3,
             "height": 2
           }
@@ -8961,7 +8670,7 @@
           },
           "position": {
             "x": 3,
-            "y": 108,
+            "y": 100,
             "width": 3,
             "height": 2
           }
@@ -9092,7 +8801,7 @@
           },
           "position": {
             "x": 0,
-            "y": 128,
+            "y": 120,
             "width": 6,
             "height": 5
           }
@@ -9109,7 +8818,7 @@
           },
           "position": {
             "x": 0,
-            "y": 124,
+            "y": 116,
             "width": 6,
             "height": 1
           }
@@ -9126,7 +8835,7 @@
           },
           "position": {
             "x": 0,
-            "y": 117,
+            "y": 109,
             "width": 6,
             "height": 2
           }
@@ -9142,7 +8851,7 @@
           },
           "position": {
             "x": 0,
-            "y": 133,
+            "y": 125,
             "width": 6,
             "height": 1
           }
@@ -9213,7 +8922,7 @@
           },
           "position": {
             "x": 0,
-            "y": 134,
+            "y": 126,
             "width": 6,
             "height": 3
           }
@@ -9229,7 +8938,7 @@
           },
           "position": {
             "x": 0,
-            "y": 137,
+            "y": 129,
             "width": 6,
             "height": 1
           }
@@ -9300,7 +9009,7 @@
           },
           "position": {
             "x": 0,
-            "y": 142,
+            "y": 134,
             "width": 6,
             "height": 3
           }
@@ -9316,7 +9025,7 @@
           },
           "position": {
             "x": 0,
-            "y": 141,
+            "y": 133,
             "width": 6,
             "height": 1
           }
@@ -9387,7 +9096,7 @@
           },
           "position": {
             "x": 0,
-            "y": 138,
+            "y": 130,
             "width": 6,
             "height": 3
           }
@@ -9399,15 +9108,20 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "951a00c5",
+                  "datasetName": "7fbe58c5",
                   "fields": [
                     {
-                      "name": "sum(dbu)",
-                      "expression": "SUM(`dbu`)"
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
                     },
                     {
-                      "name": "is_photon",
-                      "expression": "`is_photon`"
+                      "name": "photon_or_non_photon",
+                      "expression": "`photon_or_non_photon`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('JOBS')"
                     }
                   ],
                   "disaggregated": false
@@ -9419,7 +9133,7 @@
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(dbu)",
+                  "fieldName": "sum(dbu_usage_total)",
                   "scale": {
                     "type": "quantitative"
                   },
@@ -9428,7 +9142,7 @@
                   }
                 },
                 "color": {
-                  "fieldName": "is_photon",
+                  "fieldName": "photon_or_non_photon",
                   "legend": {
                     "title": "Photon Enabled"
                   },
@@ -9445,65 +9159,7 @@
           },
           "position": {
             "x": 0,
-            "y": 146,
-            "width": 3,
-            "height": 6
-          }
-        },
-        {
-          "widget": {
-            "name": "all-purpose-photon-enabled-last-90-days",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "7b6885de",
-                  "fields": [
-                    {
-                      "name": "sum(dbu)",
-                      "expression": "SUM(`dbu`)"
-                    },
-                    {
-                      "name": "is_photon",
-                      "expression": "`is_photon`"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "pie",
-              "encodings": {
-                "angle": {
-                  "fieldName": "sum(dbu)",
-                  "scale": {
-                    "type": "quantitative"
-                  },
-                  "axis": {
-                    "title": "DBU"
-                  }
-                },
-                "color": {
-                  "fieldName": "is_photon",
-                  "legend": {
-                    "title": "Photon Enabled"
-                  },
-                  "scale": {
-                    "type": "categorical"
-                  }
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "All purpose with Photon enabled - last 90 days"
-              }
-            }
-          },
-          "position": {
-            "x": 3,
-            "y": 146,
+            "y": 138,
             "width": 3,
             "height": 6
           }
@@ -9664,7 +9320,7 @@
           },
           "position": {
             "x": 0,
-            "y": 152,
+            "y": 144,
             "width": 6,
             "height": 6
           }
@@ -9825,7 +9481,7 @@
           },
           "position": {
             "x": 0,
-            "y": 158,
+            "y": 150,
             "width": 6,
             "height": 6
           }
@@ -9891,7 +9547,7 @@
           },
           "position": {
             "x": 0,
-            "y": 164,
+            "y": 156,
             "width": 3,
             "height": 6
           }
@@ -9907,7 +9563,7 @@
           },
           "position": {
             "x": 3,
-            "y": 164,
+            "y": 156,
             "width": 3,
             "height": 2
           }
@@ -9965,7 +9621,7 @@
           },
           "position": {
             "x": 3,
-            "y": 173,
+            "y": 163,
             "width": 3,
             "height": 7
           }
@@ -9982,7 +9638,7 @@
           },
           "position": {
             "x": 0,
-            "y": 171,
+            "y": 163,
             "width": 3,
             "height": 2
           }
@@ -9999,7 +9655,7 @@
           },
           "position": {
             "x": 3,
-            "y": 171,
+            "y": 159,
             "width": 3,
             "height": 2
           }
@@ -10181,7 +9837,7 @@
           },
           "position": {
             "x": 0,
-            "y": 186,
+            "y": 178,
             "width": 6,
             "height": 6
           }
@@ -10363,7 +10019,7 @@
           },
           "position": {
             "x": 0,
-            "y": 180,
+            "y": 172,
             "width": 6,
             "height": 6
           }
@@ -10418,7 +10074,7 @@
           },
           "position": {
             "x": 0,
-            "y": 194,
+            "y": 186,
             "width": 3,
             "height": 6
           }
@@ -10434,7 +10090,7 @@
           },
           "position": {
             "x": 0,
-            "y": 192,
+            "y": 184,
             "width": 6,
             "height": 2
           }
@@ -10492,7 +10148,7 @@
           },
           "position": {
             "x": 0,
-            "y": 203,
+            "y": 195,
             "width": 3,
             "height": 6
           }
@@ -10509,7 +10165,7 @@
           },
           "position": {
             "x": 0,
-            "y": 201,
+            "y": 193,
             "width": 6,
             "height": 2
           }
@@ -10567,7 +10223,7 @@
           },
           "position": {
             "x": 3,
-            "y": 203,
+            "y": 195,
             "width": 3,
             "height": 6
           }
@@ -10754,7 +10410,7 @@
           },
           "position": {
             "x": 0,
-            "y": 209,
+            "y": 201,
             "width": 6,
             "height": 6
           }
@@ -10935,7 +10591,7 @@
           },
           "position": {
             "x": 0,
-            "y": 215,
+            "y": 207,
             "width": 6,
             "height": 6
           }
@@ -10993,7 +10649,7 @@
           },
           "position": {
             "x": 0,
-            "y": 223,
+            "y": 215,
             "width": 3,
             "height": 6
           }
@@ -11009,7 +10665,7 @@
           },
           "position": {
             "x": 0,
-            "y": 222,
+            "y": 214,
             "width": 6,
             "height": 1
           }
@@ -11067,7 +10723,7 @@
           },
           "position": {
             "x": 3,
-            "y": 223,
+            "y": 215,
             "width": 3,
             "height": 6
           }
@@ -11248,7 +10904,7 @@
           },
           "position": {
             "x": 0,
-            "y": 229,
+            "y": 221,
             "width": 6,
             "height": 6
           }
@@ -11434,7 +11090,7 @@
           },
           "position": {
             "x": 0,
-            "y": 235,
+            "y": 227,
             "width": 6,
             "height": 6
           }
@@ -11585,7 +11241,7 @@
           },
           "position": {
             "x": 0,
-            "y": 243,
+            "y": 235,
             "width": 6,
             "height": 6
           }
@@ -11711,7 +11367,7 @@
           },
           "position": {
             "x": 0,
-            "y": 249,
+            "y": 241,
             "width": 6,
             "height": 6
           }
@@ -11897,7 +11553,7 @@
           },
           "position": {
             "x": 0,
-            "y": 264,
+            "y": 255,
             "width": 6,
             "height": 6
           }
@@ -12053,7 +11709,7 @@
           },
           "position": {
             "x": 0,
-            "y": 273,
+            "y": 269,
             "width": 6,
             "height": 6
           }
@@ -12209,7 +11865,7 @@
           },
           "position": {
             "x": 0,
-            "y": 279,
+            "y": 275,
             "width": 6,
             "height": 6
           }
@@ -12225,7 +11881,7 @@
           },
           "position": {
             "x": 0,
-            "y": 262,
+            "y": 253,
             "width": 6,
             "height": 2
           }
@@ -12241,9 +11897,691 @@
           },
           "position": {
             "x": 0,
-            "y": 271,
+            "y": 261,
             "width": 6,
             "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "acbc639d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "compute_id",
+                      "expression": "`compute_id`"
+                    },
+                    {
+                      "name": "dbu_usage_total",
+                      "expression": "`dbu_usage_total`"
+                    },
+                    {
+                      "name": "product_tier",
+                      "expression": "`product_tier`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('SQL')"
+                    },
+                    {
+                      "expression": "`classic_or_serverless` IN ('CLASSIC')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "compute_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "Warehouse ID",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "dbu_usage_total",
+                    "numberFormat": "0,0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "decimal",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5,
+                    "title": "DBU",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "product_tier",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 9,
+                    "title": "Tier",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "waf_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "waf_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "dataset_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "dataset_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "billing_origin_product",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 3,
+                  "title": "billing_origin_product",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "runs_total",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 4,
+                  "title": "runs_total",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "classic_or_serverless",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "classic_or_serverless",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "photon_or_non_photon",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 7,
+                  "title": "photon_or_non_photon",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "performance_target",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 8,
+                  "title": "performance_target",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "unique_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 10,
+                  "title": "unique_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100003,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100004,
+                  "title": "worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100005,
+                  "title": "workspace_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "instance_pool_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100014,
+                  "title": "instance_pool_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "instance_pool_present",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100015,
+                  "title": "instance_pool_present",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_source",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100014,
+                  "title": "cluster_source",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "SQL Warehouses running on Classic or Pro(1)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 64,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "453ceef4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('INTERACTIVE')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Total DBU"
+                  }
+                },
+                "color": {
+                  "fieldName": "classic_or_serverless",
+                  "legend": {
+                    "title": "Serverless"
+                  },
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Serverless vs Classic notebook"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 100,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "576df52e",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "classic_or_serverless",
+                      "expression": "`classic_or_serverless`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('SQL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Total DBU"
+                  }
+                },
+                "color": {
+                  "fieldName": "classic_or_serverless",
+                  "legend": {
+                    "title": "Serverless"
+                  },
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "SQL warehouse"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 94,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "c43b8545",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7fbe58c5",
+                  "fields": [
+                    {
+                      "name": "sum(dbu_usage_total)",
+                      "expression": "SUM(`dbu_usage_total`)"
+                    },
+                    {
+                      "name": "photon_or_non_photon",
+                      "expression": "`photon_or_non_photon`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`billing_origin_product` IN ('INTERACTIVE')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(dbu_usage_total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "DBU"
+                  }
+                },
+                "color": {
+                  "fieldName": "photon_or_non_photon",
+                  "legend": {
+                    "title": "Photon Enabled"
+                  },
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "All purpose with Photon enabled - last 90 days"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 138,
+            "width": 3,
+            "height": 6
           }
         }
       ],
@@ -15904,7 +16242,8 @@
                   "fieldName": "sum(count_of_tables)",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "displayName": "Tables"
                 },
                 "color": {
                   "fieldName": "data_source_format",
@@ -19243,6 +19582,158 @@
                   "highlightLinks": false,
                   "useMonospaceFont": false,
                   "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100003,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100004,
+                  "title": "worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100005,
+                  "title": "workspace_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "instance_pool_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100014,
+                  "title": "instance_pool_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "instance_pool_present",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100015,
+                  "title": "instance_pool_present",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_source",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100014,
+                  "title": "cluster_source",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
                 }
               ],
               "allowHTMLByDefault": false,
@@ -19581,6 +20072,133 @@
                   "displayAs": "string",
                   "order": 100010,
                   "title": "compute_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100003,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100004,
+                  "title": "worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100005,
+                  "title": "workspace_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "instance_pool_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100014,
+                  "title": "instance_pool_id",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "instance_pool_present",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100015,
+                  "title": "instance_pool_present",
                   "allowSearch": false,
                   "alignContent": "left",
                   "allowHTML": false,
@@ -19975,6 +20593,83 @@
                   "displayAs": "string",
                   "order": 100012,
                   "title": "instance_pool_present",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "is_autoscaling",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100003,
+                  "title": "is_autoscaling",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "worker_count",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 100004,
+                  "title": "worker_count",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "workspace_id",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100005,
+                  "title": "workspace_id",
                   "allowSearch": false,
                   "alignContent": "left",
                   "allowHTML": false,
@@ -25385,7 +26080,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Filter L90 Days As of"
+                "title": "Filter L90 Days as of"
               }
             }
           },
