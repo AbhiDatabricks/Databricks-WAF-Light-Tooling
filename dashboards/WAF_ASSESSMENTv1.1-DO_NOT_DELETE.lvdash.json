@@ -1251,7 +1251,8 @@
         "    job_id,\n",
         "    EXPLODE(compute_ids) as cluster_id\n",
         "  FROM system.lakeflow.job_task_run_timeline\n",
-        "  WHERE period_start_time >= CURRENT_DATE() - INTERVAL 30 DAY\n",
+        "  WHERE period_start_time >= CURRENT_DATE() - INTERVAL 90 DAY\n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "  GROUP BY ALL\n",
         "),\n",
         "all_purpose_cluster_jobs AS (\n",
@@ -1263,7 +1264,25 @@
         "  FROM job_tasks_exploded t1\n",
         "    INNER JOIN clusters t2 USING (workspace_id, cluster_id)\n",
         ")\n",
-        "SELECT * FROM all_purpose_cluster_jobs LIMIT 10;"
+        "SELECT * FROM all_purpose_cluster_jobs;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1271,9 +1290,28 @@
       "displayName": "waf_CO-01-02_job_vs_all_purpose",
       "queryLines": [
         "select billing_origin_product , sum(usage_quantity) as dbu from system.billing.usage \n",
-        "where usage_date >= current_date() - interval 30 days \n",
+        "where usage_date >= current_date() - interval 90 days \n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "and billing_origin_product in (\"JOBS\", \"ALL_PURPOSE\")\n",
         "group by billing_origin_product;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1281,9 +1319,28 @@
       "displayName": "waf_CO-01-02_job_classic_vs_serverless",
       "queryLines": [
         "select product_features.is_serverless, billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage \n",
-        "where usage_date >= current_date() - interval 30 days \n",
+        "where usage_date >= current_date() - interval 90 days \n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "and billing_origin_product in (\"JOBS\", \"DLT\")\n",
         "group by 1,2;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1295,8 +1352,28 @@
         "-- docs: https://docs.databricks.com/aws/en/admin/system-tables/billing#billing-origin-product-reference\n",
         "select billing_origin_product\n",
         ", sum(usage_quantity) as dbu \n",
-        "from system.billing.usage where billing_origin_product in ('SQL','ALL_PURPOSE') and usage_date >= current_date() - interval 90 days \n",
+        "from system.billing.usage where billing_origin_product in ('SQL','ALL_PURPOSE')\n",
+        " and usage_date >= current_date() - interval 90 days \n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "group by billing_origin_product;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1325,7 +1402,26 @@
         "    system.compute.warehouses\n",
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "    and delete_time is null\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1342,8 +1438,27 @@
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
         "    and cluster_source not in('PIPELINE','PIPELINE_MAINTENANCE') \n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "    and not contains(dbr_version, 'custom') \n",
         "limit 100"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1372,7 +1487,26 @@
         "where \n",
         "billing_origin_product in (\"ALL_PURPOSE\", \"INTERACTIVE\")\n",
         "and usage_date >= current_date - interval 90 day\n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "group by 1\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1411,9 +1545,28 @@
         "  join cluster_name cn on nt.cluster_id = cn.cluster_id\n",
         "  WHERE\n",
         "    nt.start_time >= CURRENT_DATE - INTERVAL 90 DAYS \n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "  group by 1,2\n",
         "  order by 3 desc;\n",
         "\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1432,6 +1585,7 @@
         "  QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null)\n",
+        "    AND array_contains(:workspace_id,workspace_id)\n",
         "  select nt.cluster_id\n",
         "  , cn.cluster_name\n",
         "  -- , avg(nt.cpu_user_percent + nt.cpu_system_percent) AS `Avg CPU Utilization`\n",
@@ -1440,8 +1594,27 @@
         "  join cluster_name cn on nt.cluster_id = cn.cluster_id\n",
         "  WHERE\n",
         "    nt.start_time >= CURRENT_DATE - INTERVAL 90 DAYS \n",
+
         "  group by 1,2\n",
         "  order by 3 desc;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1456,9 +1629,28 @@
         "join system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n",
         "-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
         "where ju.usage_date >= current_date() - interval 90 days \n",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n",
         "and ju.billing_origin_product in (\"ALL_PURPOSE\")\n",
         "and ju.product_features.is_serverless = false\n",
         "group by 1,2,3\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1472,9 +1664,28 @@
         "from system.billing.usage ju \n",
         "join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
         "where ju.usage_date >= current_date() - interval 90 days \n",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n",
         "and ju.billing_origin_product in (\"JOBS\")\n",
         "and ju.product_features.is_serverless = false\n",
         "group by 1,2,3\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1495,7 +1706,26 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         "and cluster_source in (\"API\", \"UI\")\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1515,10 +1745,25 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        "\n",
-        "\n",
-        "\n",
-        "\n"
+        "    AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1533,9 +1778,25 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"JOB\")\n",
-        "\n",
-        "\n",
-        "\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1556,7 +1817,26 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "and cluster_source in (\"API\", \"UI\")\n"
+        "and cluster_source in (\"API\", \"UI\")\n",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1574,7 +1854,25 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        "\n"
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1590,7 +1888,26 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "and cluster_source in (\"JOB\")\n"
+        "and cluster_source in (\"JOB\")\n",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1604,7 +1921,26 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "and cluster_source in (\"API\", \"UI\")\n"
+        "and cluster_source in (\"API\", \"UI\")\n",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1618,7 +1954,25 @@
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\", \"JOB\")\n",
-        "\n"
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1631,7 +1985,25 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
-        "\n"
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1663,7 +2035,26 @@
         "qualify \n",
         "row_number() over (partition by workspace_id, pipeline_id order by change_time desc) = 1\n",
         "and delete_time is null\n",
-        "and settings.continuous = \"true\""
+        "and settings.continuous = \"true\"",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1676,7 +2067,26 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "and cluster_source in (\"API\", \"UI\")\n"
+        "and cluster_source in (\"API\", \"UI\")\n",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1689,7 +2099,26 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "and cluster_source in (\"JOB\")"
+        "and cluster_source in (\"JOB\")",
+        " AND array_contains(:workspace_id,ju.workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1444828305810485"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -6299,9 +6728,7 @@
           "widget": {
             "name": "24e2c544",
             "multilineTextboxSpec": {
-              "lines": [
-                "### CO-01-01 - Use performance optimized data formats ([Delta Lake](https://docs.databricks.com/aws/en/delta/))"
-              ]
+              "lines": [ "### CO-01-01 - Use performance optimized data formats ([Delta Lake](https://docs.databricks.com/aws/en/delta/))\n", "<p>&nbsp;</p>\n", "\n", "Those metrics are at a Unity Catalog metastore level, and cannot be filtered down at a workspace level." ]
             }
           },
           "position": {
@@ -7618,7 +8045,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "All Purpose vs Job clusters"
+                "title": "All Purpose vs Job clusters - Last 90 days"
               }
             }
           },
