@@ -2465,46 +2465,6 @@
         "group by endpoint_name, billing_origin_product\n",
         "order by usage_dbus desc"
       ]
-    },
-    {
-      "name": "cost_trend_ed7756b1",
-      "displayName": "Cost Trend (Last 30 Days)",
-      "query": "\nSELECT \n  DATE_TRUNC('day', usage_start_time) as date,\n  SUM(usage_quantity * list_price) as daily_cost,\n  workspace_id\nFROM system.billing.usage\nWHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY date, workspace_id\nORDER BY date DESC\n        "
-    },
-    {
-      "name": "expensive_jobs_fdfcdb52",
-      "displayName": "Top 10 Most Expensive Jobs",
-      "query": "\nSELECT \n  job_name,\n  SUM(usage_quantity * list_price) as total_cost,\n  COUNT(*) as run_count,\n  AVG(usage_quantity * list_price) as avg_cost_per_run\nFROM system.billing.usage\nWHERE usage_start_time >= CURRENT_DATE - INTERVAL '7' DAY\n  AND usage_type = 'JOBS'\nGROUP BY job_name\nORDER BY total_cost DESC\nLIMIT 10\n        "
-    },
-    {
-      "name": "storage_growth_69c43f86",
-      "displayName": "Storage Growth Trend",
-      "query": "\nSELECT \n  DATE_TRUNC('day', usage_start_time) as date,\n  SUM(usage_quantity) as total_storage_gb,\n  workspace_id\nFROM system.billing.usage\nWHERE usage_type LIKE '%STORAGE%'\n  AND usage_start_time >= CURRENT_DATE - INTERVAL '90' DAY\nGROUP BY date, workspace_id\nORDER BY date DESC\n        "
-    },
-    {
-      "name": "failed_jobs_0d067a04",
-      "displayName": "Job Success vs Failure Rate",
-      "query": "\nSELECT \n  CASE \n    WHEN state = 'SUCCESS' THEN 'Success'\n    WHEN state IN ('FAILED', 'TIMEDOUT', 'CANCELED') THEN 'Failed'\n    ELSE 'Other'\n  END as status,\n  COUNT(*) as count\nFROM system.compute.clusters c\nWHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '7' DAY\nGROUP BY status\n        "
-    },
-    {
-      "name": "uc_by_schema_e6542926",
-      "displayName": "Unity Catalog Tables by Schema",
-      "query": "\nSELECT \n  table_schema,\n  COUNT(*) as table_count,\n  SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END) as managed_tables,\n  SUM(CASE WHEN table_type = 'EXTERNAL' THEN 1 ELSE 0 END) as external_tables\nFROM system.information_schema.tables\nWHERE table_catalog != 'hive_metastore'\nGROUP BY table_schema\nORDER BY table_count DESC\nLIMIT 20\n        "
-    },
-    {
-      "name": "cluster_util_562cf22d",
-      "displayName": "Cluster Utilization by Type",
-      "query": "\nSELECT \n  cluster_type,\n  AVG(DATEDIFF(SECOND, start_time, end_time) / 3600.0) as avg_runtime_hours,\n  COUNT(*) as cluster_count\nFROM system.compute.clusters\nWHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '7' DAY\nGROUP BY cluster_type\n        "
-    },
-    {
-      "name": "access_audit_8546fa58",
-      "displayName": "Recent Data Access Patterns",
-      "query": "\nSELECT \n  user_identity.email as user_email,\n  COUNT(DISTINCT request_params.table_full_name) as tables_accessed,\n  COUNT(*) as access_count,\n  MAX(event_time) as last_access\nFROM system.access.audit\nWHERE event_date >= CURRENT_DATE - INTERVAL '7' DAY\n  AND action_name = 'getTable'\nGROUP BY user_email\nORDER BY access_count DESC\nLIMIT 50\n        "
-    },
-    {
-      "name": "photon_rate_572607e3",
-      "displayName": "Photon Adoption Rate",
-      "query": "\nSELECT \n  CASE WHEN photon_enabled = true THEN 'Photon Enabled' ELSE 'Standard' END as cluster_type,\n  COUNT(*) as count,\n  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage\nFROM system.compute.clusters\nWHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\nGROUP BY photon_enabled\n        "
     }
   ],
   "pages": [
@@ -2583,271 +2543,6 @@
             "y": 0,
             "width": 6,
             "height": 2
-          }
-        },
-        {
-          "widget": {
-            "name": "0e586e1f",
-            "queries": [
-              {
-                "name": "query_83e7aeee",
-                "query": {
-                  "datasetName": "cost_trend_ed7756b1",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "line",
-              "encodings": {
-                "x": {
-                  "fieldName": "date",
-                  "displayName": "Date"
-                },
-                "y": [
-                  {
-                    "fieldName": "value",
-                    "displayName": "Value"
-                  }
-                ]
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\ud83d\udcb0 Daily Cost Trend (Last 30 Days)",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 1,
-            "z": 0,
-            "width": 6,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
-            "name": "7c4a060f",
-            "queries": [
-              {
-                "name": "query_04ef48fe",
-                "query": {
-                  "datasetName": "expensive_jobs_fdfcdb52",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "bar",
-              "encodings": {
-                "x": {
-                  "fieldName": "category",
-                  "displayName": "Category"
-                },
-                "y": [
-                  {
-                    "fieldName": "value",
-                    "displayName": "Value"
-                  }
-                ]
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\ud83d\udd25 Top 10 Most Expensive Jobs (Last 7 Days)",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 6,
-            "y": 1,
-            "z": 0,
-            "width": 6,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
-            "name": "067fb0fc",
-            "queries": [
-              {
-                "name": "query_2e28cde6",
-                "query": {
-                  "datasetName": "storage_growth_69c43f86",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "line",
-              "encodings": {
-                "x": {
-                  "fieldName": "date",
-                  "displayName": "Date"
-                },
-                "y": [
-                  {
-                    "fieldName": "value",
-                    "displayName": "Value"
-                  }
-                ]
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\ud83d\udce6 Storage Growth Trend (Last 90 Days)",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 5,
-            "z": 0,
-            "width": 6,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
-            "name": "89e9353b",
-            "queries": [
-              {
-                "name": "query_2d314531",
-                "query": {
-                  "datasetName": "photon_rate_572607e3",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "pie",
-              "encodings": {
-                "label": {
-                  "fieldName": "category",
-                  "displayName": "Category"
-                },
-                "value": {
-                  "fieldName": "value",
-                  "displayName": "Value"
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\u26a1 Photon Adoption Rate",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 6,
-            "y": 5,
-            "z": 0,
-            "width": 3,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
-            "name": "8569bf53",
-            "queries": [
-              {
-                "name": "query_6a4cd9ba",
-                "query": {
-                  "datasetName": "uc_by_schema_e6542926",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "table",
-              "encodings": {
-                "columns": []
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\ud83d\udd10 Unity Catalog Adoption by Schema",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 9,
-            "y": 5,
-            "z": 0,
-            "width": 3,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
-            "name": "4c1d7488",
-            "queries": [
-              {
-                "name": "query_cc6a31ec",
-                "query": {
-                  "datasetName": "failed_jobs_0d067a04",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "pie",
-              "encodings": {
-                "label": {
-                  "fieldName": "category",
-                  "displayName": "Category"
-                },
-                "value": {
-                  "fieldName": "value",
-                  "displayName": "Value"
-                }
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\u2705 Job Success Rate",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 0,
-            "y": 9,
-            "z": 0,
-            "width": 4,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
-            "name": "c0eed612",
-            "queries": [
-              {
-                "name": "query_fcbf63d0",
-                "query": {
-                  "datasetName": "access_audit_8546fa58",
-                  "fields": []
-                }
-              }
-            ],
-            "spec": {
-              "widgetType": "table",
-              "encodings": {
-                "columns": []
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "\ud83d\udd0d Recent Data Access Patterns (Last 7 Days)",
-                "showDescription": false
-              }
-            }
-          },
-          "position": {
-            "x": 4,
-            "y": 9,
-            "z": 0,
-            "width": 8,
-            "height": 4
           }
         }
       ],
@@ -3745,9 +3440,7 @@
               },
               "frame": {
                 "showDescription": true,
-                "description": "Objects with captured lineage information",
-                "title": "Comparison",
-                "showTitle": true
+                "description": "Objects with captured lineage information"
               },
               "mark": {
                 "layout": "group"
@@ -4214,10 +3907,6 @@
                   },
                   "displayName": "data_source_format"
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
@@ -4955,8 +4644,7 @@
               "condensed": true,
               "withRowNumber": true,
               "frame": {
-                "showTitle": true,
-                "title": "Details"
+                "showTitle": false
               }
             }
           },
@@ -5370,8 +5058,7 @@
                 }
               },
               "frame": {
-                "showTitle": true,
-                "title": "Distribution"
+                "showTitle": false
               }
             }
           },
@@ -5428,10 +5115,6 @@
                 "label": {
                   "show": true
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
@@ -5788,11 +5471,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -5845,10 +5524,6 @@
                 "label": {
                   "show": true
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
@@ -6053,11 +5728,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -6255,11 +5926,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -6365,11 +6032,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -6475,11 +6138,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -6870,11 +6529,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -6978,11 +6633,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7075,10 +6726,6 @@
                   },
                   "displayName": "Number of usage table reads"
                 }
-              },
-              "frame": {
-                "title": "Trend",
-                "showTitle": true
               }
             }
           },
@@ -7198,10 +6845,6 @@
                 "label": {
                   "show": false
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
@@ -7301,11 +6944,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7415,11 +7054,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7527,11 +7162,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7639,11 +7270,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7749,11 +7376,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7859,11 +7482,7 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false,
-              "frame": {
-                "title": "Details",
-                "showTitle": true
-              }
+              "withRowNumber": false
             }
           },
           "position": {
@@ -7916,10 +7535,6 @@
                 "label": {
                   "show": false
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
@@ -9345,10 +8960,6 @@
                 "label": {
                   "show": true
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
