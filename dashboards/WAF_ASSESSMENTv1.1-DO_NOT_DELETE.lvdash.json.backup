@@ -5,24 +5,21 @@
       "displayName": "Count of Tables",
       "queryLines": [
         "SELECT COUNT(*) FROM system.information_schema.tables;"
-      ],
-      "description": "**What it measures:** Total tables across all catalogs\n\n**Why it matters:** Baseline for data asset inventory\n\n**Action:** Review organization, implement naming conventions\n\n\ud83d\udcda **Best Practice:** [Unity Catalog Best Practices](https://docs.databricks.com/aws/en/data-governance/unity-catalog/best-practices)"
+      ]
     },
     {
       "name": "f5bf425c",
       "displayName": "Count of Volumes",
       "queryLines": [
         "SELECT COUNT(*) FROM system.information_schema.volumes;"
-      ],
-      "description": "**What it measures:** Total UC volumes for file storage\n\n**Why it matters:** Governance over unstructured data\n\n**Action:** Migrate DBFS to volumes, apply access controls\n\n\ud83d\udcda **Best Practice:** [Volume Best Practices](https://docs.databricks.com/aws/en/data-governance/unity-catalog/volumes)"
+      ]
     },
     {
       "name": "5fdcd556",
       "displayName": "Count of Functions",
       "queryLines": [
         "SELECT COUNT(*) FROM system.information_schema.routines;"
-      ],
-      "description": "**What it measures:** Registered UDFs in Unity Catalog\n\n**Why it matters:** Code reuse and standardization\n\n**Action:** Centralize common logic, version functions\n\n\ud83d\udcda **Best Practice:** [UDF Best Practices](https://docs.databricks.com/aws/en/udf/index.html)"
+      ]
     },
     {
       "name": "a92ace17",
@@ -81,8 +78,7 @@
             }
           }
         }
-      ],
-      "description": "**What it measures:** Tables with ZERO access in date range\n\n**SQL Logic:** LEFT JOIN tables with lineage events, filter NULLs\n\n**Why it matters:** Storage costs + governance overhead\n\n**Actions:**\n- \ud83d\udd25 Investigate tables unused 30+ days\n- Archive or DELETE unused tables\n- Set retention policies\n- Validate with data owners\n\n\ud83d\udcb0 **Cost Impact:** Unused tables incur ongoing storage costs\n\n\ud83d\udcda **Best Practice:** [Cost Optimization](https://docs.databricks.com/discover/pages/optimize-data-workloads-guide)"
+      ]
     },
     {
       "name": "55e66413",
@@ -128,8 +124,7 @@
             }
           }
         }
-      ],
-      "description": "**What it measures:** Tables accessed in date range\n\n**Why it matters:** Prioritize optimization on high-usage tables\n\n**Actions:**\n- Run OPTIMIZE on hot tables\n- Enable Liquid Clustering\n- Implement Delta caching\n- Monitor query performance\n\n\ud83d\udcda **Best Practice:** [Table Optimization](https://docs.databricks.com/aws/en/delta/optimize.html)"
+      ]
     },
     {
       "name": "90d7e6f1",
@@ -177,8 +172,7 @@
             }
           }
         }
-      ],
-      "description": "**What it measures:** Distinct users with read/write activity\n\n**Why it matters:** Platform adoption indicator\n\n**Actions:**\n- Enable SSO/SCIM\n- Create user groups\n- Monitor inactive users\n- Provide training\n\n\ud83d\udcda **Best Practice:** [User Management](https://docs.databricks.com/aws/en/admin/users-groups/index.html)"
+      ]
     },
     {
       "name": "628c2773",
@@ -191,8 +185,7 @@
         "WHERE \n",
         "    grantee = 'account users' \n",
         "    AND privilege_type = 'SELECT';"
-      ],
-      "description": "**What it measures:** Tables with SELECT granted to 'account users'\n\n**SQL Logic:** Queries table_privileges for grantee='account users'\n\n**Why it matters:** \ud83d\udea8 SECURITY RISK - data exposed to all users\n\n**URGENT Actions:**\n- \ud83d\udd25 Review ALL unsecured tables\n- REVOKE broad access\n- Grant to specific groups only\n- Implement data classification\n- Apply row/column security\n\n**Example Fix:**\n```sql\nREVOKE SELECT ON TABLE catalog.schema.table \nFROM `account users`;\n\nGRANT SELECT ON TABLE catalog.schema.table \nTO `data_analysts`;\n```\n\n\ud83d\udcda **Best Practice:** [Security Best Practices](https://www.databricks.com/sites/default/files/2024-08/azure-databricks-security-best-practices-threat-model.pdf)"
+      ]
     },
     {
       "name": "1f951287",
@@ -212,8 +205,7 @@
         "    FROM \n",
         "        system.information_schema.row_filters\n",
         ") AS combined;\n"
-      ],
-      "description": "**What it measures:** Tables with column masks or row filters\n\n**SQL Logic:** UNION of column_masks and row_filters views\n\n**Why it matters:** Fine-grained access control = mature governance\n\n**Actions:**\n- Identify more PII columns\n- Apply column masks (hash/redact)\n- Implement row filters by dept/region\n- Document masking logic\n\n\ud83d\udcda **Best Practice:** [Column Masking](https://docs.databricks.com/aws/en/data-governance/unity-catalog/column-masks.html)"
+      ]
     },
     {
       "name": "913b3827",
