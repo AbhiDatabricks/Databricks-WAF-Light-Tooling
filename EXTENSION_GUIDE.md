@@ -13,8 +13,7 @@
 2. [Extension Options](#extension-options)
 3. [Real-World Integration Example](#real-world-integration-example)
 4. [Technical Architecture](#technical-architecture)
-5. [Implementation Roadmap](#implementation-roadmap)
-6. [Getting Started](#getting-started)
+5. [Getting Started](#getting-started)
 
 ---
 
@@ -250,40 +249,6 @@ The WAF Assessment Tool (FEIP-642) is being integrated with **LakeForge (FEIP-22
 
 ---
 
-## 🛠️ Implementation Roadmap
-
-### Phase 1: Foundation (Week 1)
-- Extract SQL queries from dashboard into reusable Python functions
-- Create query library module (`waf_core/queries.py`)
-- Test query functions return correct data structure
-
-### Phase 2: REST API (Week 2)
-- Build FastAPI service with core endpoints
-- Implement authentication (Databricks tokens)
-- Deploy API service
-- Test all endpoints
-
-### Phase 3: MCP Service (Week 2-3)
-- Implement MCP server with 5+ tools
-- Connect to query library
-- Test with Claude Desktop or Cursor
-- Deploy MCP server
-
-### Phase 4: WAF Recommendation Agent (Week 3-4)
-- Set up LLM framework (LangChain with Databricks Foundation Model)
-- Build Databricks docs retriever (using Vector Search)
-- Create recommendation engine
-- Build chat interface (Streamlit + REST API)
-- Deploy agent
-
-### Phase 5: Context Provider (Week 4) - Optional
-- Design context JSON schema
-- Implement context generation function
-- Add REST API endpoint (`/api/v1/context`)
-- Document integration for external agents
-
----
-
 ## 🚀 Getting Started
 
 ### For Developers
@@ -296,8 +261,8 @@ The WAF Assessment Tool (FEIP-642) is being integrated with **LakeForge (FEIP-22
 **Quick Start:**
 1. Clone the repository
 2. Review the extension documentation
-3. Start with Phase 1 (Query Library extraction)
-4. Follow the implementation roadmap
+3. Explore the extension options
+4. Reach out via GitHub Issues for specific integration needs
 
 ### For Integrators
 
@@ -322,17 +287,6 @@ The WAF Assessment Tool (FEIP-642) is being integrated with **LakeForge (FEIP-22
    - Wait for agent deployment (planned)
    - Use chat interface in Streamlit app
    - Or call `/api/v1/chat` endpoint
-
----
-
-## 📊 Extension Priority Matrix
-
-| Extension | Priority | Effort | Impact | Use Case Fit |
-|-----------|----------|--------|--------|--------------|
-| **REST API** | ⭐⭐⭐ High | Medium | High | CI/CD, Monitoring, Automation |
-| **MCP Service** | ⭐⭐⭐ High | Medium | High | AI Integration, Natural Language |
-| **WAF Recommendation Agent** | ⭐⭐⭐ High | Medium | High | Conversational WAF Assistance |
-| **AI Agent Context Provider** | ⭐⭐⭐ High | Medium | High | **Proven: LakeForge Integration** |
 
 ---
 
@@ -363,9 +317,8 @@ All extensions will support:
 If you're interested in extending or integrating with the WAF Assessment Tool:
 
 1. **Review this guide** to understand available options
-2. **Check the implementation roadmap** for timeline
-3. **Reach out** via GitHub Issues for specific integration needs
-4. **Contribute** by implementing extensions and submitting PRs
+2. **Reach out** via GitHub Issues for specific integration needs
+3. **Contribute** by implementing extensions and submitting PRs
 
 ---
 
