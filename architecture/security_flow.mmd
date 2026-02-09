@@ -1,0 +1,24 @@
+graph LR
+    USER[User] --> AUTH[Databricks Authentication]
+    AUTH --> PERM[Permission Check]
+    
+    PERM -->|Has Access| APP[App Access]
+    PERM -->|No Access| DENY[Access Denied]
+    
+    APP --> DASH[Dashboard Access]
+    DASH --> SQL[SQL Warehouse Access]
+    SQL --> ST[System Tables Access]
+    
+    ST -->|Read Only| DATA[Data Returned]
+    DATA --> DASH
+    DASH --> USER
+    
+    subgraph "Security Layers"
+        CSP[Content Security Policy<br/>frame-ancestors<br/>*.databricksapps.com]
+        EMBED[Embed Credentials<br/>Embedded in Dashboard]
+        UC[Unity Catalog<br/>Table Permissions]
+    end
+    
+    APP --> CSP
+    DASH --> EMBED
+    ST --> UC

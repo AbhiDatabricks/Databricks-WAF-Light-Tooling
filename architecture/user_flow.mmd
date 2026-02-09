@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant U as 👤 User
+    participant APP as 🚀 Databricks App
+    participant DASH as 📊 Dashboard
+    participant SQL as SQL Warehouse
+    participant ST as System Tables
+    participant GUIDE as WAF Guide Sidebar
+    
+    U->>APP: 1. Opens App URL
+    APP->>U: 2. Displays Streamlit UI
+    APP->>GUIDE: 3. Loads WAF Guide Sidebar
+    
+    U->>GUIDE: 4. Selects Pillar (e.g., Reliability)
+    GUIDE->>U: 5. Shows Pillar Overview<br/>(Score Calculation Method)
+    
+    U->>GUIDE: 6. Selects Metric (e.g., R-01-01)
+    GUIDE->>U: 7. Shows Detailed Info:<br/>- Calculation Formula<br/>- Threshold<br/>- Actions if Low
+    
+    U->>DASH: 8. Views Dashboard
+    DASH->>SQL: 9. Executes Queries
+    SQL->>ST: 10. Queries System Tables
+    ST->>SQL: 11. Returns Data
+    SQL->>DASH: 12. Returns Results
+    DASH->>U: 13. Displays Charts & Tables
+    
+    U->>DASH: 14. Sees Low Score
+    U->>GUIDE: 15. Checks WAF Guide
+    GUIDE->>U: 16. Shows Action Steps<br/>(SQL Examples, Best Practices)
+    
+    U->>U: 17. Implements Recommendations
+    U->>DASH: 18. Refreshes Dashboard
+    DASH->>U: 19. Sees Improved Score

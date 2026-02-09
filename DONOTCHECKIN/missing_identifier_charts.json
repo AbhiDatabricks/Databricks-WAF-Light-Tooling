@@ -1,0 +1,194 @@
+[
+  {
+    "waf_id": "R-01-02",
+    "practice": "Use a resilient distributed data engine for all workloads",
+    "solution": "Apache Spark; Photon",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_01_02_898d1007",
+    "display_name": "R-01-02: Spark/Photon Workload Distribution",
+    "query": "\nSELECT \n  CASE \n    WHEN photon_enabled = true THEN 'Photon Engine'\n    ELSE 'Apache Spark'\n  END as engine_type,\n  COUNT(*) as workload_count,\n  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage\nFROM system.compute.clusters\nWHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\nGROUP BY photon_enabled\n        ",
+    "chart_type": "pie",
+    "fields": {
+      "label_field": "engine_type",
+      "value_field": "percentage",
+      "label_label": "Engine",
+      "value_label": "Percentage"
+    }
+  },
+  {
+    "waf_id": "R-01-03",
+    "practice": "Automatically rescue invalid or nonconforming data",
+    "solution": "Delta Live Tables",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_01_03_71fc1002",
+    "display_name": "R-01-03: Delta Live Tables Pipeline Health",
+    "query": "\nSELECT \n  pipeline_name,\n  COUNT(*) as update_count,\n  SUM(CASE WHEN update_state = 'COMPLETED' THEN 1 ELSE 0 END) as successful,\n  SUM(CASE WHEN update_state = 'FAILED' THEN 1 ELSE 0 END) as failed,\n  ROUND(SUM(CASE WHEN update_state = 'COMPLETED' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate\nFROM system.lakeflow.pipeline_update_timeline\nWHERE start_time >= CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY pipeline_name\nORDER BY update_count DESC\nLIMIT 20\n        ",
+    "chart_type": "bar",
+    "fields": {
+      "x_field": "pipeline_name",
+      "y_field": "success_rate",
+      "x_label": "Pipeline",
+      "y_label": "Success Rate %"
+    }
+  },
+  {
+    "waf_id": "R-01-06",
+    "practice": "Use managed services for your workloads",
+    "solution": "Databricks Platform",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_01_06_c5b5424d",
+    "display_name": "R-01-06: Serverless vs Managed Compute Usage",
+    "query": "\nSELECT \n  CASE \n    WHEN cluster_type = 'SERVERLESS' THEN 'Serverless (Managed)'\n    WHEN cluster_type = 'JOB' THEN 'Job Clusters (Managed)'\n    ELSE 'Traditional (Self-Managed)'\n  END as service_type,\n  COUNT(*) as usage_count,\n  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage\nFROM system.compute.clusters\nWHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\nGROUP BY service_type\n        ",
+    "chart_type": "pie",
+    "fields": {
+      "label_field": "service_type",
+      "value_field": "percentage",
+      "label_label": "Service Type",
+      "value_label": "Percentage"
+    }
+  },
+  {
+    "waf_id": "R-02-01",
+    "practice": "Use a layered storage architecture",
+    "solution": "Databricks Lakehouse Architecture",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_02_01_12825ee0",
+    "display_name": "R-02-01: Table Distribution by Layer (Bronze/Silver/Gold)",
+    "query": "\nSELECT \n  CASE \n    WHEN table_schema LIKE '%bronze%' OR table_schema LIKE '%raw%' THEN 'Bronze (Raw)'\n    WHEN table_schema LIKE '%silver%' OR table_schema LIKE '%cleaned%' THEN 'Silver (Cleaned)'\n    WHEN table_schema LIKE '%gold%' OR table_schema LIKE '%curated%' THEN 'Gold (Curated)'\n    ELSE 'Other'\n  END as layer,\n  COUNT(*) as table_count,\n  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage\nFROM system.information_schema.tables\nWHERE table_catalog != 'hive_metastore'\nGROUP BY layer\nORDER BY table_count DESC\n        ",
+    "chart_type": "pie",
+    "fields": {
+      "label_field": "layer",
+      "value_field": "table_count",
+      "label_label": "Layer",
+      "value_label": "Table Count"
+    }
+  },
+  {
+    "waf_id": "R-02-02",
+    "practice": "Improve data integrity by reducing data redundancy",
+    "solution": "Databricks Platform",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_02_02_8f0d656d",
+    "display_name": "R-02-02: Table Duplication Analysis (Same Name Across Schemas)",
+    "query": "\nSELECT \n  table_name,\n  COUNT(DISTINCT table_schema) as schema_count,\n  COUNT(*) as total_occurrences,\n  STRING_AGG(DISTINCT table_schema, ', ') as schemas\nFROM system.information_schema.tables\nWHERE table_catalog != 'hive_metastore'\nGROUP BY table_name\nHAVING COUNT(DISTINCT table_schema) > 1\nORDER BY schema_count DESC\nLIMIT 50\n        ",
+    "chart_type": "bar",
+    "fields": {
+      "x_field": "table_name",
+      "y_field": "schema_count",
+      "x_label": "Table Name",
+      "y_label": "Schema Count"
+    }
+  },
+  {
+    "waf_id": "R-02-03",
+    "practice": "Actively manage schemas",
+    "solution": "Unity Catalog",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_02_03_62d9e169",
+    "display_name": "R-02-03: Schema Management - Tables per Schema",
+    "query": "\nSELECT \n  table_schema,\n  COUNT(*) as table_count,\n  COUNT(DISTINCT table_type) as table_types,\n  MAX(last_altered) as last_modified\nFROM system.information_schema.tables\nWHERE table_catalog != 'hive_metastore'\nGROUP BY table_schema\nORDER BY table_count DESC\nLIMIT 30\n        ",
+    "chart_type": "bar",
+    "fields": {
+      "x_field": "table_schema",
+      "y_field": "table_count",
+      "x_label": "Schema",
+      "y_label": "Table Count"
+    }
+  },
+  {
+    "waf_id": "R-02-04",
+    "practice": "Use constraints and data expectations",
+    "solution": "Delta Live Tables",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_02_04_ac4e45bc",
+    "display_name": "R-02-04: Data Quality Check Results",
+    "query": "\nSELECT \n  table_full_name,\n  DATE_TRUNC('day', check_time) as date,\n  COUNT(*) as total_checks,\n  SUM(CASE WHEN check_status = 'PASSED' THEN 1 ELSE 0 END) as passed,\n  SUM(CASE WHEN check_status = 'FAILED' THEN 1 ELSE 0 END) as failed,\n  ROUND(SUM(CASE WHEN check_status = 'PASSED' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as pass_rate\nFROM system.data_quality_monitoring.table_results\nWHERE check_time >= CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY table_full_name, date\nHAVING failed > 0\nORDER BY failed DESC, date DESC\nLIMIT 50\n        ",
+    "chart_type": "bar",
+    "fields": {
+      "x_field": "table_full_name",
+      "y_field": "failed",
+      "x_label": "Table",
+      "y_label": "Failed Checks"
+    }
+  },
+  {
+    "waf_id": "R-02-05",
+    "practice": "Take a data-centric approach to machine learning",
+    "solution": "Databricks Platform",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_02_05_89ef03d5",
+    "display_name": "R-02-05: MLflow Experiment Activity (Data-Centric ML)",
+    "query": "\nSELECT \n  DATE_TRUNC('month', creation_time) as month,\n  COUNT(*) as experiment_count,\n  COUNT(DISTINCT user_id) as unique_users,\n  COUNT(DISTINCT experiment_id) as active_experiments\nFROM system.mlflow.experiments_latest\nWHERE creation_time >= CURRENT_DATE - INTERVAL '12' MONTH\nGROUP BY month\nORDER BY month DESC\n        ",
+    "chart_type": "line",
+    "fields": {
+      "x_field": "month",
+      "y_field": "experiment_count",
+      "x_label": "Month",
+      "y_label": "Experiments"
+    }
+  },
+  {
+    "waf_id": "R-04-02",
+    "practice": "Recover ETL jobs using data time travel capabilities",
+    "solution": "Delta Lake - Delta Time Travel",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_04_02_3d89d7b8",
+    "display_name": "R-04-02: Delta Table Versions (Time Travel Capability)",
+    "query": "\nSELECT \n  table_schema,\n  COUNT(DISTINCT table_name) as delta_tables,\n  AVG(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END) * 100 as delta_adoption_percent\nFROM system.information_schema.tables\nWHERE table_catalog != 'hive_metastore'\n  AND table_type = 'MANAGED'\nGROUP BY table_schema\nORDER BY delta_tables DESC\nLIMIT 30\n        ",
+    "chart_type": "bar",
+    "fields": {
+      "x_field": "table_schema",
+      "y_field": "delta_tables",
+      "x_label": "Schema",
+      "y_label": "Delta Tables"
+    }
+  },
+  {
+    "waf_id": "R-04-03",
+    "practice": "Leverage a job automation framework with built-in recovery",
+    "solution": "Databricks Workflows",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_04_03_624a0c32",
+    "display_name": "R-04-03: Job Run Success Rate with Auto-Recovery",
+    "query": "\nSELECT \n  DATE_TRUNC('day', start_time) as date,\n  COUNT(*) as total_runs,\n  SUM(CASE WHEN state = 'SUCCEEDED' THEN 1 ELSE 0 END) as succeeded,\n  SUM(CASE WHEN state = 'FAILED' THEN 1 ELSE 0 END) as failed,\n  ROUND(SUM(CASE WHEN state = 'SUCCEEDED' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate\nFROM system.lakeflow.job_run_timeline\nWHERE start_time >= CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY date\nORDER BY date DESC\n        ",
+    "chart_type": "line",
+    "fields": {
+      "x_field": "date",
+      "y_field": "success_rate",
+      "x_label": "Date",
+      "y_label": "Success Rate %"
+    }
+  },
+  {
+    "waf_id": "R-05-01",
+    "practice": "Monitor data platform events",
+    "solution": "System Tables / Audit Logs",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_05_01_e5b81f33",
+    "display_name": "R-05-01: Data Platform Event Monitoring",
+    "query": "\nSELECT \n  action_name,\n  COUNT(*) as event_count,\n  COUNT(DISTINCT user_identity.email) as unique_users,\n  DATE_TRUNC('day', event_time) as date\nFROM system.access.audit\nWHERE event_time >= CURRENT_DATE - INTERVAL '30' DAY\n  AND action_name IN ('getTable', 'createTable', 'deleteTable', 'updateTable', 'createJob', 'runJob')\nGROUP BY action_name, date\nORDER BY date DESC, event_count DESC\nLIMIT 100\n        ",
+    "chart_type": "bar",
+    "fields": {
+      "x_field": "action_name",
+      "y_field": "event_count",
+      "x_label": "Event Type",
+      "y_label": "Event Count"
+    }
+  },
+  {
+    "waf_id": "R-05-02",
+    "practice": "Monitor cloud events",
+    "solution": "System Tables / Cloud Integration",
+    "pillar": "Reliability",
+    "dataset_name": "waf_R_05_02_31e42574",
+    "display_name": "R-05-02: Cloud Resource Usage Monitoring",
+    "query": "\nSELECT \n  workspace_id,\n  DATE_TRUNC('day', usage_start_time) as date,\n  SUM(usage_quantity) as total_usage,\n  COUNT(DISTINCT usage_type) as resource_types\nFROM system.billing.usage\nWHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY workspace_id, date\nORDER BY date DESC, total_usage DESC\nLIMIT 100\n        ",
+    "chart_type": "line",
+    "fields": {
+      "x_field": "date",
+      "y_field": "total_usage",
+      "x_label": "Date",
+      "y_label": "Usage Quantity"
+    }
+  }
+]

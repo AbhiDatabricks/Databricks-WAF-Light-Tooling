@@ -1,0 +1,836 @@
+{
+  "Reliability": [
+    {
+      "identifier": "R-01-01",
+      "practice": "Use a data format that supports ACID transactions",
+      "capability": "Delta Lake",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-01-02",
+      "practice": "Use a resilient distributed data engine for all workloads",
+      "capability": "Apache Spark; Photon",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-01-03",
+      "practice": "Automatically rescue invalid or nonconforming data ",
+      "capability": "Delta Live Tables",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-01-04",
+      "practice": "Configure jobs for automatic retries and termination",
+      "capability": "Databricks Workflows",
+      "status": "Completed"
+    },
+    {
+      "identifier": "R-01-05",
+      "practice": "Use a scalable and production-grade model serving infrastructure",
+      "capability": "Databricks Model Serving",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "R-01-06",
+      "practice": "Use managed services for your workloads",
+      "capability": "Databricks Platform",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-02-01",
+      "practice": "Use a layered storage architecture",
+      "capability": "Databricks Lakehouse Architecture",
+      "status": "Completed"
+    },
+    {
+      "identifier": "R-02-02",
+      "practice": "Improve data integrity by reducing data redundancy",
+      "capability": "Databricks Platform",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "R-02-03",
+      "practice": "Actively manage schemas",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-02-04",
+      "practice": "Use constraints and data expectations",
+      "capability": "Delta Live Tables",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "R-02-05",
+      "practice": "Take a data-centric approach to machine learning",
+      "capability": "Databricks Platform",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-03-01",
+      "practice": "Enable autoscaling for ETL workloads",
+      "capability": "Databricks Workflows",
+      "status": "Completed"
+    },
+    {
+      "identifier": "R-03-02",
+      "practice": "Use autoscaling for SQL Warehouses",
+      "capability": "Databricks SQL",
+      "status": "Completed"
+    },
+    {
+      "identifier": "R-04-01",
+      "practice": "Recover from Structured Streaming query failures",
+      "capability": "Structured Streaming",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-04-02",
+      "practice": "Recover ETL jobs using data time travel capabilities",
+      "capability": "Delta Lake - Delta Time Travel",
+      "status": "Open"
+    },
+    {
+      "identifier": "R-04-03",
+      "practice": "Leverage a job automation framework with built-in recovery",
+      "capability": "Databricks Workflows",
+      "status": "Completed"
+    },
+    {
+      "identifier": "R-04-04",
+      "practice": "Configure a disaster recovery pattern",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "R-05-01",
+      "practice": "Monitor data platform events",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "R-05-02",
+      "practice": "Monitor cloud events",
+      "capability": NaN,
+      "status": "Open"
+    }
+  ],
+  "Performance efficiency": [
+    {
+      "identifier": "PE-01-01",
+      "practice": "Use serverless architecture",
+      "capability": "Databricks Serverless Compute",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-01-02",
+      "practice": "Use an enterprise grade model serving service",
+      "capability": "Databricks Model Serving",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-02-01",
+      "practice": "Understand your data ingestion and access patterns",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-02-02",
+      "practice": "Use parallel computation where it is beneficial",
+      "capability": "Apache Spark",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-02-03",
+      "practice": "Analyze the whole chain of execution",
+      "capability": "Workflows; Unity Catalog",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "PE-02-04",
+      "practice": "Prefer larger clusters",
+      "capability": "Databricks Cluster Configuration",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "PE-02-05",
+      "practice": "Use native Spark operations",
+      "capability": "Apache Spark",
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-02-06",
+      "practice": "Use native platform engines",
+      "capability": "Photon",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-02-07",
+      "practice": "Understand your hardware and workload type",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-02-08",
+      "practice": "Use caching",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-02-09",
+      "practice": "Use compaction",
+      "capability": "Optimize with ZOrder",
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-02-10",
+      "practice": "Use data skipping",
+      "capability": "Optimize with ZOrder",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "PE-02-11",
+      "practice": "Enable Predictive Optimization on your metastore",
+      "capability": "Predictive Optimization",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "PE-02-12",
+      "practice": "Avoid over-partitioning",
+      "capability": "Partitioning",
+      "status": "Completed"
+    },
+    {
+      "identifier": "PE-02-14",
+      "practice": "Consider file size tuning",
+      "capability": "Auto Optimize",
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-02-15",
+      "practice": "Optimize join performance",
+      "capability": "Databricks Adaptive Query Execution",
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-02-16",
+      "practice": "Run analyze table to collect table statistics",
+      "capability": "Analyze Table",
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-03-01",
+      "practice": "Test on data representative of production data",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-03-02",
+      "practice": "Take prewarming of resources into account",
+      "capability": "Databricks Pools",
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-03-03",
+      "practice": "Identify bottlenecks",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-04-01",
+      "practice": "Monitor query performanance",
+      "capability": NaN,
+      "status": "In Progress"
+    },
+    {
+      "identifier": "PE-04-02",
+      "practice": "Monitor streaming workloads",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "PE-04-03",
+      "practice": "Monitor job performance",
+      "capability": NaN,
+      "status": "Completed"
+    }
+  ],
+  "Cost Optimization": [
+    {
+      "identifier": "CO-01-01",
+      "practice": "Use performance optimized data formats",
+      "capability": "Delta Lake",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-01-02",
+      "practice": "Use job clusters",
+      "capability": "Databricks Workflows",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-01-03",
+      "practice": "Use SQL warehouse for SQL workloads",
+      "capability": "Databricks Serverless SQL",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-01-04",
+      "practice": "Use up-to-date runtimes for your workloads",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-01-05",
+      "practice": "Only use GPUs for the right workloads",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-01-06",
+      "practice": "Use Serverless for your workloads",
+      "capability": "Databricks Serverless",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-01-07",
+      "practice": "Use the right instance type",
+      "capability": "Databricks Cluster Configuration",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "CO-01-08",
+      "practice": "Choose the most efficient cluster size",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-01-09",
+      "practice": "Evaluate performance optimized query engines",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-02-01",
+      "practice": "Leverage auto-scaling compute",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-02-02",
+      "practice": "Use auto termination",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-02-03",
+      "practice": "Use compute policies to control costs",
+      "capability": "Databricks Cluster Policies",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-03-01",
+      "practice": "Monitor costs",
+      "capability": "Unity Catalog",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "CO-03-02",
+      "practice": "Tag clusters for cost attribution",
+      "capability": "Databricks Cluster Configuration",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "CO-03-03",
+      "practice": "Implement observability to track & chargeback cost",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    },
+    {
+      "identifier": "CO-03-04",
+      "practice": "Share cost reports regularly",
+      "capability": "Unity Catalog - System Tables",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-03-05",
+      "practice": "Monitor and manage Delta Sharing egress costs",
+      "capability": "System Tables",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-04-01",
+      "practice": "Balance always-on and triggered streaming",
+      "capability": "Databricks Streaming",
+      "status": "Open"
+    },
+    {
+      "identifier": "CO-04-02",
+      "practice": "Balance between on-demand and capacity excess instances",
+      "capability": "Databricks Cluster Configuration",
+      "status": "Completed"
+    }
+  ],
+  "Data And AI Governance": [
+    {
+      "identifier": "DG-01-01",
+      "practice": "Establish data governance process",
+      "capability": NaN,
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-01-02",
+      "practice": "Manage metadata for all data assets in one place",
+      "capability": "Unity Catalog",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "DG-01-03",
+      "practice": "Track data and AI lineage to drive visibility of the data",
+      "capability": "Unity Catalog",
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-01-04",
+      "practice": "Add consistent descriptions to your metadata",
+      "capability": "Databricks IQ; Unity Catalog",
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-01-05",
+      "practice": "Allow easy data discovery for data consumers ",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "DG-01-06",
+      "practice": "Govern AI assets together with data",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "DG-02-01",
+      "practice": "Centralize access control for all data and AI assets",
+      "capability": "Unity Catalog",
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-02-02",
+      "practice": "Configure audit logging",
+      "capability": "Unity Catalog",
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-02-03",
+      "practice": "Audit data platform events",
+      "capability": "Unity Catalog",
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-03-01",
+      "practice": "Define and document data quality standards ",
+      "capability": NaN,
+      "status": "Completed"
+    },
+    {
+      "identifier": "DG-03-02",
+      "practice": "Use data quality tools for profiling, cleansing, validating, and monitoring data",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "DG-03-03",
+      "practice": "Implement and enforce standardized data formats and definitions",
+      "capability": NaN,
+      "status": "Open"
+    }
+  ],
+  "Security, Compliance and Privac": [
+    {
+      "identifier": "SCP-01-01",
+      "practice": "Authenticate via single sign-on.",
+      "capability": "Databricks SSO",
+      "status": "Completed"
+    },
+    {
+      "identifier": "SCP-01-02",
+      "practice": "Use multifactor authentication.",
+      "capability": "Databricks SSO",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "SCP-01-03",
+      "practice": "Disable local passwords.",
+      "capability": "Databricks SSO",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-04",
+      "practice": "Set complex local passwords.",
+      "capability": "Databricks SSO",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-05",
+      "practice": "Separate admin accounts from normal user accounts.",
+      "capability": "Databricks Admin",
+      "status": "Completed"
+    },
+    {
+      "identifier": "SCP-01-06",
+      "practice": "Use token management.",
+      "capability": "Token Management",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "SCP-01-07",
+      "practice": "SCIM synchronization of users and groups.",
+      "capability": "Scim Sync",
+      "status": "Completed"
+    },
+    {
+      "identifier": "SCP-01-08",
+      "practice": "Limit cluster creation rights.",
+      "capability": "Databricks Cluster Policies",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-09",
+      "practice": "Store and use secrets securely.",
+      "capability": "Databricks Secret Management",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-10",
+      "practice": "Cross-account IAM role configuration.",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-11",
+      "practice": "Customer-approved workspace login.",
+      "capability": "Databricks SSO",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-12",
+      "practice": "Use clusters that support user isolation.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-01-13",
+      "practice": "Use service principals to run production jobs.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-01",
+      "practice": "Avoid storing production data in DBFS.",
+      "capability": "Databricks Workspace",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-02",
+      "practice": "Secure access to cloud storage.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-03",
+      "practice": "Use data exfiltration settings within the admin console.",
+      "capability": "Databricks Workspace",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-04",
+      "practice": "Use bucket versioning.",
+      "capability": "Cloud",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-05",
+      "practice": "Encrypt storage and restrict access.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-06",
+      "practice": "Add a customer-managed key for managed services.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-02-07",
+      "practice": "Add a customer-managed key for workspace storage.",
+      "capability": "Databricks Workspace",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-03-01",
+      "practice": "Deploy with a customer-managed VPC or VNet.",
+      "capability": "Cloud",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-03-02",
+      "practice": "Use IP access lists.",
+      "capability": "Cloud",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-03-03",
+      "practice": "Implement network exfiltration protections.",
+      "capability": "Cloud",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-03-04",
+      "practice": "Apply VPC service controls.",
+      "capability": "Databricks Workspace",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-03-05",
+      "practice": "Use VPC endpoint policies.",
+      "capability": "IP access List",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-03-06",
+      "practice": "Configure Private Link.",
+      "capability": "Private link",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-04-01",
+      "practice": "Review the Shared Responsibility Model.",
+      "capability": "Shared Responsibility Model",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-05-01",
+      "practice": "Review the Databricks compliance programs.",
+      "capability": "Security and Compliance Guide",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-06-01",
+      "practice": "Monitor workspace using System tables",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-06-02",
+      "practice": "Use Databricks audit log.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-06-03",
+      "practice": "Monitor provisioning activities.",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-06-04",
+      "practice": "Use Enhanced Security Monitoring or Compliance Security Profile",
+      "capability": "Databricks Compliance security profile",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-06-05",
+      "practice": "Configure tagging to monitor usage and enable charge-back.",
+      "capability": "Tagging",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-07-01",
+      "practice": "Use AWS Nitro instances.",
+      "capability": "Databricks Compliance security profile",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-07-02",
+      "practice": "Service quotas.",
+      "capability": "Databricks Quotas",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-07-03",
+      "practice": "Leverage CI/CD processes to scan code for hard-coded secrets.",
+      "capability": "Cloud",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-07-04",
+      "practice": "Isolate sensitive workloads into different workspaces.",
+      "capability": "Databricks Workspace",
+      "status": "Open"
+    },
+    {
+      "identifier": "SCP-07-05",
+      "practice": "Controlling libraries.",
+      "capability": "Databricks Libraries",
+      "status": "Open"
+    }
+  ],
+  "Operational Excellence": [
+    {
+      "identifier": "OE-01-01",
+      "practice": "Create a dedicated Lakehouse operations team",
+      "capability": NaN,
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-01-02",
+      "practice": "Use enterprise source code management (SCM) ",
+      "capability": "Databricks Git Folders",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-01-03",
+      "practice": "Standardize DevOps processes (CI/CD)",
+      "capability": "Databricks Git Folders",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-01-04",
+      "practice": "Standardize MLOps processes across enterprise",
+      "capability": "MLFlow",
+      "status": "Completed"
+    },
+    {
+      "identifier": "OE-01-05",
+      "practice": "Define environment isolation strategy",
+      "capability": "Databricks Workspaces",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-01-06",
+      "practice": "Streamline the usage and management of various\nlarge language model (LLM) providers",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-01-07",
+      "practice": "Define catalog strategy for your enterprise",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-01-08",
+      "practice": "Compare LLM outputs on set prompts",
+      "capability": "Databricks LLM Playground",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-01-09",
+      "practice": "Build models with all representative, accurate and relevant data sources",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-02-01",
+      "practice": "Use Infrastructure as Code for deployments and maintenance",
+      "capability": "Databricks Terraform Provider",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-02-02",
+      "practice": "Standardize compute configurations",
+      "capability": "Compute Policies",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-02-03",
+      "practice": "Use automated workflows for jobs",
+      "capability": "Databricks Workflows",
+      "status": "Completed"
+    },
+    {
+      "identifier": "OE-02-04",
+      "practice": "Use automated and event driven file ingestion ",
+      "capability": "Autoloader",
+      "status": "Completed"
+    },
+    {
+      "identifier": "OE-02-05",
+      "practice": "Use ETL frameworks for data pipelines",
+      "capability": "Delta Live Tables",
+      "status": "Completed"
+    },
+    {
+      "identifier": "OE-02-06",
+      "practice": "Follow the deploy-code approach for ML workloads",
+      "capability": "MLFlow",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-02-07",
+      "practice": "Use a model registry to decouple code and model lifecycle",
+      "capability": "Unity Catalog",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-02-08",
+      "practice": "Automate ML experiment tracking",
+      "capability": "MLFlow",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-02-09",
+      "practice": "Reuse the same infrastructure to manage ML pipelines",
+      "capability": "Databricks Terraform provider",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-02-10",
+      "practice": "Utilize declarative management for complex data and ML pipelines",
+      "capability": "Databricks Asset Bundles",
+      "status": "In Progress"
+    },
+    {
+      "identifier": "OE-02-11",
+      "practice": "Automate LLM evaluation",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-03-01",
+      "practice": "Establish monitoring processes",
+      "capability": "Databricks Platform",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-03-02",
+      "practice": "Use native and external tools for platform monitoring",
+      "capability": "Databricks Lakehouse Monitoring; Cloud Provided Tooling; Databricks SQL Alerts",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-03-03",
+      "practice": "Establish an incident response strategy",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-03-04",
+      "practice": "Triggering actions in response to a specific event",
+      "capability": NaN,
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-04-01",
+      "practice": "Manage service limits and quotas",
+      "capability": "Cloud; Databricks Platform",
+      "status": "Open"
+    },
+    {
+      "identifier": "OE-04-02",
+      "practice": "Invest in capacity planning",
+      "capability": "Databricks Platform",
+      "status": "Open"
+    }
+  ]
+}

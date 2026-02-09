@@ -1,0 +1,78 @@
+graph TB
+    subgraph "Frontend Components"
+        subgraph "Streamlit App"
+            SIDEBAR[WAF Guide Sidebar<br/>- Pillar Selection<br/>- Metric Details<br/>- Score Calculations<br/>- Action Items]
+            MAIN[Main Content Area<br/>- Dashboard Embed<br/>- Iframe Container]
+        end
+        
+        subgraph "Lakeview Dashboard"
+            PAGE1[Summary Page<br/>- Overall Score<br/>- Pillar Comparison]
+            PAGE2[Governance Page<br/>- 3 Widgets<br/>- Controls Table]
+            PAGE3[Cost Page<br/>- 3 Widgets<br/>- Controls Table]
+            PAGE4[Performance Page<br/>- 3 Widgets<br/>- Controls Table]
+            PAGE5[Reliability Page<br/>- 3 Widgets<br/>- Controls Table]
+        end
+    end
+    
+    subgraph "Backend Components"
+        subgraph "Dataset Queries"
+            DS1[total_percentage_r<br/>Reliability Overall]
+            DS2[waf_controls_r<br/>Reliability Metrics]
+            DS3[waf_principal_percentage_r<br/>Reliability Principles]
+            DS4[total_percentage_g<br/>Governance Overall]
+            DS5[waf_controls_g<br/>Governance Metrics]
+            DS6[waf_principal_percentage_g<br/>Governance Principles]
+            DS7[total_percentage_c<br/>Cost Overall]
+            DS8[waf_controls_c<br/>Cost Metrics]
+            DS9[waf_principal_percentage_c<br/>Cost Principles]
+            DS10[total_percentage_p<br/>Performance Overall]
+            DS11[waf_controls_p<br/>Performance Metrics]
+            DS12[waf_principal_percentage_p<br/>Performance Principles]
+            DS13[total_percentage_across_pillars<br/>Summary Aggregation]
+        end
+        
+        subgraph "Query Execution"
+            SQLW[SQL Warehouse<br/>- Executes Queries<br/>- Returns Results<br/>- Caches Data]
+        end
+    end
+    
+    subgraph "Data Sources"
+        ST[System Tables<br/>- 13+ Tables<br/>- Real-time Data<br/>- Historical Data]
+    end
+    
+    SIDEBAR --> MAIN
+    MAIN --> PAGE1
+    MAIN --> PAGE2
+    MAIN --> PAGE3
+    MAIN --> PAGE4
+    MAIN --> PAGE5
+    
+    PAGE1 --> DS13
+    PAGE2 --> DS4
+    PAGE2 --> DS5
+    PAGE2 --> DS6
+    PAGE3 --> DS7
+    PAGE3 --> DS8
+    PAGE3 --> DS9
+    PAGE4 --> DS10
+    PAGE4 --> DS11
+    PAGE4 --> DS12
+    PAGE5 --> DS1
+    PAGE5 --> DS2
+    PAGE5 --> DS3
+    
+    DS1 --> SQLW
+    DS2 --> SQLW
+    DS3 --> SQLW
+    DS4 --> SQLW
+    DS5 --> SQLW
+    DS6 --> SQLW
+    DS7 --> SQLW
+    DS8 --> SQLW
+    DS9 --> SQLW
+    DS10 --> SQLW
+    DS11 --> SQLW
+    DS12 --> SQLW
+    DS13 --> SQLW
+    
+    SQLW --> ST
