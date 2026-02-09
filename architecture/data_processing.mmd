@@ -1,0 +1,58 @@
+graph TB
+    subgraph "Data Collection"
+        COLLECT[System Tables<br/>Continuous Data Collection]
+    end
+    
+    subgraph "Query Processing"
+        Q1[Query 1: total_percentage_r<br/>Overall Reliability]
+        Q2[Query 2: waf_controls_r<br/>Individual Metrics]
+        Q3[Query 3: waf_principal_percentage_r<br/>Per-Principle]
+        Q4[Query 4: total_percentage_g<br/>Overall Governance]
+        Q5[Query 5: waf_controls_g<br/>Individual Metrics]
+        Q6[Query 6: waf_principal_percentage_g<br/>Per-Principle]
+        Q7[Query 7: total_percentage_c<br/>Overall Cost]
+        Q8[Query 8: waf_controls_c<br/>Individual Metrics]
+        Q9[Query 9: waf_principal_percentage_c<br/>Per-Principle]
+        Q10[Query 10: total_percentage_p<br/>Overall Performance]
+        Q11[Query 11: waf_controls_p<br/>Individual Metrics]
+        Q12[Query 12: waf_principal_percentage_p<br/>Per-Principle]
+        Q13[Query 13: total_percentage_across_pillars<br/>Summary]
+    end
+    
+    subgraph "Result Aggregation"
+        AGG[Combine Results<br/>Calculate Scores<br/>Apply Thresholds]
+    end
+    
+    subgraph "Visualization"
+        VIZ[Render Charts<br/>Display Tables<br/>Update UI]
+    end
+    
+    COLLECT --> Q1
+    COLLECT --> Q2
+    COLLECT --> Q3
+    COLLECT --> Q4
+    COLLECT --> Q5
+    COLLECT --> Q6
+    COLLECT --> Q7
+    COLLECT --> Q8
+    COLLECT --> Q9
+    COLLECT --> Q10
+    COLLECT --> Q11
+    COLLECT --> Q12
+    COLLECT --> Q13
+    
+    Q1 --> AGG
+    Q2 --> AGG
+    Q3 --> AGG
+    Q4 --> AGG
+    Q5 --> AGG
+    Q6 --> AGG
+    Q7 --> AGG
+    Q8 --> AGG
+    Q9 --> AGG
+    Q10 --> AGG
+    Q11 --> AGG
+    Q12 --> AGG
+    Q13 --> AGG
+    
+    AGG --> VIZ

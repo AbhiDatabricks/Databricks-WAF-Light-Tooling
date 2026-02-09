@@ -1,0 +1,35 @@
+graph TB
+    subgraph "Development Environment"
+        DEV[Developer Machine<br/>- Local Code<br/>- Git Repository]
+        SCRIPT[deploy_complete.py<br/>Deployment Script]
+    end
+    
+    subgraph "Deployment Process"
+        STEP1[Step 1: Deploy Dashboard<br/>- Read .lvdash.json<br/>- Create Dashboard<br/>- Get Dashboard ID]
+        STEP2[Step 2: Publish Dashboard<br/>- Configure Warehouse<br/>- Enable Embedding<br/>- Verify Dashboard ID]
+        STEP3[Step 3: Configure Embedding<br/>- Add *.databricksapps.com<br/>- Set Embed Credentials]
+        STEP4[Step 4: Update App<br/>- Update app.py<br/>- Set Dashboard ID<br/>- Preserve WAF Guide]
+        STEP5[Step 5: Deploy App<br/>- Upload to Workspace<br/>- Deploy to Apps<br/>- Activate Deployment]
+    end
+    
+    subgraph "Databricks Workspace"
+        WS_PATH[/Users/username/waf-app-source<br/>Source Code Path]
+        APP_DEPLOY[Databricks App<br/>Active Deployment]
+        DASH_DEPLOY[Published Dashboard<br/>With Warehouse]
+    end
+    
+    DEV --> SCRIPT
+    SCRIPT --> STEP1
+    STEP1 --> STEP2
+    STEP2 --> STEP3
+    STEP3 --> STEP4
+    STEP4 --> STEP5
+    
+    STEP1 --> DASH_DEPLOY
+    STEP2 --> DASH_DEPLOY
+    STEP3 --> DASH_DEPLOY
+    STEP4 --> WS_PATH
+    STEP5 --> WS_PATH
+    STEP5 --> APP_DEPLOY
+    
+    WS_PATH --> APP_DEPLOY

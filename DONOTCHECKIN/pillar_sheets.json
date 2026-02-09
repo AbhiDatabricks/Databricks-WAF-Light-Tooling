@@ -1,0 +1,161 @@
+{
+  "Reliability": {
+    "rows": 20,
+    "columns": [
+      "Unnamed: 0",
+      "Unnamed: 1",
+      "Unnamed: 2",
+      "Unnamed: 3",
+      "Unnamed: 4",
+      "Unnamed: 5",
+      "Unnamed: 6",
+      "Unnamed: 7",
+      "Unnamed: 8",
+      "Unnamed: 9"
+    ],
+    "sample_data": [
+      {
+        "Unnamed: 0": NaN,
+        "Unnamed: 1": "Identifier",
+        "Unnamed: 2": "Pillars of the Data Intelligence Platform",
+        "Unnamed: 3": "Principles",
+        "Unnamed: 4": "Best Practice",
+        "Unnamed: 5": "Databricks Capabilities",
+        "Unnamed: 6": "Details",
+        "Unnamed: 7": "Status",
+        "Unnamed: 8": "Ignore",
+        "Unnamed: 9": "Comment"
+      },
+      {
+        "Unnamed: 0": NaN,
+        "Unnamed: 1": "R-01-01",
+        "Unnamed: 2": "05 - Reliability",
+        "Unnamed: 3": "Design for failure",
+        "Unnamed: 4": "Use a data format that supports ACID transactions",
+        "Unnamed: 5": "Delta Lake",
+        "Unnamed: 6": "Delta Lake is an open source storage format that brings reliability to data lakes. Delta Lake provides ACID transactions, schema enforcement, scalable metadata handling, and unifies streaming and batch data processing. Delta Lake runs on top of your existing data lake and is fully compatible with Apache Spark APIs. Delta Lake on Databricks allows you to configure Delta Lake based on your workload patterns. \n\nAWS | Azure | GCP",
+        "Unnamed: 7": "Open",
+        "Unnamed: 8": "No",
+        "Unnamed: 9": "not sure "
+      },
+      {
+        "Unnamed: 0": NaN,
+        "Unnamed: 1": "R-01-02",
+        "Unnamed: 2": "05 - Reliability",
+        "Unnamed: 3": "Design for failure",
+        "Unnamed: 4": "Use a resilient distributed data engine for all workloads",
+        "Unnamed: 5": "Apache Spark; Photon",
+        "Unnamed: 6": "Apache Spark, as the compute engine of the Databricks lakehouse, is based on resilient distributed data processing. In case of an internal Spark task not returning a result as expected, Apache Spark automatically reschedules the missing tasks and continues with the execution of the entire job. This is helpful for failures outside the code, like a short network issue or a revoked spot VM. Working with both the SQL API and the Spark DataFrame API comes with this resilience built into the engine.\n\nIn the Databricks lakehouse, Photon, a native vectorized engine entirely written in C++, is high performance compute compatible with Apache Spark APIs. \n\nAWS | Azure | GCP",
+        "Unnamed: 7": "Open",
+        "Unnamed: 8": "No",
+        "Unnamed: 9": NaN
+      }
+    ]
+  },
+  "Performance efficiency": {
+    "rows": 24,
+    "columns": [
+      "Unnamed: 0",
+      "Unnamed: 1",
+      "Unnamed: 2",
+      "Unnamed: 3",
+      "Unnamed: 4",
+      "Unnamed: 5",
+      "Unnamed: 6",
+      "Unnamed: 7",
+      "Unnamed: 8",
+      "Unnamed: 9"
+    ],
+    "sample_data": [
+      {
+        "Unnamed: 0": NaN,
+        "Unnamed: 1": "Identifier",
+        "Unnamed: 2": "Pillars of the Data Intelligence Platform",
+        "Unnamed: 3": "Principles",
+        "Unnamed: 4": "Best Practice",
+        "Unnamed: 5": "Databricks Capabilities",
+        "Unnamed: 6": "Details",
+        "Unnamed: 7": "Status",
+        "Unnamed: 8": "Ignore",
+        "Unnamed: 9": "Comment"
+      },
+      {
+        "Unnamed: 0": NaN,
+        "Unnamed: 1": "PE-01-01",
+        "Unnamed: 2": "06 - Performance efficiency",
+        "Unnamed: 3": "Utilize serverless capabilities",
+        "Unnamed: 4": "Use serverless architecture",
+        "Unnamed: 5": "Databricks Serverless Compute",
+        "Unnamed: 6": "With the serverless compute on the Databricks Data Intelligence Platform, the compute layer runs in the customer\u2019s Databricks account. Workspace admins can create serverless SQL warehouses that enable instant compute and are managed by Databricks. A serverless SQL warehouse uses compute clusters hosted in the Databricks customer account. Use them with Databricks SQL queries just like you usually would with the original Databricks SQL warehouses. Serverless compute comes with a very fast starting time for SQL warehouses (10s and below), and the infrastructure is managed by Databricks.\n\nThis leads to improved productivity:\n\nCloud administrators no longer have to manage complex cloud environments, for example by adjusting quotas, creating and maintaining networking assets, and joining billing sources.\n\nUsers benefit from near-zero waiting times for cluster start and improved concurrency on their queries.\n\nCloud administrators can refocus their time on higher-value projects instead of managing low-level cloud components. \n\nAWS | Azure | GCP",
+        "Unnamed: 7": "Completed",
+        "Unnamed: 8": "No",
+        "Unnamed: 9": NaN
+      },
+      {
+        "Unnamed: 0": NaN,
+        "Unnamed: 1": "PE-01-02",
+        "Unnamed: 2": "06 - Performance efficiency",
+        "Unnamed: 3": "Utilize serverless capabilities",
+        "Unnamed: 4": "Use an enterprise grade model serving service",
+        "Unnamed: 5": "Databricks Model Serving",
+        "Unnamed: 6": "Databricks Model Serving provides a unified interface to deploy, govern, and query AI models. Each model you serve is available as a REST API that you can integrate into your web or client application.\n\nModel Serving provides a highly available and low-latency service for deploying models. The service automatically scales up or down to meet demand changes, saving infrastructure costs while optimizing latency performance. This functionality uses serverless compute. \n\nAWS | Azure | GCP",
+        "Unnamed: 7": "Completed",
+        "Unnamed: 8": "Yes",
+        "Unnamed: 9": NaN
+      }
+    ]
+  },
+  "Cost Optimization": {
+    "rows": 20,
+    "columns": [
+      " ",
+      "Unnamed: 1",
+      "Unnamed: 2",
+      "Unnamed: 3",
+      "Unnamed: 4",
+      "Unnamed: 5",
+      "Unnamed: 6",
+      "Unnamed: 7",
+      "Unnamed: 8",
+      "Unnamed: 9"
+    ],
+    "sample_data": [
+      {
+        " ": NaN,
+        "Unnamed: 1": "Identifier",
+        "Unnamed: 2": "Pillars of the Data Intelligence Platform",
+        "Unnamed: 3": "Principles",
+        "Unnamed: 4": "Best Practice",
+        "Unnamed: 5": "Databricks Capabilities",
+        "Unnamed: 6": "Details",
+        "Unnamed: 7": "Status",
+        "Unnamed: 8": "Ignore",
+        "Unnamed: 9": "Comment"
+      },
+      {
+        " ": NaN,
+        "Unnamed: 1": "CO-01-01",
+        "Unnamed: 2": "07 - Cost Optimization",
+        "Unnamed: 3": "Choose optimal resources",
+        "Unnamed: 4": "Use performance optimized data formats",
+        "Unnamed: 5": "Delta Lake",
+        "Unnamed: 6": "Delta Lake is an open-source storage layer that enhances data lakes by providing ACID transactions, scalable metadata handling, and schema enforcement, primarily built on Apache Spark and Parquet. It supports a lakehouse architecture, allowing integration with various compute engines and programming languages. Delta Lake offers significant performance optimizations such as data skipping, indexing, and file management techniques like compaction and Z-Ordering. Additionally, it includes features like time travel for data versioning and Delta Live Tables for managing batch and streaming data pipelines efficiently. These capabilities make Delta Lake suitable for handling large-scale, transactional workloads and real-time analytics, ensuring data integrity and consistency across diverse data management scenarios\nBlog",
+        "Unnamed: 7": "Open",
+        "Unnamed: 8": "No",
+        "Unnamed: 9": "Team is not using performance optimisations techniques."
+      },
+      {
+        " ": NaN,
+        "Unnamed: 1": "CO-01-02",
+        "Unnamed: 2": "07 - Cost Optimization",
+        "Unnamed: 3": "Choose optimal resources",
+        "Unnamed: 4": "Use job clusters",
+        "Unnamed: 5": "Databricks Workflows",
+        "Unnamed: 6": "A job is a way to run non-interactive code in a Databricks cluster. For example, you can run an extract, transform, and load (ETL) workload interactively or on a schedule. Of course, you can also run jobs interactively in the notebook UI. However, on job clusters, the non-interactive workloads will cost significantly less than on all-purpose clusters.\nAn additional advantage is that every job or workflow runs on a new cluster, isolating workloads from one another.\n\nAWS | Azure | GCP\nPricing",
+        "Unnamed: 7": "Completed",
+        "Unnamed: 8": "No",
+        "Unnamed: 9": NaN
+      }
+    ]
+  }
+}

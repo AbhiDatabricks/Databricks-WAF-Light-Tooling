@@ -1,0 +1,36 @@
+graph LR
+    subgraph "Data Sources"
+        SYS[System Tables<br/>13+ Tables]
+    end
+    
+    subgraph "Data Processing"
+        CTE[Shared CTEs<br/>Common Calculations]
+        METRIC[Individual Metrics<br/>Percentage-Based Logic]
+        THRESH[Threshold Comparison<br/>Pass/Fail Determination]
+    end
+    
+    subgraph "Dataset Layer"
+        TOTAL[total_percentage_[pillar]<br/>Overall Score<br/>1 row]
+        CONTROLS[waf_controls_[pillar]<br/>Individual Metrics<br/>N rows]
+        PRINCIPLE[waf_principal_percentage_[pillar]<br/>Per-Principle<br/>M rows]
+        SUMMARY[total_percentage_across_pillars<br/>All Pillars<br/>4 rows]
+    end
+    
+    subgraph "Visualization Layer"
+        WIDGET1[Completion % Gauge]
+        WIDGET2[Principle Breakdown Chart]
+        WIDGET3[WAF Controls Table]
+        WIDGET4[Summary Bar Chart]
+    end
+    
+    SYS --> CTE
+    CTE --> METRIC
+    METRIC --> THRESH
+    THRESH --> TOTAL
+    THRESH --> CONTROLS
+    THRESH --> PRINCIPLE
+    TOTAL --> SUMMARY
+    TOTAL --> WIDGET1
+    PRINCIPLE --> WIDGET2
+    CONTROLS --> WIDGET3
+    SUMMARY --> WIDGET4

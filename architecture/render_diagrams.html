@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAF Architecture Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .diagram-container { background: white; margin: 30px 0; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); page-break-after: always; }
+        .diagram-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #1976d2; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+        .mermaid { text-align: center; background: white; }
+        h1 { color: #1976d2; text-align: center; }
+        .instructions { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <h1>🎨 WAF Architecture Diagrams</h1>
+    
+    <div class="instructions">
+        <h3>📝 How to Export as Images:</h3>
+        <ol>
+            <li><strong>Right-click</strong> on any diagram → <strong>"Inspect"</strong></li>
+            <li>Find the <code>&lt;svg&gt;</code> element in DevTools</li>
+            <li>Right-click SVG → <strong>"Copy"</strong> or <strong>"Save Image As"</strong></li>
+            <li>Or use browser screenshot: <strong>Cmd+Shift+4</strong> (Mac) / <strong>Windows+Shift+S</strong> (Windows)</li>
+        </ol>
+        <p><strong>💡 Tip:</strong> Use <a href="https://mermaid.live/" target="_blank">Mermaid Live Editor</a> for high-quality PNG exports</p>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Detailed Component Architecture</div>
+        <p style="margin: 15px 0; color: #666; font-size: 14px;">
+            <strong>Overview:</strong> This diagram shows how the frontend (Streamlit App + Dashboard) connects to backend datasets and data sources. 
+            Each dashboard page queries 3 datasets per pillar (overall score, individual metrics, per-principle breakdown), plus 1 summary dataset.
+        </p>
+        <div class="mermaid">
+graph TB
+    subgraph "🎨 Frontend Layer"
+        APP[Databricks App<br/>━━━━━━━━━━━━<br/>Streamlit UI<br/>WAF Guide Sidebar]
+        DASH[Lakeview Dashboard<br/>━━━━━━━━━━━━<br/>WAF_ASSESSMENTv1.6]
+    end
+    
+    subgraph "📊 Dashboard Pages"
+        PAGE1[📈 Summary]
+        PAGE2[🛡️ Reliability]
+        PAGE3[⚖️ Governance]
+        PAGE4[💰 Cost Optimization]
+        PAGE5[⚡ Performance Efficiency]
+    end
+    
+    subgraph "💾 Dataset Layer (13 Datasets)"
+        subgraph "Reliability Datasets"
+            DS1[total_percentage_r<br/>Overall Score]
+            DS2[waf_controls_r<br/>Individual Metrics]
+            DS3[waf_principal_percentage_r<br/>Per-Principle]
+        end
+        subgraph "Governance Datasets"
+            DS4[total_percentage_g<br/>Overall Score]
+            DS5[waf_controls_g<br/>Individual Metrics]
+            DS6[waf_principal_percentage_g<br/>Per-Principle]
+        end
+        subgraph "Cost Datasets"
+            DS7[total_percentage_c<br/>Overall Score]
+            DS8[waf_controls_c<br/>Individual Metrics]
+            DS9[waf_principal_percentage_c<br/>Per-Principle]
+        end
+        subgraph "Performance Datasets"
+            DS10[total_percentage_p<br/>Overall Score]
+            DS11[waf_controls_p<br/>Individual Metrics]
+            DS12[waf_principal_percentage_p<br/>Per-Principle]
+        end
+        DS13[total_percentage_across_pillars<br/>Summary Aggregation]
+    end
+    
+    subgraph "💻 Compute Layer"
+        SQLW[SQL Warehouse<br/>Serverless Starter<br/>━━━━━━━━━━━━<br/>Executes Queries<br/>Returns Results]
+    end
+    
+    subgraph "📦 Data Sources"
+        ST[System Tables<br/>━━━━━━━━━━━━<br/>13+ System Tables<br/>Real-time & Historical Data]
+    end
+    
+    APP --> DASH
+    DASH --> PAGE1
+    DASH --> PAGE2
+    DASH --> PAGE3
+    DASH --> PAGE4
+    DASH --> PAGE5
+    
+    PAGE1 --> DS13
+    PAGE2 --> DS1
+    PAGE2 --> DS2
+    PAGE2 --> DS3
+    PAGE3 --> DS4
+    PAGE3 --> DS5
+    PAGE3 --> DS6
+    PAGE4 --> DS7
+    PAGE4 --> DS8
+    PAGE4 --> DS9
+    PAGE5 --> DS10
+    PAGE5 --> DS11
+    PAGE5 --> DS12
+    
+    DS1 --> SQLW
+    DS2 --> SQLW
+    DS3 --> SQLW
+    DS4 --> SQLW
+    DS5 --> SQLW
+    DS6 --> SQLW
+    DS7 --> SQLW
+    DS8 --> SQLW
+    DS9 --> SQLW
+    DS10 --> SQLW
+    DS11 --> SQLW
+    DS12 --> SQLW
+    DS13 --> SQLW
+    
+    SQLW --> ST
+    
+    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style SQLW fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style ST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+        </div>
+        <p style="margin: 15px 0; color: #666; font-size: 14px;">
+            <strong>Key Points:</strong> Each pillar follows a consistent 3-dataset pattern (overall, controls, principles). 
+            The SQL Warehouse executes all queries against System Tables, which provide real-time metrics about the Databricks workspace.
+        </p>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Data Flow Architecture</div>
+        <div class="mermaid">
+graph LR
+    subgraph "Data Sources"
+        SYS[System Tables<br/>13+ Tables]
+    end
+    
+    subgraph "Data Processing"
+        CTE[Shared CTEs<br/>Common Calculations]
+        METRIC[Individual Metrics<br/>Percentage-Based Logic]
+        THRESH[Threshold Comparison<br/>Pass/Fail Determination]
+    end
+    
+    subgraph "Dataset Layer"
+        TOTAL[total_percentage_[pillar]<br/>Overall Score<br/>1 row]
+        CONTROLS[waf_controls_[pillar]<br/>Individual Metrics<br/>N rows]
+        PRINCIPLE[waf_principal_percentage_[pillar]<br/>Per-Principle<br/>M rows]
+        SUMMARY[total_percentage_across_pillars<br/>All Pillars<br/>4 rows]
+    end
+    
+    subgraph "Visualization Layer"
+        WIDGET1[Completion % Gauge]
+        WIDGET2[Principle Breakdown Chart]
+        WIDGET3[WAF Controls Table]
+        WIDGET4[Summary Bar Chart]
+    end
+    
+    SYS --> CTE
+    CTE --> METRIC
+    METRIC --> THRESH
+    THRESH --> TOTAL
+    THRESH --> CONTROLS
+    THRESH --> PRINCIPLE
+    TOTAL --> SUMMARY
+    TOTAL --> WIDGET1
+    PRINCIPLE --> WIDGET2
+    CONTROLS --> WIDGET3
+    SUMMARY --> WIDGET4
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Data Processing Pipeline</div>
+        <div class="mermaid">
+graph TB
+    subgraph "Data Collection"
+        COLLECT[System Tables<br/>Continuous Data Collection]
+    end
+    
+    subgraph "Query Processing"
+        Q1[Query 1: total_percentage_r<br/>Overall Reliability]
+        Q2[Query 2: waf_controls_r<br/>Individual Metrics]
+        Q3[Query 3: waf_principal_percentage_r<br/>Per-Principle]
+        Q4[Query 4: total_percentage_g<br/>Overall Governance]
+        Q5[Query 5: waf_controls_g<br/>Individual Metrics]
+        Q6[Query 6: waf_principal_percentage_g<br/>Per-Principle]
+        Q7[Query 7: total_percentage_c<br/>Overall Cost]
+        Q8[Query 8: waf_controls_c<br/>Individual Metrics]
+        Q9[Query 9: waf_principal_percentage_c<br/>Per-Principle]
+        Q10[Query 10: total_percentage_p<br/>Overall Performance]
+        Q11[Query 11: waf_controls_p<br/>Individual Metrics]
+        Q12[Query 12: waf_principal_percentage_p<br/>Per-Principle]
+        Q13[Query 13: total_percentage_across_pillars<br/>Summary]
+    end
+    
+    subgraph "Result Aggregation"
+        AGG[Combine Results<br/>Calculate Scores<br/>Apply Thresholds]
+    end
+    
+    subgraph "Visualization"
+        VIZ[Render Charts<br/>Display Tables<br/>Update UI]
+    end
+    
+    COLLECT --> Q1
+    COLLECT --> Q2
+    COLLECT --> Q3
+    COLLECT --> Q4
+    COLLECT --> Q5
+    COLLECT --> Q6
+    COLLECT --> Q7
+    COLLECT --> Q8
+    COLLECT --> Q9
+    COLLECT --> Q10
+    COLLECT --> Q11
+    COLLECT --> Q12
+    COLLECT --> Q13
+    
+    Q1 --> AGG
+    Q2 --> AGG
+    Q3 --> AGG
+    Q4 --> AGG
+    Q5 --> AGG
+    Q6 --> AGG
+    Q7 --> AGG
+    Q8 --> AGG
+    Q9 --> AGG
+    Q10 --> AGG
+    Q11 --> AGG
+    Q12 --> AGG
+    Q13 --> AGG
+    
+    AGG --> VIZ
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Dataset Relationship Architecture</div>
+        <div class="mermaid">
+graph TB
+    subgraph "Reliability Pillar"
+        R_TOTAL[total_percentage_r<br/>1 row<br/>Overall: 38%]
+        R_CONTROLS[waf_controls_r<br/>8 rows<br/>Individual Metrics]
+        R_PRINCIPLE[waf_principal_percentage_r<br/>3 rows<br/>Per-Principle]
+    end
+    
+    subgraph "Governance Pillar"
+        G_TOTAL[total_percentage_g<br/>1 row<br/>Overall: 65%]
+        G_CONTROLS[waf_controls_g<br/>N rows<br/>Individual Metrics]
+        G_PRINCIPLE[waf_principal_percentage_g<br/>M rows<br/>Per-Principle]
+    end
+    
+    subgraph "Cost Pillar"
+        C_TOTAL[total_percentage_c<br/>1 row<br/>Overall: 45%]
+        C_CONTROLS[waf_controls_c<br/>9 rows<br/>Individual Metrics]
+        C_PRINCIPLE[waf_principal_percentage_c<br/>3 rows<br/>Per-Principle]
+    end
+    
+    subgraph "Performance Pillar"
+        P_TOTAL[total_percentage_p<br/>1 row<br/>Overall: 72%]
+        P_CONTROLS[waf_controls_p<br/>7 rows<br/>Individual Metrics]
+        P_PRINCIPLE[waf_principal_percentage_p<br/>2 rows<br/>Per-Principle]
+    end
+    
+    subgraph "Summary"
+        SUMMARY[total_percentage_across_pillars<br/>4 rows<br/>All Pillars Aggregated]
+    end
+    
+    R_TOTAL --> SUMMARY
+    G_TOTAL --> SUMMARY
+    C_TOTAL --> SUMMARY
+    P_TOTAL --> SUMMARY
+    
+    R_CONTROLS -.->|Rolls up to| R_PRINCIPLE
+    R_PRINCIPLE -.->|Rolls up to| R_TOTAL
+    
+    G_CONTROLS -.->|Rolls up to| G_PRINCIPLE
+    G_PRINCIPLE -.->|Rolls up to| G_TOTAL
+    
+    C_CONTROLS -.->|Rolls up to| C_PRINCIPLE
+    C_PRINCIPLE -.->|Rolls up to| C_TOTAL
+    
+    P_CONTROLS -.->|Rolls up to| P_PRINCIPLE
+    P_PRINCIPLE -.->|Rolls up to| P_TOTAL
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Deployment Architecture</div>
+        <div class="mermaid">
+graph TB
+    subgraph "Development Environment"
+        DEV[Developer Machine<br/>- Local Code<br/>- Git Repository]
+        SCRIPT[deploy_complete.py<br/>Deployment Script]
+    end
+    
+    subgraph "Deployment Process"
+        STEP1[Step 1: Deploy Dashboard<br/>- Read .lvdash.json<br/>- Create Dashboard<br/>- Get Dashboard ID]
+        STEP2[Step 2: Publish Dashboard<br/>- Configure Warehouse<br/>- Enable Embedding<br/>- Verify Dashboard ID]
+        STEP3[Step 3: Configure Embedding<br/>- Add *.databricksapps.com<br/>- Set Embed Credentials]
+        STEP4[Step 4: Update App<br/>- Update app.py<br/>- Set Dashboard ID<br/>- Preserve WAF Guide]
+        STEP5[Step 5: Deploy App<br/>- Upload to Workspace<br/>- Deploy to Apps<br/>- Activate Deployment]
+    end
+    
+    subgraph "Databricks Workspace"
+        WS_PATH[/Users/username/waf-app-source<br/>Source Code Path]
+        APP_DEPLOY[Databricks App<br/>Active Deployment]
+        DASH_DEPLOY[Published Dashboard<br/>With Warehouse]
+    end
+    
+    DEV --> SCRIPT
+    SCRIPT --> STEP1
+    STEP1 --> STEP2
+    STEP2 --> STEP3
+    STEP3 --> STEP4
+    STEP4 --> STEP5
+    
+    STEP1 --> DASH_DEPLOY
+    STEP2 --> DASH_DEPLOY
+    STEP3 --> DASH_DEPLOY
+    STEP4 --> WS_PATH
+    STEP5 --> WS_PATH
+    STEP5 --> APP_DEPLOY
+    
+    WS_PATH --> APP_DEPLOY
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Score Calculation Flow</div>
+        <div class="mermaid">
+graph TD
+    START[System Tables Data] --> CTE[Shared CTEs]
+    
+    CTE --> DELTA[delta_usage<br/>Delta Tables %]
+    CTE --> DLT[dlt_usage<br/>DLT Compute %]
+    CTE --> SERVERLESS[serverless_usage<br/>Serverless %]
+    CTE --> PHOTON[photon_usage<br/>Photon Queries %]
+    CTE --> CLUSTER[cluster_metrics<br/>Cluster Configs]
+    CTE --> WAREHOUSE[warehouse_metrics<br/>Warehouse Configs]
+    CTE --> TABLES[table_metrics<br/>Table Stats]
+    
+    DELTA --> METRIC1[R-01-01: Delta Format<br/>Score: 85.5%<br/>Threshold: 80%<br/>Status: Pass]
+    DLT --> METRIC2[R-01-03: DLT Usage<br/>Score: 25.0%<br/>Threshold: 30%<br/>Status: Fail]
+    SERVERLESS --> METRIC3[R-01-06: Serverless<br/>Score: 60.0%<br/>Threshold: 50%<br/>Status: Pass]
+    CLUSTER --> METRIC4[R-03-01: Auto-Scale Clusters<br/>Score: 75.0%<br/>Threshold: 80%<br/>Status: Fail]
+    WAREHOUSE --> METRIC5[R-03-02: Auto-Scale Warehouses<br/>Score: 90.0%<br/>Threshold: 80%<br/>Status: Pass]
+    
+    METRIC1 --> AGG1[Principle: Design for failure<br/>4 metrics, 2 Pass = 50%]
+    METRIC2 --> AGG1
+    METRIC3 --> AGG1
+    
+    METRIC4 --> AGG2[Principle: Autoscaling<br/>2 metrics, 1 Pass = 50%]
+    METRIC5 --> AGG2
+    
+    AGG1 --> TOTAL[Reliability Overall<br/>8 metrics, 3 Pass = 37.5%]
+    AGG2 --> TOTAL
+    
+    TOTAL --> DISPLAY[Dashboard Display<br/>Completion Percentage]
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Security & Access Flow</div>
+        <div class="mermaid">
+graph LR
+    USER[User] --> AUTH[Databricks Authentication]
+    AUTH --> PERM[Permission Check]
+    
+    PERM -->|Has Access| APP[App Access]
+    PERM -->|No Access| DENY[Access Denied]
+    
+    APP --> DASH[Dashboard Access]
+    DASH --> SQL[SQL Warehouse Access]
+    SQL --> ST[System Tables Access]
+    
+    ST -->|Read Only| DATA[Data Returned]
+    DATA --> DASH
+    DASH --> USER
+    
+    subgraph "Security Layers"
+        CSP[Content Security Policy<br/>frame-ancestors<br/>*.databricksapps.com]
+        EMBED[Embed Credentials<br/>Embedded in Dashboard]
+        UC[Unity Catalog<br/>Table Permissions]
+    end
+    
+    APP --> CSP
+    DASH --> EMBED
+    ST --> UC
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">System Architecture Overview</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">Architecture Overview</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The WAF Assessment Tool follows a layered architecture deployed entirely within a Databricks Workspace. 
+                <strong>User Layer</strong> consists of three types of users: End Users who consume the assessment results, 
+                Admin/DevOps teams who manage the deployment, and Data Analysts who interpret the metrics.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The <strong>Application Layer</strong> contains two main components: the Databricks App (Streamlit-based UI with WAF Guide sidebar) 
+                and the Lakeview Dashboard (WAF_ASSESSMENTv1.6) which displays the assessment results. The dashboard is organized into 
+                5 pages: Summary, Reliability, Governance, Cost Optimization, and Performance Efficiency.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The <strong>Compute Layer</strong> uses a SQL Warehouse (Serverless Starter) to execute all queries. The <strong>Data Layer</strong> 
+                consists of 13+ System Tables that provide real-time and historical data about the Databricks workspace, including compute usage, 
+                table metadata, access patterns, and billing information. These tables are managed by Unity Catalog in the <strong>Storage Layer</strong>.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The <strong>Deployment Layer</strong> includes the <code>deploy_complete.py</code> script that automates the deployment of both 
+                the dashboard and the app, and a GitHub Repository for version control. The deployment script handles dashboard creation, 
+                publishing, embedding configuration, and app deployment in a single automated workflow.
+            </p>
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "👥 User Layer"
+        U1[👤 End User]
+        U2[👨‍💼 Admin/DevOps]
+        U3[📊 Data Analyst]
+    end
+    
+    subgraph "🏢 Databricks Workspace"
+        subgraph "🚀 Application Layer"
+            APP[Databricks App<br/>━━━━━━━━━━━━<br/>Streamlit UI<br/>WAF Guide Sidebar]
+            DASH[Lakeview Dashboard<br/>━━━━━━━━━━━━<br/>WAF_ASSESSMENTv1.6]
+        end
+        
+        subgraph "📊 Dashboard Pages"
+            PAGE1[📈 Summary]
+            PAGE2[🛡️ Reliability]
+            PAGE3[⚖️ Governance]
+            PAGE4[💰 Cost Optimization]
+            PAGE5[⚡ Performance Efficiency]
+        end
+        
+        subgraph "💻 Compute Layer"
+            SQLW[SQL Warehouse<br/>Serverless Starter]
+        end
+        
+        subgraph "📦 Data Layer"
+            ST[System Tables<br/>━━━━━━━━━━━━<br/>13+ System Tables<br/>Real-time & Historical Data]
+        end
+        
+        subgraph "🗄️ Storage Layer"
+            UC[Unity Catalog<br/>Metastore]
+        end
+    end
+    
+    subgraph "🔧 Deployment Layer"
+        DEPLOY[deploy_complete.py<br/>Deployment Script]
+        GIT[GitHub Repository<br/>Version Control]
+    end
+    
+    U1 --> APP
+    U2 --> APP
+    U3 --> APP
+    APP --> DASH
+    DASH --> PAGE1
+    DASH --> PAGE2
+    DASH --> PAGE3
+    DASH --> PAGE4
+    DASH --> PAGE5
+    PAGE1 --> SQLW
+    PAGE2 --> SQLW
+    PAGE3 --> SQLW
+    PAGE4 --> SQLW
+    PAGE5 --> SQLW
+    SQLW --> ST
+    ST --> UC
+    DEPLOY --> APP
+    DEPLOY --> DASH
+    DEPLOY --> GIT
+    GIT --> DEPLOY
+    
+    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style ST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style SQLW fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style UC fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">User Flow - Complete Journey</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">User Journey Explanation</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                This sequence diagram illustrates the complete user journey from initial access to implementing improvements. 
+                The flow begins when a user opens the Databricks App URL, which displays the Streamlit UI with the WAF Guide sidebar automatically loaded.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Discovery Phase (Steps 1-7):</strong> Users first interact with the WAF Guide sidebar to understand the assessment framework. 
+                They can select a pillar (e.g., Reliability) to see an overview of how scores are calculated, then drill down into specific metrics 
+                (e.g., R-01-01) to view detailed information including calculation formulas, thresholds, and recommended actions if the score is low.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Assessment Phase (Steps 8-13):</strong> Users view the embedded dashboard, which triggers query execution. The SQL Warehouse 
+                queries System Tables to gather real-time metrics, processes the data, and returns results that are displayed as charts and tables 
+                in the dashboard. This provides users with their current WAF assessment scores.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Action Phase (Steps 14-19):</strong> When users identify low scores, they return to the WAF Guide for actionable recommendations. 
+                The guide provides SQL examples, best practices, and step-by-step instructions. After implementing the recommendations in their workspace, 
+                users refresh the dashboard to see improved scores, completing the continuous improvement cycle.
+            </p>
+        </div>
+        <div class="mermaid">
+sequenceDiagram
+    participant U as 👤 User
+    participant APP as 🚀 Databricks App
+    participant DASH as 📊 Dashboard
+    participant SQL as SQL Warehouse
+    participant ST as System Tables
+    participant GUIDE as WAF Guide Sidebar
+    
+    U->>APP: 1. Opens App URL
+    APP->>U: 2. Displays Streamlit UI
+    APP->>GUIDE: 3. Loads WAF Guide Sidebar
+    
+    U->>GUIDE: 4. Selects Pillar (e.g., Reliability)
+    GUIDE->>U: 5. Shows Pillar Overview<br/>(Score Calculation Method)
+    
+    U->>GUIDE: 6. Selects Metric (e.g., R-01-01)
+    GUIDE->>U: 7. Shows Detailed Info:<br/>- Calculation Formula<br/>- Threshold<br/>- Actions if Low
+    
+    U->>DASH: 8. Views Dashboard
+    DASH->>SQL: 9. Executes Queries
+    SQL->>ST: 10. Queries System Tables
+    ST->>SQL: 11. Returns Data
+    SQL->>DASH: 12. Returns Results
+    DASH->>U: 13. Displays Charts & Tables
+    
+    U->>DASH: 14. Sees Low Score
+    U->>GUIDE: 15. Checks WAF Guide
+    GUIDE->>U: 16. Shows Action Steps<br/>(SQL Examples, Best Practices)
+    
+    U->>U: 17. Implements Recommendations
+    U->>DASH: 18. Refreshes Dashboard
+    DASH->>U: 19. Sees Improved Score
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">User Interaction Flow</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">State-Based User Interaction</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                This state diagram shows the different states a user can be in and the transitions between them based on their actions and the assessment results. 
+                The flow is designed to guide users through a self-service improvement process.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Initial States:</strong> Users start by opening the app, which loads and displays the dashboard. The system then checks the current 
+                WAF scores and routes users to different paths based on their scores: High Score (≥80%), Medium Score (60-79%), or Low Score (<60%).
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Score-Based Routing:</strong> Users with high scores can view details and are typically satisfied. Users with medium or low scores 
+                are directed to the WAF Guide, where they can select a pillar, view specific metrics, understand how scores are calculated, and see 
+                recommended actions.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Improvement Cycle:</strong> After reviewing calculations and action items, users implement the recommendations in their Databricks 
+                workspace. They then refresh the dashboard, which returns them to the score-checking state. This creates a continuous improvement loop 
+                where users can iteratively improve their WAF scores until they reach their target thresholds.
+            </p>
+        </div>
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> OpenApp: User opens App URL
+    OpenApp --> ViewDashboard: App loads
+    ViewDashboard --> CheckScore: Dashboard displays
+    
+    CheckScore --> HighScore: Score ≥ 80%
+    CheckScore --> MediumScore: Score 60-79%
+    CheckScore --> LowScore: Score < 60%
+    
+    HighScore --> ViewDetails: User satisfied
+    MediumScore --> OpenGuide: User wants improvement
+    LowScore --> OpenGuide: User needs help
+    
+    OpenGuide --> SelectPillar: Opens WAF Guide
+    SelectPillar --> SelectMetric: Chooses pillar
+    SelectMetric --> ViewCalculation: Sees metric details
+    
+    ViewCalculation --> ViewActions: Reviews calculation
+    ViewActions --> ImplementActions: Sees action items
+    ImplementActions --> ApplyChanges: Implements recommendations
+    
+    ApplyChanges --> RefreshDashboard: Changes applied
+    RefreshDashboard --> CheckScore: Dashboard refreshed
+    
+    ViewDetails --> [*]: User done
+    HighScore --> [*]: User done
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#1976d2',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#1565c0',
+                lineColor: '#424242',
+                secondaryColor: '#e3f2fd',
+                tertiaryColor: '#f5f5f5'
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Generated images (keep source .mmd files)
+*.png
+*.svg
+*.jpg
+*.jpeg
+
+# Temporary files
+*.tmp
+*.log
+
+# Keep the source files
+!*.mmd
+!README.md
+!QUICK_START.md
+!generate_diagrams.py
