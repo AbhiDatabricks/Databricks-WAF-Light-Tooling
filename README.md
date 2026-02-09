@@ -315,12 +315,15 @@ For more help, see the manual deployment steps provided in the installation note
 
 ## 🚀 Future Enhancements
 
-Planned extensions (see `DONOTCHECKIN/utils/docs/` for details):
+Planned extensions (see **[EXTENSION_GUIDE.md](EXTENSION_GUIDE.md)** for detailed information):
 
 - **REST API Service**: Programmatic access to WAF scores
 - **MCP (Model Context Protocol) Service**: Integration with AI assistants
 - **WAF Recommendation Agent**: AI-powered recommendations using Databricks Vector Search and Foundation Model APIs
+- **AI Agent Context Provider**: Structured context for external AI agents (proven pattern with LakeForge)
 - **One-Click Marketplace Installation**: Package as Databricks App for easy distribution
+
+> **Note**: The extension guide is marked as **Work In Progress (WIP)**. These features are planned but not yet implemented.
 
 ---
 
