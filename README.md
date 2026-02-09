@@ -330,7 +330,6 @@ Want to make WAF assessments better? Contributions are welcome!
 Please fork the repo, open an issue, or submit a pull request.
 
 **Development Setup:**
-- Utility scripts and planning docs are in `DONOTCHECKIN/` (not committed to git)
 - Main installation logic is in `install.ipynb`
 - Dashboard definitions are in `dashboards/`
 - App source code is in `streamlit-waf-automation/`
