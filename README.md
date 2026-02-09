@@ -105,7 +105,6 @@ The WAF Assessment Tool can be installed in your Databricks workspace with a sin
 #### Installation Options
 
 - **Full Installation** (`install.ipynb`): Complete setup including dashboard and app deployment
-- **App Testing** (`install_App.ipynb`): Temporary notebook for testing app deployment only (can be deleted after testing)
 
 #### Telemetry
 
@@ -176,7 +175,6 @@ See `architecture/README.md` for details on viewing and generating diagrams.
 ```
 Databricks-WAF-Light-Tooling/
 ├── install.ipynb              # Main installation notebook (dashboard + app)
-├── install_App.ipynb           # Temporary: App deployment testing only
 ├── README.md                   # This file
 ├── DEVELOPER_DOC.md            # Developer documentation
 ├── LICENSE                     # MIT License
