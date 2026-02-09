@@ -1,0 +1,382 @@
+# 🚀 WAF Assessment Tool - Extension & Integration Guide
+
+> **Status**: 🚧 Work In Progress (WIP)  
+> **Last Updated**: February 2026  
+> 
+> This document outlines how the WAF Assessment Tool can be extended and integrated with other systems. These extensions are **planned** and not yet implemented.
+
+---
+
+## 📋 Table of Contents
+
+1. [Overview](#overview)
+2. [Extension Options](#extension-options)
+3. [Real-World Integration Example](#real-world-integration-example)
+4. [Technical Architecture](#technical-architecture)
+5. [Implementation Roadmap](#implementation-roadmap)
+6. [Getting Started](#getting-started)
+
+---
+
+## 🎯 Overview
+
+The WAF Assessment Tool currently provides:
+- ✅ **Lakeview Dashboard** - Real-time WAF scores and visualizations
+- ✅ **Streamlit App** - Interactive dashboard with WAF Guide sidebar
+
+**Extension opportunities** enable programmatic access, AI integration, and integration with other tools - all **without modifying existing code**.
+
+---
+
+## 🔌 Extension Options
+
+### 1. **REST API Service** ⭐ (High Priority)
+
+**What it provides:**
+- Programmatic access to WAF scores and metrics
+- JSON endpoints for integration with external systems
+- CI/CD pipeline integration
+- Monitoring and alerting capabilities
+
+**Proposed Endpoints:**
+```
+GET  /api/v1/health                    # Health check
+GET  /api/v1/scores                    # Overall WAF scores (all pillars)
+GET  /api/v1/scores/{pillar}           # Score for specific pillar
+GET  /api/v1/metrics                    # All WAF control metrics
+GET  /api/v1/metrics/{waf_id}          # Specific metric details
+GET  /api/v1/recommendations            # Actionable recommendations
+GET  /api/v1/context                    # Structured context for AI agents
+```
+
+**Use Cases:**
+- CI/CD integration: Check WAF scores in deployment pipelines
+- Monitoring tools: Integrate with Datadog, PagerDuty, etc.
+- Multi-workspace aggregation: Compare scores across workspaces
+- Custom dashboards: Build custom UIs using the API
+- Automated reporting: Generate scheduled reports
+
+---
+
+### 2. **MCP (Model Context Protocol) Service** ⭐ (High Priority)
+
+**What it provides:**
+- Integration with AI assistants (Claude, ChatGPT, etc.)
+- Natural language queries about WAF scores
+- Conversational interface for WAF assessments
+
+**MCP Tools:**
+- `get_waf_scores` - Get overall WAF assessment scores
+- `get_pillar_score` - Get score for specific pillar
+- `get_failing_metrics` - Get all failing WAF controls
+- `get_metric_details` - Get detailed information about a WAF control
+- `get_recommendations` - Get actionable recommendations
+
+**Use Cases:**
+- Ask AI assistants: "What's my WAF score?" or "Why is my reliability score low?"
+- Natural language queries: "Show me all governance metrics that are failing"
+- Integration with AI tools: Claude Desktop, Cursor, GitHub Copilot
+
+---
+
+### 3. **WAF Recommendation Agent** ⭐ (High Priority)
+
+**What it provides:**
+- Conversational AI agent that understands WAF scores
+- Retrieves context from Databricks documentation
+- Provides intelligent recommendations based on scores
+- Answers follow-up questions
+
+**Key Features:**
+- ✅ Uses **Databricks Foundation Model APIs** (Anthropic Claude) - **No API keys required!**
+- ✅ Uses **Databricks Vector Search** for documentation retrieval - **No external vector stores!**
+- ✅ Understands workspace-specific WAF scores
+- ✅ Provides actionable recommendations with code examples
+
+**Example Conversations:**
+```
+User: "Why is my reliability score low?"
+Agent: "Your reliability is 38% because:
+- R-01-03: DLT usage is only 25% (threshold: 30%)
+- R-01-05: Model Serving usage is 15% (threshold: 20%)
+
+Would you like recommendations to improve these?"
+
+User: "How do I increase DLT usage?"
+Agent: [Retrieves Databricks docs on DLT]
+       [Provides step-by-step guide with code examples]
+       [Shows best practices]
+```
+
+**Deployment:**
+- Integrated into Streamlit app as chat interface
+- Available via REST API endpoint (`/api/v1/chat`)
+- Uses native Databricks services (Foundation Model APIs + Vector Search)
+
+---
+
+### 4. **AI Agent Context Provider** ⭐ (Proven Pattern)
+
+**What it provides:**
+- Structured JSON context for external AI agents
+- Workspace-level assessments and recommendations
+- Optimized format for LLM consumption
+
+**Real-World Example:**
+The WAF Assessment Tool can serve as the **underlying engine** for other AI tools (like LakeForge):
+- WAF Tool provides workspace-level assessments
+- Detailed recommendations retained as context
+- External agents use context to build WAF-compliant solutions
+- Result: Solutions are built WAF-compliant from the start
+
+**Integration Pattern:**
+```
+┌─────────────────────────────────────────┐
+│  WAF Assessment Tool                    │
+│  - Workspace Assessment Engine          │
+│  - Pillar Scores                         │
+│  - Individual Metric Status             │
+│  - Detailed Recommendations             │
+│  - Action Items with Code Examples      │
+└──────────────┬──────────────────────────┘
+               │ Provides Context
+               ▼
+┌─────────────────────────────────────────┐
+│  External AI Agent (e.g., LakeForge)    │
+│  - Receives WAF context                │
+│  - Understands workspace compliance     │
+│  - Generates WAF-compliant solutions    │
+│  - Applies best practices               │
+└─────────────────────────────────────────┘
+```
+
+**API Endpoint:**
+```
+GET /api/v1/context
+```
+
+Returns structured JSON with:
+- Overall scores per pillar
+- Failing metrics with details
+- Recommendations and action items
+- Code examples
+- Priority actions
+
+---
+
+## 🌟 Real-World Integration Example
+
+### LakeForge Integration (FEIP-2297 + FEIP-642)
+
+**Context:**
+The WAF Assessment Tool (FEIP-642) is being integrated with **LakeForge (FEIP-2297)**, a multi-agentic ETL development tool.
+
+**Integration Pattern:**
+> "Well-Architected Framework Auto (FEIP-642) could serve as the underlying engine for customer account- and workspace-level assessments and recommendations, with detailed recommendations and suggestions retained as context for the Lakeforge agent, enabling Lakeforge to develop the pipelines with full context and understanding of customer workspace/account."
+
+**Key Learnings:**
+1. **WAF Tool as Engine**: Not just a dashboard, but an assessment engine that other tools consume
+2. **Context Provider**: WAF assessments become context for AI agents
+3. **Proactive Compliance**: Agents build WAF-compliant solutions from the start
+4. **Reduced Rework**: Understanding workspace state prevents building non-compliant pipelines
+
+**This pattern validates:**
+- ✅ REST API for programmatic access
+- ✅ Structured context format for AI agents
+- ✅ Integration with multi-agent systems
+- ✅ Value beyond standalone assessment tool
+
+---
+
+## 🏗️ Technical Architecture
+
+### Current Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  Current WAF Assessment Tool            │
+│  ┌──────────────────────────────────┐  │
+│  │  Lakeview Dashboard               │  │
+│  │  - 13 Datasets (SQL Queries)      │  │
+│  │  - Charts & Tables                │  │
+│  └──────────────────────────────────┘  │
+│  ┌──────────────────────────────────┐  │
+│  │  Streamlit App                   │  │
+│  │  - Embedded Dashboard            │  │
+│  │  - WAF Guide Sidebar             │  │
+│  └──────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+         │
+         ▼
+  Databricks System Tables
+```
+
+### Extended Architecture (Planned)
+
+```
+┌─────────────────────────────────────────┐
+│  Existing (No Changes)                 │
+│  - Lakeview Dashboard                   │
+│  - Streamlit App                         │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│  New Extensions (Planned)                │
+│                                          │
+│  ┌──────────────────────────────────┐   │
+│  │  Query Library (waf_core/)        │   │
+│  │  - Extracts SQL from dashboard    │   │
+│  │  - Reusable query functions       │   │
+│  └──────────────┬───────────────────┘   │
+│                 │                        │
+│    ┌────────────┼────────────┐          │
+│    │            │            │          │
+│    ▼            ▼            ▼          │
+│  ┌────────┐  ┌────────┐  ┌────────┐   │
+│  │ REST   │  │  MCP   │  │ Agent  │   │
+│  │ API    │  │ Service│  │ Chat   │   │
+│  └────────┘  └────────┘  └────────┘   │
+│                 │                        │
+│                 ▼                        │
+│      Databricks System Tables           │
+└─────────────────────────────────────────┘
+```
+
+**Key Principles:**
+1. **No changes to existing code**: Extensions are separate services
+2. **Shared data access layer**: Reuse query logic from dashboard
+3. **Independent deployment**: Each extension can be deployed separately
+4. **Consistent data source**: All extensions query the same System Tables
+
+---
+
+## 🛠️ Implementation Roadmap
+
+### Phase 1: Foundation (Week 1)
+- Extract SQL queries from dashboard into reusable Python functions
+- Create query library module (`waf_core/queries.py`)
+- Test query functions return correct data structure
+
+### Phase 2: REST API (Week 2)
+- Build FastAPI service with core endpoints
+- Implement authentication (Databricks tokens)
+- Deploy API service
+- Test all endpoints
+
+### Phase 3: MCP Service (Week 2-3)
+- Implement MCP server with 5+ tools
+- Connect to query library
+- Test with Claude Desktop or Cursor
+- Deploy MCP server
+
+### Phase 4: WAF Recommendation Agent (Week 3-4)
+- Set up LLM framework (LangChain with Databricks Foundation Model)
+- Build Databricks docs retriever (using Vector Search)
+- Create recommendation engine
+- Build chat interface (Streamlit + REST API)
+- Deploy agent
+
+### Phase 5: Context Provider (Week 4) - Optional
+- Design context JSON schema
+- Implement context generation function
+- Add REST API endpoint (`/api/v1/context`)
+- Document integration for external agents
+
+---
+
+## 🚀 Getting Started
+
+### For Developers
+
+**Prerequisites:**
+- Databricks workspace with System Tables access
+- Python 3.9+
+- Databricks SDK
+
+**Quick Start:**
+1. Clone the repository
+2. Review the extension documentation
+3. Start with Phase 1 (Query Library extraction)
+4. Follow the implementation roadmap
+
+### For Integrators
+
+**If you want to integrate with the WAF Assessment Tool:**
+
+1. **REST API Integration:**
+   - Wait for REST API service (planned)
+   - Use `/api/v1/scores` and `/api/v1/metrics` endpoints
+   - Authenticate with Databricks tokens
+
+2. **MCP Integration:**
+   - Wait for MCP service (planned)
+   - Connect MCP server to your AI assistant
+   - Use available MCP tools
+
+3. **Context Provider Integration:**
+   - Wait for context provider (planned)
+   - Call `/api/v1/context` endpoint
+   - Use structured JSON context in your agent
+
+4. **WAF Recommendation Agent:**
+   - Wait for agent deployment (planned)
+   - Use chat interface in Streamlit app
+   - Or call `/api/v1/chat` endpoint
+
+---
+
+## 📊 Extension Priority Matrix
+
+| Extension | Priority | Effort | Impact | Use Case Fit |
+|-----------|----------|--------|--------|--------------|
+| **REST API** | ⭐⭐⭐ High | Medium | High | CI/CD, Monitoring, Automation |
+| **MCP Service** | ⭐⭐⭐ High | Medium | High | AI Integration, Natural Language |
+| **WAF Recommendation Agent** | ⭐⭐⭐ High | Medium | High | Conversational WAF Assistance |
+| **AI Agent Context Provider** | ⭐⭐⭐ High | Medium | High | **Proven: LakeForge Integration** |
+
+---
+
+## 🔐 Security & Authentication
+
+All extensions will support:
+- **Databricks Personal Access Tokens** (PAT)
+- **OAuth 2.0** for user authentication
+- **Service Principals** for automated access
+- **Workspace-level permissions** (read-only for assessments)
+- **Rate limiting** to prevent abuse
+- **Audit logging** for all API calls
+
+---
+
+## 📝 Notes
+
+- **No code changes required**: All extensions can be built as separate services
+- **Reuse existing logic**: Query logic from dashboard can be extracted into shared library
+- **Incremental rollout**: Extensions can be developed and deployed independently
+- **Backward compatible**: Existing dashboard and app remain unchanged
+- **Native Databricks services**: Uses Foundation Model APIs and Vector Search (no external dependencies)
+
+---
+
+## 📬 Questions or Feedback?
+
+If you're interested in extending or integrating with the WAF Assessment Tool:
+
+1. **Review this guide** to understand available options
+2. **Check the implementation roadmap** for timeline
+3. **Reach out** via GitHub Issues for specific integration needs
+4. **Contribute** by implementing extensions and submitting PRs
+
+---
+
+## 📚 Additional Resources
+
+- **Developer Documentation**: See `DEVELOPER_DOC.md` for dataset architecture
+- **Architecture Diagrams**: See `architecture/` folder for visual documentation
+- **Installation Guide**: See `README.md` for installation instructions
+
+---
+
+**Status**: 🚧 Work In Progress  
+**Last Updated**: February 2026  
+**Maintained By**: WAF Assessment Team
