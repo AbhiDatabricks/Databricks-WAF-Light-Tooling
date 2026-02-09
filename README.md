@@ -113,11 +113,197 @@ The WAF Assessment Tool can be installed in your Databricks workspace with a sin
 
 ![image](assets/waf-dashboard.png?raw=true)
 
+### 🎯 What You Get
 
+After installation, you'll have access to:
 
-https://github.com/user-attachments/assets/0e5a8867-6a06-4f30-ba51-38c5d09b9f57
+1. **WAF Assessment Dashboard** - Real-time scoring across 4 WAF pillars:
+   - 🛡️ **Reliability** - System resilience and recovery
+   - ⚖️ **Governance** - Data governance and compliance
+   - 💰 **Cost Optimization** - Resource efficiency
+   - ⚡ **Performance Efficiency** - Compute and query performance
+   - 📊 **Summary** - Aggregated scores across all pillars
 
+2. **Streamlit App with WAF Guide** - Interactive application featuring:
+   - Embedded dashboard visualization
+   - Comprehensive WAF Guide sidebar with:
+     - Score calculation explanations
+     - Thresholds and action items
+     - Code examples for improvements
+     - Best practices for each metric
 
+---
+
+## 📚 Documentation
+
+### For Users
+
+- **Installation Guide**: See [Getting Started](#-getting-started) section above
+- **Dashboard Guide**: Interactive WAF Guide is available in the Streamlit app sidebar
+- **Architecture Diagrams**: See `architecture/` folder for visual documentation
+
+### For Developers
+
+- **[Developer Documentation](DEVELOPER_DOC.md)**: Complete guide to dataset architecture, relationships, and data flow
+- **[Architecture Diagrams](architecture/)**: 
+  - System Architecture Overview
+  - Data Flow Diagrams
+  - User Flow - Complete Journey
+  - User Interaction Flow
+  - Deployment Architecture
+  - And more (see `architecture/README.md` for full list)
+
+### Architecture Documentation
+
+The `architecture/` folder contains:
+- **Mermaid diagram source files** (`.mmd`) for all architecture diagrams
+- **`render_diagrams.html`** - Browser-based diagram renderer for easy viewing
+- **Documentation files** explaining each diagram
+- **Quick start guide** for generating diagram images
+
+See `architecture/README.md` for details on viewing and generating diagrams.
+
+---
+
+## 🏗️ Project Structure
+
+```
+Databricks-WAF-Light-Tooling/
+├── install.ipynb              # Main installation notebook (dashboard + app)
+├── install_App.ipynb           # Temporary: App deployment testing only
+├── README.md                   # This file
+├── DEVELOPER_DOC.md            # Developer documentation
+├── LICENSE                     # MIT License
+│
+├── dashboards/                 # Dashboard definitions
+│   ├── WAF_ASSESSMENTv1.6.lvdash.json
+│   └── README.md
+│
+├── streamlit-waf-automation/   # Streamlit app source
+│   ├── app.py                  # Main app with WAF Guide sidebar
+│   ├── app.yaml                # App configuration
+│   └── requirements.txt        # Python dependencies
+│
+├── architecture/               # Architecture diagrams and docs
+│   ├── *.mmd                   # Mermaid diagram source files
+│   ├── render_diagrams.html    # Browser-based diagram viewer
+│   ├── README.md               # Architecture documentation
+│   └── DIAGRAM_LIST.md         # Complete diagram list
+│
+├── assets/                     # Images and assets
+│   └── waf-dashboard.png
+│
+└── DONOTCHECKIN/               # Development utilities (not in git)
+    ├── utils/
+    │   ├── scripts/            # Utility scripts
+    │   └── docs/               # Planning and technical docs
+    └── Integration/            # Integration examples
+```
+
+---
+
+## 🔧 Technical Details
+
+### Installation Process
+
+The `install.ipynb` notebook performs the following steps:
+
+1. **Dashboard Deployment**
+   - Reads dashboard JSON from `dashboards/` folder
+   - Creates Lakeview dashboard via API
+   - Handles existing dashboards (updates if found)
+
+2. **Dashboard Publishing**
+   - Finds available SQL warehouse
+   - Publishes dashboard with warehouse configuration
+   - Verifies dashboard exists and is published
+
+3. **Embedding Configuration**
+   - Configures `*.databricksapps.com` as allowed embedding domain
+   - Required for Streamlit app to embed the dashboard
+
+4. **App Configuration**
+   - Updates `app.py` with correct dashboard ID, instance URL, and workspace ID
+   - Preserves comprehensive WAF Guide sidebar
+
+5. **App Deployment**
+   - Uploads app files to workspace using Workspace API
+   - Deploys app using REST API (CLI not supported in notebooks)
+   - Provides app URL upon successful deployment
+
+### Deployment Methods
+
+- **REST API**: Used for app deployment (CLI not supported in notebook environments)
+- **Workspace API**: Used for file uploads and dashboard operations
+- **Manual Fallback**: Clear instructions provided if API deployment fails
+
+### Authentication
+
+The installation notebook uses Databricks notebook context for authentication:
+- No API keys required
+- Uses `dbutils` to get API URL and token automatically
+- Works seamlessly in Databricks workspace environment
+
+---
+
+## 🎨 Features
+
+### Dashboard Features
+
+- **Real-time Scoring**: Automatic calculation of WAF scores from system tables
+- **4 Pillar Assessment**: Reliability, Governance, Cost, Performance
+- **Summary View**: Aggregated scores across all pillars
+- **Interactive Visualizations**: Charts and tables for each metric
+- **Historical Tracking**: Monitor improvements over time
+
+### Streamlit App Features
+
+- **Embedded Dashboard**: Full dashboard visualization within the app
+- **Interactive WAF Guide**: Comprehensive sidebar with:
+  - Score calculation methodology
+  - Threshold explanations
+  - Actionable improvement steps
+  - Code examples for each metric
+- **User-Friendly Interface**: Clean, modern UI with best UX practices
+
+---
+
+## 📊 Data Sources
+
+The dashboard analyzes data from Databricks System Tables:
+
+- `system.billing.usage` - Cost and usage metrics
+- `system.information_schema.tables` - Table metadata
+- `system.compute.clusters` - Cluster configurations
+- `system.compute.warehouses` - Warehouse usage
+- `system.access.audit` - Access patterns
+- `system.query.history` - Query performance
+- `system.mlflow.experiments_latest` - ML experiment tracking
+- And more (see `DEVELOPER_DOC.md` for complete list)
+
+---
+
+## 🔍 Troubleshooting
+
+### Dashboard Not Loading
+
+- Ensure the dashboard is published with a warehouse
+- Check that the warehouse is running
+- Verify system tables are accessible
+
+### App Not Deploying
+
+- Check that app files were uploaded successfully
+- Verify workspace path is correct
+- Try manual deployment via Databricks Apps UI (instructions provided in notebook)
+
+### Embedding Issues
+
+- Ensure `*.databricksapps.com` is added to embedding domains
+- Check dashboard sharing settings
+- Verify app URL is correct
+
+For more help, see the manual deployment steps provided in the installation notebook output.
 
 ---
 
