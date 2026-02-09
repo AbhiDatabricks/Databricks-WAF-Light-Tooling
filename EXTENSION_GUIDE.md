@@ -121,11 +121,11 @@ Agent: [Retrieves Databricks docs on DLT]
 - Workspace-level assessments and recommendations
 - Optimized format for LLM consumption
 
-**Real-World Example:**
-The WAF Assessment Tool can serve as the **underlying engine** for other AI tools (like LakeForge):
+**Use Case:**
+The WAF Assessment Tool can serve as the **underlying engine** for external AI applications:
 - WAF Tool provides workspace-level assessments
 - Detailed recommendations retained as context
-- External agents use context to build WAF-compliant solutions
+- External applications use context to build WAF-compliant solutions
 - Result: Solutions are built WAF-compliant from the start
 
 **Integration Pattern:**
@@ -141,7 +141,7 @@ The WAF Assessment Tool can serve as the **underlying engine** for other AI tool
                │ Provides Context
                ▼
 ┌─────────────────────────────────────────┐
-│  External AI Agent (e.g., LakeForge)    │
+│  External AI Application                │
 │  - Receives WAF context                │
 │  - Understands workspace compliance     │
 │  - Generates WAF-compliant solutions    │
@@ -163,25 +163,29 @@ Returns structured JSON with:
 
 ---
 
-## 🌟 Real-World Integration Example
+## 🌟 Integration Use Cases
 
-### LakeForge Integration (FEIP-2297 + FEIP-642)
+### External AI Application Integration
 
 **Context:**
-The WAF Assessment Tool (FEIP-642) is being integrated with **LakeForge (FEIP-2297)**, a multi-agentic ETL development tool.
+The WAF Assessment Tool can serve as the underlying engine for external AI applications, providing workspace-level assessments and recommendations as context.
 
 **Integration Pattern:**
-> "Well-Architected Framework Auto (FEIP-642) could serve as the underlying engine for customer account- and workspace-level assessments and recommendations, with detailed recommendations and suggestions retained as context for the Lakeforge agent, enabling Lakeforge to develop the pipelines with full context and understanding of customer workspace/account."
+The WAF Assessment Tool provides structured context that external AI applications can consume to:
+- Understand workspace WAF compliance state
+- Build WAF-compliant solutions from the start
+- Apply best practices automatically
+- Reduce rework and technical debt
 
-**Key Learnings:**
-1. **WAF Tool as Engine**: Not just a dashboard, but an assessment engine that other tools consume
-2. **Context Provider**: WAF assessments become context for AI agents
-3. **Proactive Compliance**: Agents build WAF-compliant solutions from the start
-4. **Reduced Rework**: Understanding workspace state prevents building non-compliant pipelines
+**Key Benefits:**
+1. **WAF Tool as Engine**: Not just a dashboard, but an assessment engine that other applications consume
+2. **Context Provider**: WAF assessments become context for AI applications
+3. **Proactive Compliance**: Applications build WAF-compliant solutions from the start
+4. **Reduced Rework**: Understanding workspace state prevents building non-compliant solutions
 
-**This pattern validates:**
+**This pattern enables:**
 - ✅ REST API for programmatic access
-- ✅ Structured context format for AI agents
+- ✅ Structured context format for AI applications
 - ✅ Integration with multi-agent systems
 - ✅ Value beyond standalone assessment tool
 
