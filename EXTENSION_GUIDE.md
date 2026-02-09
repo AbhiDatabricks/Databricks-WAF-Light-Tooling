@@ -1,9 +1,10 @@
 # 🚀 WAF Assessment Tool - Extension & Integration Guide
 
 > **Status**: 🚧 Work In Progress (WIP)  
+> **ETA**: February 21, 2026  
 > **Last Updated**: February 2026  
 > 
-> This document outlines how the WAF Assessment Tool can be extended and integrated with other systems. These extensions are **planned** and not yet implemented.
+> This document outlines how the WAF Assessment Tool can be extended and integrated with other systems. These extensions are **in progress** and will be available soon. More details will be shared by end of this week, with a session scheduled for next week.
 
 ---
 
