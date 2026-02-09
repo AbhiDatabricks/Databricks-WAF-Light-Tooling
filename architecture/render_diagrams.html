@@ -598,6 +598,383 @@ stateDiagram-v2
         </div>
     </div>
 
+    <div class="diagram-container">
+        <div class="diagram-title">Extended Architecture with Integration Options</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">Extension Architecture Overview</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The WAF Assessment Tool can be extended with additional services without modifying existing code. The <strong>Query Library</strong> 
+                extracts SQL queries from the dashboard into reusable Python functions, enabling multiple integration points.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>REST API Service</strong> provides programmatic access to WAF scores and metrics for CI/CD integration, monitoring tools, 
+                and custom dashboards. The <strong>MCP Service</strong> enables AI assistants (Claude, ChatGPT) to query WAF data using natural language.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The <strong>WAF Recommendation Agent</strong> is a conversational AI agent that understands WAF scores, retrieves Databricks documentation 
+                context, and provides intelligent recommendations. The <strong>Context Provider</strong> generates structured JSON context for external 
+                AI agents (like LakeForge) to consume.
+            </p>
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "🏢 Existing Components (No Changes)"
+        APP[Databricks App<br/>Streamlit UI + WAF Guide]
+        DASH[Lakeview Dashboard<br/>WAF_ASSESSMENTv1.6]
+    end
+    
+    subgraph "🔧 Extension Layer (Planned)"
+        subgraph "Query Library"
+            QLIB[waf_core/<br/>━━━━━━━━━━━━<br/>Extracts SQL from Dashboard<br/>Reusable Query Functions]
+        end
+        
+        subgraph "Integration Services"
+            REST[REST API Service<br/>━━━━━━━━━━━━<br/>FastAPI Endpoints<br/>/api/v1/scores<br/>/api/v1/metrics<br/>/api/v1/context]
+            MCP[MCP Service<br/>━━━━━━━━━━━━<br/>Model Context Protocol<br/>AI Assistant Integration]
+            AGENT[WAF Recommendation Agent<br/>━━━━━━━━━━━━<br/>Conversational AI<br/>Databricks Docs Context<br/>Intelligent Recommendations]
+            CTX[Context Provider<br/>━━━━━━━━━━━━<br/>Structured JSON<br/>For External Agents]
+        end
+    end
+    
+    subgraph "📦 Data Sources"
+        ST[Databricks System Tables<br/>13+ Tables<br/>Real-time Metrics]
+        VS[Vector Search<br/>Databricks Docs Index]
+        LLM[Foundation Model APIs<br/>Anthropic Claude<br/>No API Keys Required]
+    end
+    
+    subgraph "🌐 External Integrations"
+        EXT1[CI/CD Pipelines]
+        EXT2[Monitoring Tools]
+        EXT3[AI Assistants]
+        EXT4[LakeForge Agent]
+    end
+    
+    APP --> DASH
+    DASH --> QLIB
+    QLIB --> REST
+    QLIB --> MCP
+    QLIB --> AGENT
+    QLIB --> CTX
+    
+    REST --> ST
+    MCP --> ST
+    AGENT --> ST
+    AGENT --> VS
+    AGENT --> LLM
+    CTX --> ST
+    
+    REST --> EXT1
+    REST --> EXT2
+    MCP --> EXT3
+    CTX --> EXT4
+    
+    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style REST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style MCP fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style AGENT fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style CTX fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style ST fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style VS fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+    style LLM fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">REST API Service Architecture</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">REST API Integration</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The REST API Service provides programmatic access to WAF assessment data through standard HTTP endpoints. 
+                It uses the Query Library to execute the same SQL queries as the dashboard, ensuring data consistency.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Key Endpoints:</strong> Health check, overall scores, pillar-specific scores, individual metrics, recommendations, 
+                and context for AI agents. All endpoints support Databricks token authentication and return JSON responses.
+            </p>
+        </div>
+        <div class="mermaid">
+graph LR
+    subgraph "🌐 API Clients"
+        CLIENT1[CI/CD Pipeline]
+        CLIENT2[Monitoring Tool]
+        CLIENT3[Custom Dashboard]
+        CLIENT4[External Agent]
+    end
+    
+    subgraph "🔌 REST API Service"
+        API[FastAPI Application<br/>━━━━━━━━━━━━<br/>/api/v1/health<br/>/api/v1/scores<br/>/api/v1/scores/{pillar}<br/>/api/v1/metrics<br/>/api/v1/metrics/{waf_id}<br/>/api/v1/recommendations<br/>/api/v1/context]
+        AUTH[Authentication<br/>Databricks Tokens<br/>OAuth 2.0]
+    end
+    
+    subgraph "📚 Query Library"
+        QLIB[waf_core/queries.py<br/>━━━━━━━━━━━━<br/>get_reliability_scores()<br/>get_governance_scores()<br/>get_cost_scores()<br/>get_performance_scores()<br/>get_all_scores()]
+    end
+    
+    subgraph "💾 Data Layer"
+        SQL[SQL Warehouse]
+        ST[System Tables]
+    end
+    
+    CLIENT1 -->|HTTP GET/POST| API
+    CLIENT2 -->|HTTP GET/POST| API
+    CLIENT3 -->|HTTP GET/POST| API
+    CLIENT4 -->|HTTP GET/POST| API
+    
+    API --> AUTH
+    AUTH --> QLIB
+    QLIB --> SQL
+    SQL --> ST
+    
+    API -->|JSON Response| CLIENT1
+    API -->|JSON Response| CLIENT2
+    API -->|JSON Response| CLIENT3
+    API -->|JSON Response| CLIENT4
+    
+    style API fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
+    style AUTH fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style QLIB fill:#1976d2,stroke:#1565c0,stroke-width:2px,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">MCP Service Architecture</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">Model Context Protocol Integration</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The MCP Service enables AI assistants (Claude Desktop, Cursor, GitHub Copilot) to query WAF assessment data using natural language. 
+                It exposes tools that AI assistants can call to get scores, metrics, and recommendations.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Available Tools:</strong> get_waf_scores, get_pillar_score, get_failing_metrics, get_metric_details, and get_recommendations. 
+                Users can ask questions like "What's my WAF score?" or "Why is my reliability score low?" and get intelligent responses.
+            </p>
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "🤖 AI Assistants"
+        AI1[Claude Desktop]
+        AI2[Cursor IDE]
+        AI3[GitHub Copilot]
+        AI4[Other MCP Clients]
+    end
+    
+    subgraph "🔌 MCP Service"
+        MCPSERVER[MCP Server<br/>━━━━━━━━━━━━<br/>Model Context Protocol<br/>Tool Definitions]
+        TOOLS[MCP Tools<br/>━━━━━━━━━━━━<br/>get_waf_scores<br/>get_pillar_score<br/>get_failing_metrics<br/>get_metric_details<br/>get_recommendations]
+    end
+    
+    subgraph "📚 Query Library"
+        QLIB[waf_core/queries.py<br/>Execute Queries]
+    end
+    
+    subgraph "💾 Data Layer"
+        SQL[SQL Warehouse]
+        ST[System Tables]
+    end
+    
+    AI1 -->|MCP Protocol| MCPSERVER
+    AI2 -->|MCP Protocol| MCPSERVER
+    AI3 -->|MCP Protocol| MCPSERVER
+    AI4 -->|MCP Protocol| MCPSERVER
+    
+    MCPSERVER --> TOOLS
+    TOOLS --> QLIB
+    QLIB --> SQL
+    SQL --> ST
+    
+    TOOLS -->|Structured Response| MCPSERVER
+    MCPSERVER -->|Natural Language| AI1
+    MCPSERVER -->|Natural Language| AI2
+    MCPSERVER -->|Natural Language| AI3
+    MCPSERVER -->|Natural Language| AI4
+    
+    style MCPSERVER fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
+    style TOOLS fill:#1976d2,stroke:#1565c0,stroke-width:2px,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">WAF Recommendation Agent Architecture</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">Conversational AI Agent</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The WAF Recommendation Agent is a conversational AI agent that understands WAF scores, retrieves context from Databricks documentation, 
+                and provides intelligent recommendations. It uses <strong>Databricks Foundation Model APIs</strong> (Anthropic Claude) - no external API keys required!
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Key Features:</strong> The agent uses Databricks Vector Search to retrieve relevant documentation, combines it with current WAF scores, 
+                and generates actionable recommendations with code examples. Users can ask follow-up questions and get detailed guidance.
+            </p>
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "👤 User Interface"
+        CHAT[Chat Interface<br/>Streamlit App<br/>or REST API]
+    end
+    
+    subgraph "🤖 WAF Recommendation Agent"
+        AGENT[LangChain Agent<br/>━━━━━━━━━━━━<br/>Conversational AI<br/>Tool Orchestration]
+        TOOLS[Agent Tools<br/>━━━━━━━━━━━━<br/>get_waf_scores<br/>get_databricks_docs<br/>generate_recommendations]
+    end
+    
+    subgraph "📚 Context Retrieval"
+        VS[Vector Search<br/>Databricks Docs Index<br/>━━━━━━━━━━━━<br/>Semantic Search<br/>Relevant Documentation]
+        DOCS[Databricks Documentation<br/>Delta Lake, DLT, Unity Catalog<br/>Best Practices, Code Examples]
+    end
+    
+    subgraph "🧠 LLM Layer"
+        LLM[Foundation Model APIs<br/>━━━━━━━━━━━━<br/>databricks-anthropic-claude-3-5-sonnet<br/>No API Keys Required<br/>Workspace Authentication]
+    end
+    
+    subgraph "📊 WAF Data"
+        QLIB[Query Library<br/>WAF Scores & Metrics]
+        ST[System Tables]
+    end
+    
+    CHAT -->|User Question| AGENT
+    AGENT --> TOOLS
+    TOOLS --> QLIB
+    TOOLS --> VS
+    TOOLS --> LLM
+    
+    QLIB --> ST
+    VS --> DOCS
+    LLM -->|Context + Scores| AGENT
+    AGENT -->|Intelligent Response| CHAT
+    
+    style AGENT fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
+    style LLM fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+    style VS fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">AI Agent Context Provider - LakeForge Integration Pattern</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">Context Provider for External Agents</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                The Context Provider generates structured JSON context optimized for LLM consumption. This enables external AI agents (like LakeForge) 
+                to understand workspace WAF compliance state and build WAF-compliant solutions from the start.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                <strong>Real-World Example:</strong> WAF Assessment Tool (FEIP-642) serves as the underlying engine for LakeForge (FEIP-2297), a 
+                multi-agentic ETL development tool. LakeForge receives WAF context, understands workspace compliance, and generates WAF-compliant pipelines.
+            </p>
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "🔍 WAF Assessment Tool"
+        WAF[WAF Assessment Engine<br/>━━━━━━━━━━━━<br/>Workspace Assessment<br/>Pillar Scores<br/>Individual Metrics<br/>Detailed Recommendations<br/>Action Items with Code Examples]
+        CTXPROV[Context Provider<br/>━━━━━━━━━━━━<br/>/api/v1/context<br/>Structured JSON Output]
+    end
+    
+    subgraph "🌐 External AI Agent"
+        LAKEFORGE[LakeForge Agent<br/>━━━━━━━━━━━━<br/>Multi-Agentic ETL Tool<br/>Pipeline Generation<br/>Code Generation]
+        CUSTOM[Custom AI Agent<br/>━━━━━━━━━━━━<br/>Customer-Deployed<br/>Uses WAF Context]
+    end
+    
+    subgraph "📊 Context Data"
+        JSON[Structured JSON<br/>━━━━━━━━━━━━<br/>workspace_id<br/>overall_score<br/>pillars: {<br/>  reliability: {<br/>    score, status,<br/>    failing_metrics,<br/>    recommendations,<br/>    action_items,<br/>    code_examples<br/>  }<br/>}<br/>priority_actions<br/>compliance_summary]
+    end
+    
+    subgraph "✅ Result"
+        RESULT[WAF-Compliant Solutions<br/>━━━━━━━━━━━━<br/>Pipelines built with<br/>full context understanding<br/>Best practices applied<br/>Reduced rework]
+    end
+    
+    WAF --> CTXPROV
+    CTXPROV --> JSON
+    JSON --> LAKEFORGE
+    JSON --> CUSTOM
+    
+    LAKEFORGE -->|Uses Context| RESULT
+    CUSTOM -->|Uses Context| RESULT
+    
+    style WAF fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style CTXPROV fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style JSON fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style LAKEFORGE fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+    style RESULT fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Complete Integration Architecture</div>
+        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #1976d2;">Full Extension Ecosystem</h4>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                This diagram shows the complete integration architecture with all extension options. The Query Library serves as the shared data access layer, 
+                enabling multiple integration points while maintaining data consistency.
+            </p>
+            <p style="margin: 10px 0; line-height: 1.6;">
+                All extensions query the same System Tables through the Query Library, ensuring that REST API, MCP Service, Agent, and Context Provider 
+                all return consistent data. The architecture supports independent deployment of each extension without modifying existing dashboard or app code.
+            </p>
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "🏢 Existing (No Changes)"
+        APP[Databricks App]
+        DASH[Lakeview Dashboard]
+    end
+    
+    subgraph "🔧 Query Library (Shared Layer)"
+        QLIB[waf_core/<br/>━━━━━━━━━━━━<br/>queries.py<br/>Extracted SQL Logic<br/>Reusable Functions]
+    end
+    
+    subgraph "🔌 Extension Services"
+        REST[REST API<br/>FastAPI]
+        MCP[MCP Service<br/>Protocol Server]
+        AGENT[WAF Agent<br/>Conversational AI]
+        CTX[Context Provider<br/>JSON Generator]
+    end
+    
+    subgraph "💾 Native Databricks Services"
+        ST[System Tables<br/>13+ Tables]
+        VS[Vector Search<br/>Docs Index]
+        LLM[Foundation Model APIs<br/>Anthropic Claude]
+    end
+    
+    subgraph "🌐 External Integrations"
+        EXT1[CI/CD Pipelines]
+        EXT2[Monitoring Tools]
+        EXT3[AI Assistants]
+        EXT4[LakeForge Agent]
+        EXT5[Custom Agents]
+    end
+    
+    APP --> DASH
+    DASH --> QLIB
+    
+    QLIB --> REST
+    QLIB --> MCP
+    QLIB --> AGENT
+    QLIB --> CTX
+    
+    REST --> ST
+    MCP --> ST
+    AGENT --> ST
+    AGENT --> VS
+    AGENT --> LLM
+    CTX --> ST
+    
+    REST --> EXT1
+    REST --> EXT2
+    MCP --> EXT3
+    AGENT --> EXT3
+    CTX --> EXT4
+    CTX --> EXT5
+    
+    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style QLIB fill:#ff9800,stroke:#f57c00,stroke-width:3px,color:#fff
+    style REST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style MCP fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style AGENT fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style CTX fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+        </div>
+    </div>
+
     <script>
         mermaid.initialize({ 
             startOnLoad: true,
