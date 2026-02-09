@@ -111,7 +111,13 @@ The WAF Assessment Tool can be installed in your Databricks workspace with a sin
 
 > **Note**: This tool collects masked email addresses (first 5 characters only) and workspace IDs for usage analytics during the initial installation only. This is a one-time telemetry collection to understand adoption. To disable telemetry, set `ENABLE_TELEMETRY = False` in the `install.ipynb` notebook.
 
-![image](assets/waf-dashboard.png?raw=true)
+![WAF Assessment Dashboard](assets/waf-dashboard.png?raw=true)
+
+**Streamlit App with WAF Guide Sidebar:**
+
+![WAF Assessment Dashboard with WAF Guide](assets/waf-dashboard-with-guide.png?raw=true)
+
+*The Streamlit app features an interactive WAF Guide sidebar that provides detailed explanations, score calculations, thresholds, and actionable recommendations for each metric.*
 
 ### 🎯 What You Get
 
