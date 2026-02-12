@@ -696,6 +696,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "photon_usage AS (\n",
@@ -704,6 +705,7 @@
         "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "sql_warehouse_usage AS (\n",
@@ -712,6 +714,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SQL%' THEN 1 ELSE 0 END) as sql_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "cluster_policies AS (\n",
@@ -719,12 +722,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "cluster_tags AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "cluster_workers AS (\n",
         "  SELECT \n",
@@ -732,12 +737,14 @@
         "    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n",
         "    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "instance_variety AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_clusters,\n",
         "    COUNT(DISTINCT split(worker_node_type,'[.]')[0]) as distinct_families\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "dlt_usage AS (\n",
         "  SELECT \n",
@@ -746,6 +753,7 @@
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "model_serving_usage AS (\n",
         "  SELECT \n",
@@ -754,18 +762,21 @@
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
         "    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "autoscale_clusters AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN ifnull(max_autoscale_Workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "autoscale_warehouses AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_warehouses,\n",
         "    SUM(CASE WHEN max_clusters - min_clusters > 0 THEN 1 ELSE 0 END) as autoscale_warehouses\n",
         "  FROM system.compute.warehouses\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "PE_01 AS (\n",
         "SELECT \n",
@@ -800,7 +811,7 @@
         "  ,usage_metadata.instance_pool_id AS instance_pool_id\n",
         " FROM system.billing.usage \n",
         " WHERE usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        " --AND array_contains(:workspace_id,workspace_id)\n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         " AND usage_unit = 'DBU'\n",
         " AND billing_origin_product IN ('LAKEFLOW_CONNECT','DATA_QUALITY_MONITORING','PREDICTIVE_OPTIMIZATION','DATABASE','APPS','VECTOR_SEARCH','JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
         " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n",
@@ -824,7 +835,7 @@
         "  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n",
         "    WHERE \n",
         "     usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "     --AND array_contains(:workspace_id,workspace_id)\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_metadata.cluster_id IS NOT NULL\n",
         "    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n",
         "),\n",
@@ -833,8 +844,8 @@
         "    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n",
         "        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n",
         "    from system.compute.clusters c \n",
-        "    WHERE --array_contains(:workspace_id,workspace_id)\n",
-        "     change_date <= current_date()) --TBD to check this filter\n",
+        "    WHERE array_contains(:workspace_id,workspace_id)\n",
+        "     AND change_date <= current_date()) --TBD to check this filter\n",
         "    WHERE rn = 1\n",
         "),\n",
         "node_timeline AS (\n",
@@ -888,6 +899,7 @@
         "      node_timeline n\n",
         "      ON c.cluster_id = n.cluster_id\n",
         "      AND c.workspace_id = n.workspace_id\n",
+        "\n",
         "      GROUP BY\n",
         "      c.cluster_id, c.cluster_name, c.worker_node_type\n",
         "      ,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n",
@@ -905,7 +917,7 @@
         "FROM system.billing.usage \n",
         "WHERE  billing_origin_product = 'JOBS' AND usage_metadata.cluster_id IS NOT NULL\n",
         "AND usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "GROUP BY usage_metadata.job_id, usage_metadata.job_run_id\n",
         "HAVING count_clusters > 1),\n",
         "\n",
@@ -933,7 +945,7 @@
         "WHERE compute.type = 'WAREHOUSE'\n",
         "AND end_time BETWEEN current_date() - \n",
         "INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "\n",
         "GROUP BY \n",
         "   compute.warehouse_id\n",
@@ -991,67 +1003,48 @@
         "    ) >= 80 THEN 'Yes'\n",
         "    WHEN waf_id = 'CO-03-03' AND EXISTS (SELECT 1 FROM system.billing.usage LIMIT 1) THEN 'Yes'\n",
         "    -- Performance (PE)\n",
-        "    /*WHEN waf_id = 'PE-01-01' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
-        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-02' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-04' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-06' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-07' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (distinct_families * 100.0 / total_clusters) ELSE 0 END FROM instance_variety\n",
-        "    ) >= 5 THEN 'Yes'*/ \n",
-        "    WHEN waf.waf_id = 'PE-01-01' AND EXISTS (\n",
-        "      SELECT COUNT (DISTINCT CASE WHEN billing_origin_product IN ('SDP','JOBS') THEN 'SDP_OR_JOBS' \n",
-        "                  ELSE billing_origin_product END) as cnt_distinct FROM PE_01 \n",
-        "            WHERE billing_origin_product IN ('SDP','JOBS','INTERACTIVE','SQL') \n",
-        "            AND classic_or_serverless = 'SERVERLESS' \n",
-        "            HAVING cnt_distinct = 3\n",
-        "    ) THEN 'Yes' --TBD dbu usage limit?\n",
+        "  \n",
+        "    WHEN waf.waf_id = 'PE-01-01' AND\n",
+        "      (SELECT SUM(CASE WHEN classic_or_serverless = 'SERVERLESS' THEN dbu_usage_total ELSE 0 END)/\n",
+        "              SUM(dbu_usage_total)\n",
+        "           FROM PE_01 \n",
+        "            WHERE billing_origin_product IN ('SDP','JOBS','INTERACTIVE','SQL')\n",
+        "      )*100 >= 30 THEN 'Yes'\n",
         "    WHEN waf.waf_id = 'PE-01-02' AND EXISTS (\n",
         "      SELECT 1 FROM PE_01 WHERE billing_origin_product = 'MODEL_SERVING' LIMIT 1\n",
-        "    ) THEN 'Yes' --TBD dbu usage limit?\n",
+        "    ) THEN 'Yes' \n",
         "     WHEN waf.waf_id = 'PE-02-01' AND EXISTS (\n",
         "      SELECT 1 FROM PE_01 WHERE billing_origin_product = 'LAKEFLOW_CONNECT' LIMIT 1\n",
         "    ) THEN 'Yes'\n",
-        "    WHEN waf.waf_id = 'PE-02-02' AND EXISTS (\n",
-        "      SELECT 1 FROM PE_02 WHERE is_multi_worker = true AND max_worker_count > 1 LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
+        "    WHEN waf.waf_id = 'PE-02-02' AND (\n",
+        "      SELECT SUM(CASE WHEN is_multi_worker = true AND max_worker_count > 1 THEN 1 ELSE 0 END)/COUNT(1) FROM PE_02 \n",
+        "    )*100 >= 30 THEN 'Yes' \n",
         "    WHEN waf.waf_id = 'PE-02-03' AND NOT EXISTS(\n",
         "      SELECT 1 FROM PE_02_03 LIMIT 1\n",
         "    )\n",
         "     THEN 'Yes'\n",
-        "    WHEN waf.waf_id = 'PE-02-04' AND NOT EXISTS (\n",
-        "        SELECT 1 FROM PE_02 WHERE avg_cpu_utilization < 0.5 OR avg_memory_utilization < 0.5 LIMIT 1\n",
-        "    ) AND NOT EXISTS(\n",
-        "          SELECT 1 FROM PE_02_04 WHERE avg_queue_time_seconds > 10\n",
-        "    )THEN 'Yes'\n",
-        "    WHEN waf.waf_id = 'PE-02-06' AND EXISTS (\n",
-        "        SELECT 1 FROM PE_01 WHERE billing_origin_product IN ('SDP','JOBS') \n",
-        "                AND photon_or_non_photon = 'PHOTON'\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf.waf_id = 'PE-02-07' AND NOT EXISTS (\n",
-        "        SELECT 1 FROM PE_02 WHERE avg_cpu_utilization < 0.5 OR avg_memory_utilization < 0.5 LIMIT 1\n",
-        "    ) AND NOT EXISTS(\n",
-        "          SELECT 1 FROM PE_02_04 WHERE avg_queue_time_seconds > 10\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf.waf_id = 'PE-02-08 to PE-02-16' AND EXISTS (\n",
-        "        SELECT 1 FROM system.information_schema.tables WHERE table_type = 'MANAGED' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf.waf_id = 'PE-03-02' AND EXISTS (\n",
-        "        SELECT 1 FROM PE_01 WHERE instance_pool_present = true LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
+        "    WHEN waf.waf_id = 'PE-02-04' AND (\n",
+        "        SELECT SUM(CASE WHEN avg_cpu_utilization > 0.5 AND avg_memory_utilization > 0.5 THEN 1 ELSE 0 END)/COUNT(1) FROM PE_02 \n",
+        "    )*100 >= 50 THEN 'Yes'\n",
+        "    WHEN waf.waf_id = 'PE-02-05' THEN 'N/A'\n",
+        "    WHEN waf.waf_id = 'PE-02-06' AND (\n",
+        "        SELECT SUM(CASE WHEN photon_or_non_photon = 'PHOTON' THEN dbu_usage_total ELSE 0 END)/SUM(dbu_usage_total) FROM PE_01 \n",
+        "    )*100 >= 30 THEN 'Yes' \n",
+        "    WHEN waf.waf_id = 'PE-02-07' AND (\n",
+        "        SELECT SUM(CASE WHEN avg_queue_time_seconds < 10 THEN 1 ELSE 0 END)/COUNT(1) FROM PE_02_04\n",
+        "    )*100 >= 50 THEN 'Yes'\n",
+        "    WHEN waf.waf_id = 'PE-02-08 to PE-02-16' AND (\n",
+        "        SELECT SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END )/COUNT(1) FROM system.information_schema.tables \n",
+        "    )*100 >= 50 THEN 'Yes'\n",
+        "    WHEN waf.waf_id = 'PE-03-02' AND (\n",
+        "        SELECT SUM(CASE WHEN instance_pool_present = true THEN dbu_usage_total ELSE 0 END)/SUM(dbu_usage_total) FROM PE_01 \n",
+        "        WHERE classic_or_serverless = 'CLASSIC' AND billing_origin_product IN ('SDP','JOBS')\n",
+        "     )*100 >= 30 THEN 'Yes' \n",
+        "    WHEN waf.waf_id = 'PE-03-03' THEN 'N/A'\n",
+        "    WHEN waf.waf_id = 'PE-04-01' THEN 'N/A'\n",
+        "    WHEN waf.waf_id = 'PE-04-02' THEN 'N/A'\n",
+        "    WHEN waf.waf_id = 'PE-04-03' THEN 'N/A'\n",
+        "\n",
         "    -- Reliability (R)\n",
         "    WHEN waf_id = 'R-01-01' AND (\n",
         "      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n",
@@ -1107,6 +1100,51 @@
         "FROM waf_status\n",
         "GROUP BY pillar\n",
         "ORDER BY pillar;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1126,6 +1164,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "photon_usage AS (\n",
@@ -1134,6 +1173,7 @@
         "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "sql_warehouse_usage AS (\n",
@@ -1142,6 +1182,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SQL%' THEN 1 ELSE 0 END) as sql_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "cluster_policies AS (\n",
@@ -1149,12 +1190,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "cluster_tags AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "waf_status AS (\n",
         "  SELECT\n",
@@ -1252,6 +1295,51 @@
         "  implemented\n",
         "FROM waf_status\n",
         "ORDER BY principle, waf_id;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1271,6 +1359,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "photon_usage AS (\n",
@@ -1279,6 +1368,7 @@
         "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "sql_warehouse_usage AS (\n",
@@ -1287,6 +1377,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SQL%' THEN 1 ELSE 0 END) as sql_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "cluster_policies AS (\n",
@@ -1294,12 +1385,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "cluster_tags AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "waf_status AS (\n",
         "  SELECT\n",
@@ -1351,6 +1444,51 @@
         "FROM waf_status\n",
         "GROUP BY principle\n",
         "ORDER BY principle;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1370,6 +1508,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "photon_usage AS (\n",
@@ -1378,6 +1517,7 @@
         "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "sql_warehouse_usage AS (\n",
@@ -1386,6 +1526,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SQL%' THEN 1 ELSE 0 END) as sql_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "cluster_policies AS (\n",
@@ -1393,12 +1534,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "cluster_tags AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "waf_status AS (\n",
         "  SELECT\n",
@@ -1454,291 +1597,51 @@
         "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
         "FROM waf_status;\n"
-      ]
-    },
-    {
-      "name": "4745a0f9",
-      "displayName": "waf_controls_p_old",
-      "queryLines": [
-        "WITH serverless_usage AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_compute,\n",
-        "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
-        "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "    AND usage_type LIKE '%COMPUTE%'\n",
-        "),\n",
-        "photon_usage AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_compute,\n",
-        "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
-        "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "    AND usage_type LIKE '%COMPUTE%'\n",
-        "),\n",
-        "cluster_workers AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_clusters,\n",
-        "    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n",
-        "    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n",
-        "  FROM system.compute.clusters\n",
-        "),\n",
-        "instance_variety AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_clusters,\n",
-        "    COUNT(DISTINCT split(worker_node_type,'[.]')[0]) as distinct_families\n",
-        "  FROM system.compute.clusters\n",
-        "),\n",
-        "waf_status AS (\n",
-        "  SELECT\n",
-        "    waf_id,\n",
-        "    principle,\n",
-        "    best_practice,\n",
-        "    CASE \n",
-        "    WHEN waf_id = 'PE-01-01' THEN (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n",
-        "    )\n",
-        "    WHEN waf_id = 'PE-01-02' THEN (\n",
-        "      CASE WHEN EXISTS (SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1) THEN 100 ELSE 0 END\n",
-        "    )\n",
-        "    WHEN waf_id = 'PE-02-02' THEN (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    )\n",
-        "    WHEN waf_id = 'PE-02-04' THEN (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    )\n",
-        "    WHEN waf_id = 'PE-02-05' THEN (\n",
-        "      CASE WHEN NOT EXISTS (SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1) THEN 100 ELSE 0 END\n",
-        "    )\n",
-        "    WHEN waf_id = 'PE-02-06' THEN (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n",
-        "    )\n",
-        "    WHEN waf_id = 'PE-02-07' THEN (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (distinct_families * 100.0 / total_clusters) ELSE 0 END FROM instance_variety\n",
-        "    )\n",
-        "    ELSE 0\n",
-        "    END AS current_percentage,\n",
-        "    CASE \n",
-        "    WHEN waf_id = 'PE-01-01' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
-        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-02' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-04' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-06' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-07' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (distinct_families * 100.0 / total_clusters) ELSE 0 END FROM instance_variety\n",
-        "    ) >= 5 THEN 'Yes'\n",
-        "    ELSE 'No'\n",
-        "    END AS implemented\n",
-        "  FROM (\n",
-        "    SELECT * FROM VALUES\n",
-        "    ('PE-01-01', 'Utilize serverless capabilities', 'Use serverless architecture'),\n",
-        "    ('PE-01-02', 'Utilize serverless capabilities', 'Use an enterprise grade model serving service'),\n",
-        "    ('PE-02-02', 'Design workloads for performance', 'Use parallel computation where it is beneficial'),\n",
-        "    ('PE-02-04', 'Design workloads for performance', 'Prefer larger clusters'),\n",
-        "    ('PE-02-05', 'Design workloads for performance', 'Use native Spark operations'),\n",
-        "    ('PE-02-06', 'Design workloads for performance', 'Use native platform engines'),\n",
-        "    ('PE-02-07', 'Design workloads for performance', 'Understand your hardware and workload type')\n",
-        "    AS waf(waf_id, principle, best_practice)\n",
-        "  )\n",
-        ")\n",
-        "SELECT\n",
-        "  waf_id,\n",
-        "  principle,\n",
-        "  best_practice,\n",
-        "  ROUND(current_percentage, 1) as score_percentage,\n",
-        "  CASE \n",
-        "  WHEN waf_id = 'PE-01-01' THEN 50\n",
-        "  WHEN waf_id = 'PE-01-02' THEN 100\n",
-        "  WHEN waf_id = 'PE-02-02' THEN 80\n",
-        "  WHEN waf_id = 'PE-02-04' THEN 50\n",
-        "  WHEN waf_id = 'PE-02-05' THEN 100\n",
-        "  WHEN waf_id = 'PE-02-06' THEN 80\n",
-        "  WHEN waf_id = 'PE-02-07' THEN 5\n",
-        "  END as threshold_percentage,\n",
-        "  CASE \n",
-        "  WHEN implemented = 'Yes' THEN 'Met'\n",
-        "  ELSE 'Not Met'\n",
-        "  END as threshold_met,\n",
-        "  implemented\n",
-        "FROM waf_status\n",
-        "ORDER BY principle, waf_id;\n"
-      ]
-    },
-    {
-      "name": "13e29e6c",
-      "displayName": "waf_principal_percentage_p",
-      "queryLines": [
-        "WITH serverless_usage AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_compute,\n",
-        "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
-        "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "    AND usage_type LIKE '%COMPUTE%'\n",
-        "),\n",
-        "photon_usage AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_compute,\n",
-        "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
-        "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "    AND usage_type LIKE '%COMPUTE%'\n",
-        "),\n",
-        "cluster_workers AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_clusters,\n",
-        "    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n",
-        "    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n",
-        "  FROM system.compute.clusters\n",
-        "),\n",
-        "instance_variety AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_clusters,\n",
-        "    COUNT(DISTINCT split(worker_node_type,'[.]')[0]) as distinct_families\n",
-        "  FROM system.compute.clusters\n",
-        "),\n",
-        "waf_status AS (\n",
-        "  SELECT\n",
-        "    waf_id,\n",
-        "    principle,\n",
-        "    CASE \n",
-        "    WHEN waf_id = 'PE-01-01' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
-        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-02' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-04' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-06' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    WHEN waf_id = 'PE-02-07' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (distinct_families * 100.0 / total_clusters) ELSE 0 END FROM instance_variety\n",
-        "    ) >= 5 THEN 'Yes'\n",
-        "    ELSE 'No'\n",
-        "    END AS implemented\n",
-        "  FROM (\n",
-        "    SELECT * FROM VALUES\n",
-        "    ('PE-01-01', 'Utilize serverless capabilities'),\n",
-        "    ('PE-01-02', 'Utilize serverless capabilities'),\n",
-        "    ('PE-02-02', 'Design workloads for performance'),\n",
-        "    ('PE-02-04', 'Design workloads for performance'),\n",
-        "    ('PE-02-05', 'Design workloads for performance'),\n",
-        "    ('PE-02-06', 'Design workloads for performance'),\n",
-        "    ('PE-02-07', 'Design workloads for performance')\n",
-        "    AS waf(waf_id, principle)\n",
-        "  )\n",
-        ")\n",
-        "SELECT\n",
-        "  principle,\n",
-        "  COUNT(*) AS total_controls,\n",
-        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM waf_status\n",
-        "GROUP BY principle\n",
-        "ORDER BY principle;\n"
-      ]
-    },
-    {
-      "name": "87deca0d",
-      "displayName": "total_percentage_p",
-      "queryLines": [
-        "WITH serverless_usage AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_compute,\n",
-        "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
-        "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "    AND usage_type LIKE '%COMPUTE%'\n",
-        "),\n",
-        "photon_usage AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_compute,\n",
-        "    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n",
-        "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "    AND usage_type LIKE '%COMPUTE%'\n",
-        "),\n",
-        "cluster_workers AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_clusters,\n",
-        "    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n",
-        "    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n",
-        "  FROM system.compute.clusters\n",
-        "),\n",
-        "instance_variety AS (\n",
-        "  SELECT \n",
-        "    COUNT(*) as total_clusters,\n",
-        "    COUNT(DISTINCT split(worker_node_type,'[.]')[0]) as distinct_families\n",
-        "  FROM system.compute.clusters\n",
-        "),\n",
-        "waf_status AS (\n",
-        "  SELECT\n",
-        "    waf_id,\n",
-        "    CASE \n",
-        "    -- PE-01-01: >50% of compute is serverless\n",
-        "    WHEN waf_id = 'PE-01-01' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    -- PE-01-02: Model serving exists\n",
-        "    WHEN waf_id = 'PE-01-02' AND EXISTS (\n",
-        "      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    -- PE-02-02: >80% of clusters have multiple workers\n",
-        "    WHEN waf_id = 'PE-02-02' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    -- PE-02-04: >50% of clusters are large (>3 workers)\n",
-        "    WHEN waf_id = 'PE-02-04' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n",
-        "    ) >= 50 THEN 'Yes'\n",
-        "    -- PE-02-05: No Python UDFs\n",
-        "    WHEN waf_id = 'PE-02-05' AND NOT EXISTS (\n",
-        "      SELECT 1 FROM system.information_schema.routines WHERE external_language = 'Python' LIMIT 1\n",
-        "    ) THEN 'Yes'\n",
-        "    -- PE-02-06: >80% of queries use Photon\n",
-        "    WHEN waf_id = 'PE-02-06' AND (\n",
-        "      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n",
-        "    ) >= 80 THEN 'Yes'\n",
-        "    -- PE-02-07: >5% instance variety\n",
-        "    WHEN waf_id = 'PE-02-07' AND (\n",
-        "      SELECT CASE WHEN total_clusters > 0 THEN (distinct_families * 100.0 / total_clusters) ELSE 0 END FROM instance_variety\n",
-        "    ) >= 5 THEN 'Yes'\n",
-        "    ELSE 'No'\n",
-        "    END AS implemented\n",
-        "  FROM (\n",
-        "    SELECT * FROM VALUES\n",
-        "    ('PE-01-01'), ('PE-01-02'),\n",
-        "    ('PE-02-02'), ('PE-02-04'), ('PE-02-05'), ('PE-02-06'), ('PE-02-07')\n",
-        "    AS waf(waf_id)\n",
-        "  )\n",
-        ")\n",
-        "SELECT\n",
-        "  COUNT(*) AS total_controls,\n",
-        "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
-        "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM waf_status;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1746,19 +1649,6 @@
       "displayName": "waf_CO-01-01_vector_db",
       "queryLines": [
         "select 'Coming Soon...'  as message;"
-      ]
-    },
-    {
-      "name": "c436a496",
-      "displayName": "waf_CO-01-01_managed_tables",
-      "queryLines": [
-        "SELECT \n",
-        "    table_type,\n",
-        "    round(count(table_type)/(select count(*) from system.information_schema.tables) * 100) as percent_of_tables\n",
-        "    FROM system.information_schema.tables\n",
-        "    group by ALL\n",
-        "    having percent_of_tables > 0\n",
-        "    order by percent_of_tables desc"
       ]
     },
     {
@@ -1771,6 +1661,8 @@
         "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
         "  FROM system.compute.clusters\n",
         "  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n",
+        "\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "  QUALIFY rn=1\n",
         "),\n",
         "job_tasks_exploded AS (\n",
@@ -1780,6 +1672,7 @@
         "    EXPLODE(compute_ids) as cluster_id\n",
         "  FROM system.lakeflow.job_task_run_timeline\n",
         "  WHERE period_start_time >= CURRENT_DATE() - INTERVAL 30 DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "  GROUP BY ALL\n",
         "),\n",
         "all_purpose_cluster_jobs AS (\n",
@@ -1792,17 +1685,51 @@
         "    INNER JOIN clusters t2 USING (workspace_id, cluster_id)\n",
         ")\n",
         "SELECT * FROM all_purpose_cluster_jobs LIMIT 10;"
-      ]
-    },
-    {
-      "name": "d654eb5a",
-      "displayName": "waf_CO-01-03_sql_vs_allpurpose",
-      "queryLines": [
-        "-- ToDo: Use $DBUs with account_prices system table when it is available\n",
-        "-- show SKU distribution between All-Purpose and SQL Warehouses, companies with primary DWH are expected even over 50 % of $DBUs on DWH\n",
-        "-- docs: https://docs.databricks.com/aws/en/admin/system-tables/billing#billing-origin-product-reference\n",
-        "select billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage where billing_origin_product in ('SQL','ALL_PURPOSE') and usage_date >= current_date() - interval 30 days \n",
-        "group by billing_origin_product;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1828,12 +1755,58 @@
         ", cluster_id\n",
         ", cluster_name\n",
         " from system.compute.clusters\n",
+        "WHERE array_contains(:workspace_id,workspace_id)\n",
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
         "    and cluster_source not in('PIPELINE','PIPELINE_MAINTENANCE') \n",
         " AND  not contains(dbr_version, 'custom') \n",
         "limit 100"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1846,50 +1819,6 @@
         "--select * as DBUs from system.billing.usage u where contains(u.sku_name, 'SERVERLESS_REAL_TIME_INFERENCE') and date_diff(day, u.usage_start_time, now()) <28;\n",
         "-- ToDo: What query? Check utilization metrics? Or track Academy?\n",
         "select 'Coming Soon...' as message;\n"
-      ]
-    },
-    {
-      "name": "a36b2899",
-      "displayName": "waf_CO-01-06_serverless",
-      "queryLines": [
-        "with serverless as (\n",
-        "    select sum(usage_quantity) as dbu from system.billing.usage u where contains(u.sku_name, 'SERVERLESS') and u.billing_origin_product in ('ALL_PURPOSE','SQL','JOBS', 'DLT','INTERACTIVE') and date_diff(day, u.usage_start_time, now()) <28\n",
-        "),\n",
-        "total as (\n",
-        "    select sum(usage_quantity) as dbu from system.billing.usage u where  u.billing_origin_product in ('ALL_PURPOSE','SQL','JOBS', 'DLT','INTERACTIVE') and date_diff(day, u.usage_start_time, now()) <28\n",
-        ")\n",
-        "select serverless.dbu * 100 / total.dbu as serverless_dbu_percent from serverless cross join total;\n"
-      ]
-    },
-    {
-      "name": "aed75aae",
-      "displayName": "waf_CO-01-06_serverless_sql",
-      "queryLines": [
-        "--ToDo: Use account_prices system table when available\n",
-        "select \n",
-        "--t1.usage_date,\n",
-        "case when t1.sku_name like '%SERVERLESS_SQL%' then 'SQL_SERVERLESS' \n",
-        "when t1.sku_name like '%ENTERPRISE_SQL_COMPUTE%' then 'SQL_CLASSIC'\n",
-        "when t1.sku_name like '%SQL_PRO%' then 'SQL_PRO'\n",
-        "else 'Other' end as sql_sku_name,\n",
-        "SUM(t1.usage_quantity * list_prices.pricing.default) as list_cost\n",
-        "FROM system.billing.usage t1\n",
-        "INNER JOIN system.billing.list_prices on\n",
-        "   t1.cloud = list_prices.cloud and\n",
-        "   t1.sku_name = list_prices.sku_name and\n",
-        "   t1.usage_start_time >= list_prices.price_start_time and\n",
-        "   (t1.usage_end_time <= list_prices.price_end_time or list_prices.price_end_time is null)\n",
-        "where t1.sku_name like '%SQL%' and t1.usage_date >= current_date() - interval 30 days\n",
-        "group by all"
-      ]
-    },
-    {
-      "name": "efb892e1",
-      "displayName": "waf_CO-01-07_instance_type",
-      "queryLines": [
-        "-- ToDo: What query? Check utilization metrics? Or track Academy?\n",
-        "-- Instance type: Compute-optimized, Memory-optimized etc?\n",
-        "select 'Coming Soon...'  as message;"
       ]
     },
     {
@@ -1919,9 +1848,55 @@
         "  join cluster_name cn on nt.cluster_id = cn.cluster_id\n",
         "  WHERE\n",
         "    nt.start_time BETWEEN current_date() - INTERVAL 90 DAYS AND current_date() \n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "  group by 1,2\n",
         "  order by 3 desc;\n",
         "\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1941,9 +1916,56 @@
         "  join cluster_name cn on nt.cluster_id = cn.cluster_id\n",
         "  WHERE\n",
         "    nt.start_time BETWEEN current_date() - INTERVAL 90 DAYS AND current_date() \n",
+        "\n",
+        "    AND array_contains(:workspace_id,workspace_id)\n",
         "  group by 1,2\n",
         "  order by 3 desc\n",
         "  limit 100;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1958,19 +1980,55 @@
         "join system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n",
         "-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
         "where ju.usage_date BETWEEN current_date() - interval 90 days AND current_date()\n",
-        "--  AND array_contains(:workspace_id,ju.workspace_id)\n",
+        "  AND array_contains(:workspace_id,ju.workspace_id)\n",
         "and ju.billing_origin_product in (\"ALL_PURPOSE\")\n",
         "and ju.product_features.is_serverless = false\n",
         "group by 1,2,3\n"
-      ]
-    },
-    {
-      "name": "b54341e5",
-      "displayName": "waf_CO-02-01_auto_scaling",
-      "queryLines": [
-        "with autoscaling_count as (select count(*) as autoscaling_count from system.compute.clusters where max_autoscale_workers is not null and delete_time is null),\n",
-        "total_clusters_count as (select count(*) as total_clusters_count from system.compute.clusters where delete_time is null)\n",
-        "select autoscaling_count.autoscaling_count * 100 / total_clusters_count.total_clusters_count as autoscaling_percent from total_clusters_count cross join autoscaling_count;"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1985,7 +2043,52 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "  AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2002,27 +2105,52 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"JOB\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)"
-      ]
-    },
-    {
-      "name": "e46a4a40",
-      "displayName": "waf_CO-03-01_billing_tables",
-      "queryLines": [
-        "-- How often is system.billing.usage accessed L28d? Eg 19k in field-eng L30d\n",
-        "select\n",
-        "  event_date,\n",
-        "  count(*) as usage_read\n",
-        "from\n",
-        "  system.access.audit\n",
-        "where\n",
-        "  service_name = 'unityCatalog'\n",
-        "  and action_name = 'getTable'\n",
-        "  and request_params.full_name_arg = 'system.billing.usage'\n",
-        "  and user_identity.email != 'System-User'\n",
-        "  and (date_diff(day, event_date, current_date()) <= 90)\n",
-        "group by event_date\n",
-        "order by event_date;"
+        " AND array_contains(:workspace_id,workspace_id)"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2036,7 +2164,52 @@
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\", \"JOB\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "  AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2049,28 +2222,52 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
-      ]
-    },
-    {
-      "name": "9f038f29",
-      "displayName": "waf_CO-03-03_chargeback",
-      "queryLines": [
-        "select 'Coming Soon...'  as message;"
-      ]
-    },
-    {
-      "name": "e3cd19cf",
-      "displayName": "waf_CO-03-04_share_cost",
-      "queryLines": [
-        "select 'Coming Soon...'  as message;"
-      ]
-    },
-    {
-      "name": "d83ae5eb",
-      "displayName": "waf_CO-03-05_data_transfer_cost",
-      "queryLines": [
-        "select 'Coming Soon...'  as message;"
+        " AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2084,7 +2281,52 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        " AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2097,7 +2339,53 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "-- and cluster_source in (\"JOB\") AND array_contains(:workspace_id,workspace_id)\n"
+        "-- and cluster_source in (\"JOB\") \n",
+        "AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2117,6 +2405,7 @@
         "    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "model_serving_usage AS (\n",
@@ -2125,6 +2414,7 @@
         "    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n",
         "),\n",
         "serverless_usage AS (\n",
@@ -2133,6 +2423,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "autoscale_clusters AS (\n",
@@ -2140,12 +2431,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN ifnull(max_autoscale_Workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "autoscale_warehouses AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_warehouses,\n",
         "    SUM(CASE WHEN max_clusters - min_clusters > 0 THEN 1 ELSE 0 END) as autoscale_warehouses\n",
         "  FROM system.compute.warehouses\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "waf_status AS (\n",
         "  SELECT\n",
@@ -2213,6 +2506,51 @@
         "  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
         "FROM waf_status;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2232,6 +2570,7 @@
         "    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "model_serving_usage AS (\n",
@@ -2240,6 +2579,7 @@
         "    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
         "    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n",
         "),\n",
         "serverless_usage AS (\n",
@@ -2248,6 +2588,7 @@
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "autoscale_clusters AS (\n",
@@ -2255,12 +2596,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN ifnull(max_autoscale_Workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "autoscale_warehouses AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_warehouses,\n",
         "    SUM(CASE WHEN max_clusters - min_clusters > 0 THEN 1 ELSE 0 END) as autoscale_warehouses\n",
         "  FROM system.compute.warehouses\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "waf_status AS (\n",
         "  SELECT\n",
@@ -2312,6 +2655,51 @@
         "FROM waf_status\n",
         "GROUP BY principle\n",
         "ORDER BY principle;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2330,7 +2718,8 @@
         "    COUNT(*) as total_compute_usage,\n",
         "    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n",
         "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '90' DAY\n",
+        "    AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "model_serving_usage AS (\n",
@@ -2338,7 +2727,8 @@
         "    COUNT(*) as total_ml_compute,\n",
         "    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n",
         "  FROM system.billing.usage\n",
-        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '90' DAY \n",
+        "    AND array_contains(:workspace_id,workspace_id)\n",
         "    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n",
         "),\n",
         "serverless_usage AS (\n",
@@ -2346,7 +2736,9 @@
         "    COUNT(*) as total_compute,\n",
         "    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n",
         "  FROM system.billing.usage\n",
+        "  \n",
         "  WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_type LIKE '%COMPUTE%'\n",
         "),\n",
         "autoscale_clusters AS (\n",
@@ -2354,12 +2746,14 @@
         "    COUNT(*) as total_clusters,\n",
         "    SUM(CASE WHEN ifnull(max_autoscale_Workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n",
         "  FROM system.compute.clusters\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "autoscale_warehouses AS (\n",
         "  SELECT \n",
         "    COUNT(*) as total_warehouses,\n",
         "    SUM(CASE WHEN max_clusters - min_clusters > 0 THEN 1 ELSE 0 END) as autoscale_warehouses\n",
         "  FROM system.compute.warehouses\n",
+        "  WHERE array_contains(:workspace_id,workspace_id)\n",
         "),\n",
         "waf_status AS (\n",
         "  SELECT\n",
@@ -2468,6 +2862,51 @@
         "  implemented\n",
         "FROM waf_status\n",
         "ORDER BY principle, waf_id;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2564,7 +3003,7 @@
         "FROM\n",
         "  system.marketplace.listing_access_events\n",
         "where\n",
-        "  event_date between current_date() - 30 and current_date()\n",
+        "  event_date between current_date() - 90 and current_date()\n",
         "GROUP BY\n",
         "  consumer_delta_sharing_recipient_name,\n",
         "  provider_name,\n",
@@ -2585,7 +3024,7 @@
         "from\n",
         "  system.access.audit\n",
         "where\n",
-        "  event_date between current_date() - 30 and current_date()\n",
+        "  event_date between current_date() - 90 and current_date()\n",
         "group by\n",
         "  audit_level,\n",
         "  workspace_id"
@@ -2668,138 +3107,56 @@
         "    auto_stop_minutes\n",
         "FROM\n",
         "    system.compute.warehouses\n",
+        "WHERE array_contains(:workspace_id,workspace_id)\n",
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
         "    and min_clusters = max_clusters;"
-      ]
-    },
-    {
-      "name": "6e7d4785",
-      "displayName": "waf_PE-01-_serverless_compute",
-      "queryLines": [
-        "WITH CTE AS (\n",
-        "SELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END AS billing_origin_product\n",
-        ", CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n",
-        "FROM system.billing.usage \n",
-        "WHERE usage_date BETWEEN current_date()-:rollback_days AND current_date()\n",
-        "AND usage_unit = 'DBU'\n",
-        "AND billing_origin_product IN ('JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
-        "GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END \n",
-        ")\n",
-        "SELECT \n",
-        "    billing_origin_product\n",
-        "  , SUM(runs) AS runs_total\n",
-        "  , SUM(dbu_usage) AS dbu_usage_total\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n",
-        "  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n",
-        "  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n",
-        "  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n",
-        "FROM CTE\n",
-        "GROUP BY\n",
-        "billing_origin_product \n",
-        "ORDER BY runs_total DESC;"
       ],
       "parameters": [
         {
-          "displayName": "rollback_days",
-          "keyword": "rollback_days",
-          "dataType": "INTEGER",
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
           "defaultSelection": {
             "values": {
-              "dataType": "INTEGER",
+              "dataType": "STRING",
               "values": [
                 {
-                  "value": "30"
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
                 }
               ]
             }
           }
         }
-      ]
-    },
-    {
-      "name": "e8a98fa1",
-      "displayName": "waf_PE-02-_cluster_metrics",
-      "queryLines": [
-        "--waf_PE-02-*_cluster_metrics\n",
-        "WITH usage AS (    \n",
-        "  SELECT usage_metadata.cluster_id AS cluster_id, account_id, workspace_id\n",
-        "  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n",
-        "    WHERE \n",
-        "     usage_date BETWEEN current_date()-30 AND current_date()\n",
-        "    AND usage_metadata.cluster_id IS NOT NULL\n",
-        "    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n",
-        "),\n",
-        "compute_met AS (\n",
-        "  SELECT * FROM \n",
-        "    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n",
-        "        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n",
-        "    from system.compute.clusters c)\n",
-        "  WHERE rn = 1\n",
-        ")\n",
-        "SELECT *, row_number() over( order by dbu_usage desc) AS rank\n",
-        "FROM(\n",
-        "SELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs, c.cluster_id, c.cluster_name, c.worker_node_type\n",
-        ",CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END AS is_multi_worker\n",
-        ", ifnull(worker_count,ifnull(max_autoscale_workers,0)) AS max_worker_count\n",
-        ", CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling\n",
-        " FROM\n",
-        "usage u\n",
-        "INNER JOIN\n",
-        "compute_met c\n",
-        "ON u.cluster_id = c.cluster_id\n",
-        "AND u.account_id = c.account_id\n",
-        "AND u.workspace_id = c.workspace_id\n",
-        "GROUP BY\n",
-        "c.cluster_id, c.cluster_name, c.worker_node_type\n",
-        ",CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n",
-        ", ifnull(worker_count,ifnull(max_autoscale_workers,0)) \n",
-        ", CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END \n",
-        ")\n"
-      ]
-    },
-    {
-      "name": "caef943a",
-      "displayName": "waf_PE-02-05_python_udfs",
-      "queryLines": [
-        "--waf_PE-02-05_python_udfs\n",
-        "SELECT COUNT(*) as count, routine_catalog as catalog_name, routine_schema AS schema_name, concat(routine_catalog,'.',routine_schema) AS full_schema\n",
-        "FROM system.information_schema.routines WHERE external_language = 'Python' \n",
-        "GROUP BY routine_catalog, routine_schema \n",
-        "ORDER BY count DESC;"
-      ]
-    },
-    {
-      "name": "3eb728b7",
-      "displayName": "waf_PE-02-06_photon_workloads",
-      "queryLines": [
-        "--waf_PE-02-06_photon_workloads\n",
-        "WITH CTE AS (\n",
-        "SELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, billing_origin_product\n",
-        ", CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n",
-        "FROM system.billing.usage \n",
-        "WHERE usage_date BETWEEN current_date()-30 AND current_date()\n",
-        "AND billing_origin_product  IN ('JOBS','LAKEFLOW_CONNECT','VECTOR_SEARCH','DATABASE','DLT','ALL_PURPOSE','ONLINE_TABLES','INTERACTIVE')\n",
-        "AND usage_unit = 'DBU'\n",
-        "GROUP BY billing_origin_product, CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END \n",
-        ")\n",
-        "SELECT \n",
-        "    billing_origin_product\n",
-        "  , SUM(runs) AS runs_total\n",
-        "  , SUM(dbu_usage) AS dbu_usage_total\n",
-        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END) AS sum_photon_run\n",
-        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END) AS sum_photon_dbu\n",
-        "  , SUM(CASE WHEN is_photon = false THEN runs ELSE 0 END) AS sum_non_photon_run\n",
-        "  , SUM(CASE WHEN is_photon = false THEN dbu_usage ELSE 0 END) AS sum_non_photon_dbu\n",
-        "  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END)/SUM(runs) AS pct_photon_runs\n",
-        "  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_photon_dbu\n",
-        "FROM CTE\n",
-        "GROUP BY\n",
-        "billing_origin_product \n",
-        "ORDER BY runs_total DESC;\n"
       ]
     },
     {
@@ -2810,7 +3167,53 @@
         "from system.compute.clusters \n",
         "where cluster_source = 'JOB'\n",
         "and create_time >= current_timestamp() - interval 7 days\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "and max_autoscale_workers is null"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2823,6 +3226,7 @@
         "    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n",
         "  FROM system.compute.clusters\n",
         "  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "  QUALIFY rn=1 AND delete_time is null\n",
         ")\n",
         "\n",
@@ -2833,6 +3237,51 @@
         "  cluster_name,\n",
         "  owned_by\n",
         "FROM all_purpose_cluster WHERE auto_termination_minutes IS NULL"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2843,88 +3292,54 @@
         "WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%'\n",
         "AND usage_date >= current_timestamp() - interval 7 days\n",
         "AND usage_metadata.endpoint_name is not null\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "group by endpoint_name, billing_origin_product\n",
         "order by usage_dbus desc"
-      ]
-    },
-    {
-      "name": "waf_co_01_02_ba132837",
-      "displayName": "CO-01-02: Job vs All-Purpose Cluster Usage",
-      "queryLines": [
-        "\n",
-        "SELECT \n",
-        "  CASE \n",
-        "    WHEN cluster_type = 'JOB' THEN 'Job Clusters (Cost Effective)'\n",
-        "    WHEN cluster_type = 'ALL_PURPOSE' THEN 'All-Purpose (Expensive)'\n",
-        "    ELSE 'Other'\n",
-        "  END as cluster_category,\n",
-        "  COUNT(*) as usage_count,\n",
-        "  ROUND(SUM(usage_quantity * list_price), 2) as total_cost\n",
-        "FROM system.billing.usage\n",
-        "WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "  AND usage_type LIKE '%COMPUTE%'\n",
-        "GROUP BY cluster_category\n",
-        "ORDER BY total_cost DESC\n",
-        "            "
-      ]
-    },
-    {
-      "name": "waf_co_01_06_f6a7b684",
-      "displayName": "CO-01-06: Serverless Cost Efficiency",
-      "queryLines": [
-        "\n",
-        "SELECT \n",
-        "  CASE \n",
-        "    WHEN usage_type LIKE '%SERVERLESS%' THEN 'Serverless'\n",
-        "    ELSE 'Traditional'\n",
-        "  END as compute_type,\n",
-        "  ROUND(SUM(usage_quantity * list_price), 2) as total_cost,\n",
-        "  ROUND(AVG(usage_quantity * list_price), 2) as avg_cost_per_workload\n",
-        "FROM system.billing.usage\n",
-        "WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY\n",
-        "  AND usage_type LIKE '%COMPUTE%'\n",
-        "GROUP BY compute_type\n",
-        "            "
-      ]
-    },
-    {
-      "name": "waf_co_01_09_4d154e61",
-      "displayName": "CO-01-09: Photon vs Standard Performance Cost",
-      "queryLines": [
-        "\n",
-        "SELECT \n",
-        "  CASE \n",
-        "    WHEN photon_enabled = true THEN 'Photon (3x Faster)'\n",
-        "    ELSE 'Standard Engine'\n",
-        "  END as engine_type,\n",
-        "  COUNT(*) as query_count,\n",
-        "  AVG(execution_duration_ms / 1000.0) as avg_duration_seconds,\n",
-        "  ROUND(SUM(usage_quantity * list_price), 2) as total_cost\n",
-        "FROM system.query.history q\n",
-        "JOIN system.billing.usage u ON q.workspace_id = u.workspace_id\n",
-        "WHERE q.start_time >= CURRENT_DATE - INTERVAL '7' DAY\n",
-        "  AND u.usage_start_time >= CURRENT_DATE - INTERVAL '7' DAY\n",
-        "GROUP BY engine_type\n",
-        "            "
-      ]
-    },
-    {
-      "name": "waf_co_02_01_e3330123",
-      "displayName": "CO-02-01: Auto-Termination Savings",
-      "queryLines": [
-        "\n",
-        "SELECT \n",
-        "  CASE \n",
-        "    WHEN auto_termination_minutes > 0 THEN 'Auto-Terminate Enabled'\n",
-        "    ELSE 'No Auto-Terminate'\n",
-        "  END as termination_status,\n",
-        "  COUNT(DISTINCT cluster_id) as cluster_count,\n",
-        "  AVG(DATEDIFF(MINUTE, start_time, end_time)) as avg_runtime_minutes,\n",
-        "  ROUND(SUM(CASE WHEN state = 'RUNNING' AND DATEDIFF(MINUTE, start_time, CURRENT_TIMESTAMP) > 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as idle_cluster_percent\n",
-        "FROM system.compute.clusters\n",
-        "WHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '7' DAY\n",
-        "GROUP BY termination_status\n",
-        "            "
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2964,7 +3379,7 @@
         "  ,usage_metadata.instance_pool_id AS instance_pool_id\n",
         " FROM system.billing.usage \n",
         " WHERE usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        " --AND array_contains(:workspace_id,workspace_id)\n",
+        " AND array_contains(:workspace_id,workspace_id)\n",
         " AND usage_unit = 'DBU'\n",
         " AND billing_origin_product IN ('LAKEFLOW_CONNECT','DATA_QUALITY_MONITORING','PREDICTIVE_OPTIMIZATION','DATABASE','APPS','VECTOR_SEARCH','JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
         " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n",
@@ -2988,7 +3403,7 @@
         "  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n",
         "    WHERE \n",
         "     usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "     --AND array_contains(:workspace_id,workspace_id)\n",
+        "     AND array_contains(:workspace_id,workspace_id)\n",
         "    AND usage_metadata.cluster_id IS NOT NULL\n",
         "    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n",
         "),\n",
@@ -2997,7 +3412,7 @@
         "    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n",
         "        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n",
         "    from system.compute.clusters c \n",
-        "    WHERE --array_contains(:workspace_id,workspace_id)\n",
+        "    WHERE array_contains(:workspace_id,workspace_id) AND\n",
         "     change_date <= current_date()) --TBD to check this filter\n",
         "    WHERE rn = 1\n",
         "),\n",
@@ -3069,7 +3484,7 @@
         "FROM system.billing.usage \n",
         "WHERE  billing_origin_product = 'JOBS' AND usage_metadata.cluster_id IS NOT NULL\n",
         "AND usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "GROUP BY usage_metadata.job_id, usage_metadata.job_run_id\n",
         "HAVING count_clusters > 1),\n",
         "\n",
@@ -3097,7 +3512,7 @@
         "WHERE compute.type = 'WAREHOUSE'\n",
         "AND end_time BETWEEN current_date() - \n",
         "INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "\n",
         "GROUP BY \n",
         "   compute.warehouse_id\n",
@@ -3199,6 +3614,51 @@
         "    'Summary' AS dataset_type\n",
         "  FROM waf_status)\n",
         "  ORDER BY waf_id"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3240,7 +3700,7 @@
         "  ,workspace_id\n",
         " FROM system.billing.usage \n",
         " WHERE usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        " AND --array_contains(:workspace_id,workspace_id) AND \n",
+        " AND array_contains(:workspace_id,workspace_id) AND \n",
         " usage_unit = 'DBU'\n",
         " AND billing_origin_product IN ('LAKEFLOW_CONNECT','DATA_QUALITY_MONITORING','PREDICTIVE_OPTIMIZATION','DATABASE','APPS','VECTOR_SEARCH','JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
         " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n",
@@ -3274,7 +3734,7 @@
         "        , cluster_source\n",
         "        \n",
         "    from system.compute.clusters c \n",
-        "    WHERE --array_contains(:workspace_id,workspace_id)\n",
+        "    WHERE array_contains(:workspace_id,workspace_id) AND\n",
         "     change_date <= current_date()) --TBD to check this filter\n",
         "    WHERE rn = 1\n",
         ")\n",
@@ -3302,6 +3762,51 @@
         "ON CM.cluster_id = usage.compute_id\n",
         "AND CM.workspace_id = usage.workspace_id\n",
         "ORDER BY dbu_usage_total DESC\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3331,7 +3836,7 @@
         "FROM system.billing.usage\n",
         "WHERE billing_origin_product = 'MODEL_SERVING'\n",
         "AND usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "AND usage_metadata.endpoint_id IS NOT NULL \n",
         "AND usage_unit = 'DBU'\n",
         "GROUP BY\n",
@@ -3341,7 +3846,7 @@
         "ON    eu.workspace_id = bu.workspace_id \n",
         "  AND se.endpoint_id = bu.endpoint_id\n",
         "WHERE request_time BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,eu.workspace_id)\n",
+        "AND array_contains(:workspace_id,eu.workspace_id)\n",
         "AND eu.status_code = 200\n",
         "AND entity_type IN ('FOUNDATION_MODEL','CUSTOM_MODEL')\n",
         "GROUP BY \n",
@@ -3355,6 +3860,51 @@
         "\n",
         "ORDER BY dbu DESC\n",
         "\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3371,34 +3921,62 @@
         "FROM system.query.history\n",
         "WHERE compute.type = 'WAREHOUSE'\n",
         "AND end_time BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND array_contains(:workspace_id,workspace_id)\n",
         "\n",
         "GROUP BY \n",
         "   compute.warehouse_id\n",
         "  ,workspace_id\n",
         "  ,account_id\n",
         "ORDER BY avg_queue_time_seconds DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "c4255501",
-      "displayName": "Count of table formats with table types",
-      "queryLines": [
-        "SELECT\n",
-        "  COUNT(*) AS count_of_tables,\n",
-        "  table_type,\n",
-        "  data_source_format,\n",
-        "  CASE WHEN data_source_format NOT IN ('DELTA','ICEBERG') THEN 'OTHERS' ELSE data_source_format END AS data_lake_format\n",
-        "\n",
-        "FROM\n",
-        "  system.information_schema.tables\n",
-        "GROUP BY\n",
-        "  table_type,\n",
-        "  data_source_format"
-      ]
-    },
-    {
-      "name": "d33a3398",
       "displayName": "Count of table formats with table types",
       "queryLines": [
         "SELECT\n",
@@ -3426,10 +4004,55 @@
         "join system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n",
         "-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
         "where ju.usage_date BETWEEN current_date() - interval 90 days AND current_date()\n",
-        "--  AND array_contains(:workspace_id,ju.workspace_id)\n",
+        "  AND array_contains(:workspace_id,ju.workspace_id)\n",
         "and ju.billing_origin_product in (\"JOBS\")\n",
         "and ju.product_features.is_serverless = false\n",
         "group by 1,2,3\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3450,8 +4073,53 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n",
+        "  AND array_contains(:workspace_id,workspace_id)\n",
         "and cluster_source in (\"API\", \"UI\")"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3471,7 +4139,52 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        "    -- AND array_contains(:workspace_id,workspace_id)"
+        "     AND array_contains(:workspace_id,workspace_id)"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3486,7 +4199,52 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"JOB\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "  AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3511,7 +4269,52 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "    AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3526,7 +4329,59 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND array_contains(:workspace_id,workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "workspace_id",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "2556758628403379"
+                },
+                {
+                  "value": "3488470091230896"
+                },
+                {
+                  "value": "17048253555115"
+                },
+                {
+                  "value": "1660015457675682"
+                },
+                {
+                  "value": "3339979776142776"
+                },
+                {
+                  "value": "1444828305810485"
+                },
+                {
+                  "value": "4397780562801932"
+                },
+                {
+                  "value": "7474658328073198"
+                },
+                {
+                  "value": "2481552415672103"
+                },
+                {
+                  "value": "5099015744649857"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4a6b6490",
+      "displayName": "List of workspaces",
+      "queryLines": [
+        "select workspace_id,workspace_name from system.access.workspaces_latest"
       ]
     }
   ],
@@ -11834,15 +12689,15 @@
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "a5da7a83",
+                  "datasetName": "c4255501",
                   "fields": [
                     {
-                      "name": "sum(no_of_tables)",
-                      "expression": "SUM(`no_of_tables`)"
+                      "name": "sum(count_of_tables)",
+                      "expression": "SUM(`count_of_tables`)"
                     },
                     {
-                      "name": "tables_format",
-                      "expression": "`tables_format`"
+                      "name": "data_source_format",
+                      "expression": "`data_source_format`"
                     }
                   ],
                   "disaggregated": false
@@ -11851,10 +12706,14 @@
             ],
             "spec": {
               "version": 3,
+              "frame": {
+                "title": "Distribution",
+                "showTitle": true
+              },
               "widgetType": "pie",
               "encodings": {
                 "angle": {
-                  "fieldName": "sum(no_of_tables)",
+                  "fieldName": "sum(count_of_tables)",
                   "scale": {
                     "type": "quantitative"
                   },
@@ -11864,19 +12723,15 @@
                   "displayName": "Table Formats"
                 },
                 "color": {
-                  "fieldName": "tables_format",
+                  "fieldName": "data_source_format",
+                  "displayName": "tables_format",
                   "scale": {
                     "type": "categorical"
-                  },
-                  "displayName": "tables_format"
+                  }
                 },
                 "label": {
                   "show": true
                 }
-              },
-              "frame": {
-                "title": "Distribution",
-                "showTitle": true
               }
             }
           },
@@ -12750,6 +13605,612 @@
         }
       ],
       "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "f4df3638",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "workspace-id",
+            "queries": [
+              {
+                "name": "dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108209bc117b7a2ee01c2bdd6a15c_workspace_id",
+                "query": {
+                  "datasetName": "4a6b6490",
+                  "fields": [
+                    {
+                      "name": "workspace_id",
+                      "expression": "`workspace_id`"
+                    },
+                    {
+                      "name": "workspace_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca915618427d33f2891ad29_workspace_id",
+                "query": {
+                  "datasetName": "c3adf755",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91567bd0c559910fd2b20_workspace_id",
+                "query": {
+                  "datasetName": "1327fa8d",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9156ca4c85631c1f02a63_workspace_id",
+                "query": {
+                  "datasetName": "6576f362",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91571986bec96ea4dca80_workspace_id",
+                "query": {
+                  "datasetName": "c3a6d1af",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9157b94ba2ee94701bc3b_workspace_id",
+                "query": {
+                  "datasetName": "1954cef2",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91586ab87bf8a27e11872_workspace_id",
+                "query": {
+                  "datasetName": "fbc6ed5e",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9158a8436b890b2d0d396_workspace_id",
+                "query": {
+                  "datasetName": "4858cc4e",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9158fba2fe95aa24207a5_workspace_id",
+                "query": {
+                  "datasetName": "809dc7c9",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91599961cb46ab3574527_workspace_id",
+                "query": {
+                  "datasetName": "07c3451a",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9159ead3a7af02f5d78fe_workspace_id",
+                "query": {
+                  "datasetName": "98c1b821",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91472a9ceced479cef0b6_workspace_id",
+                "query": {
+                  "datasetName": "b39d7f91",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9147986aa71259c9932b8_workspace_id",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9147fb52126ebff27254f_workspace_id",
+                "query": {
+                  "datasetName": "81f0a6aa",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91484a86fa4e5d75a3599_workspace_id",
+                "query": {
+                  "datasetName": "06f2987c",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914a7814b79ea63187eed_workspace_id",
+                "query": {
+                  "datasetName": "feca6b37",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914b6a460a5a4c3e010db_workspace_id",
+                "query": {
+                  "datasetName": "f4e7201f",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914d4b914979efde67b8b_workspace_id",
+                "query": {
+                  "datasetName": "31958c67",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914d9899d9f93ff578215_workspace_id",
+                "query": {
+                  "datasetName": "781ee68b",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914de8efc1caa6cd09237_workspace_id",
+                "query": {
+                  "datasetName": "951a00c5",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914e8a92603cf12506576_workspace_id",
+                "query": {
+                  "datasetName": "d0192813",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914ed94a733e9cc31b5a6_workspace_id",
+                "query": {
+                  "datasetName": "cc24226f",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914f7b7f70a3c771769a3_workspace_id",
+                "query": {
+                  "datasetName": "bb77bb31",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914fc8852c8545a028908_workspace_id",
+                "query": {
+                  "datasetName": "7abec3c3",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91510a570ccdacf682110_workspace_id",
+                "query": {
+                  "datasetName": "d0a01e50",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91515826a3f46df7c4652_workspace_id",
+                "query": {
+                  "datasetName": "67073248",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9151aa8c45264b87abc63_workspace_id",
+                "query": {
+                  "datasetName": "03babf4f",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9151f845ad65067898809_workspace_id",
+                "query": {
+                  "datasetName": "011cf80a",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91524a7a22c1cd4391e03_workspace_id",
+                "query": {
+                  "datasetName": "60cfe928",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9154da64c6d339f6ea932_workspace_id",
+                "query": {
+                  "datasetName": "27265888",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91552bd4b66bb489e36ae_workspace_id",
+                "query": {
+                  "datasetName": "95b08392",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91557b1fc687c82f69f20_workspace_id",
+                "query": {
+                  "datasetName": "db7bc0c3",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9155c8c65bda47332fa2f_workspace_id",
+                "query": {
+                  "datasetName": "ea93f04e",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Workspace ID"
+              },
+              "selection": {
+                "defaultSelection": {
+                  "operator": {
+                    "operator": "OR",
+                    "args": []
+                  }
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "workspace_id",
+                    "queryName": "dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108209bc117b7a2ee01c2bdd6a15c_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca915618427d33f2891ad29_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91567bd0c559910fd2b20_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9156ca4c85631c1f02a63_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91571986bec96ea4dca80_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9157b94ba2ee94701bc3b_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91586ab87bf8a27e11872_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9158a8436b890b2d0d396_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9158fba2fe95aa24207a5_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91599961cb46ab3574527_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9159ead3a7af02f5d78fe_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91472a9ceced479cef0b6_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9147986aa71259c9932b8_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9147fb52126ebff27254f_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91484a86fa4e5d75a3599_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914a7814b79ea63187eed_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914b6a460a5a4c3e010db_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914d4b914979efde67b8b_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914d9899d9f93ff578215_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914de8efc1caa6cd09237_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914e8a92603cf12506576_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914ed94a733e9cc31b5a6_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914f7b7f70a3c771769a3_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca914fc8852c8545a028908_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91510a570ccdacf682110_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91515826a3f46df7c4652_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9151aa8c45264b87abc63_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9151f845ad65067898809_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91524a7a22c1cd4391e03_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9154da64c6d339f6ea932_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91552bd4b66bb489e36ae_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca91557b1fc687c82f69f20_workspace_id"
+                  },
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f108206ca81d88900dc5849b47ecbf/datasets/01f108206ca9155c8c65bda47332fa2f_workspace_id"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
     }
   ],
   "uiSettings": {
