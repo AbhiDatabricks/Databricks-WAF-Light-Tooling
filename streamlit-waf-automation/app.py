@@ -1340,6 +1340,23 @@ with col2:
 
 st.markdown("---")
 
+# Dashboard access — open link + embedded iframe
+_dashboard_direct_url = f"{INSTANCE_URL}/sql/dashboardsv3/{DASHBOARD_ID}"
+_open_col1, _open_col2, _open_col3 = st.columns([1, 2, 1])
+with _open_col2:
+    st.link_button(
+        "↗ Open Dashboard in Databricks",
+        _dashboard_direct_url,
+        use_container_width=True,
+    )
+
+st.info(
+    "If the dashboard below shows an embedding error, your workspace admin needs to enable "
+    "**Allow AI/BI dashboard embedding** in Admin Console → Advanced. "
+    "Until then, use the button above to open the dashboard directly in Databricks.",
+    icon="ℹ️",
+)
+
 # Embed the dashboard
 st.components.v1.iframe(EMBED_URL, height=800, scrolling=True)
 
