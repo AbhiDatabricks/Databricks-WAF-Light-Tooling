@@ -1289,16 +1289,40 @@ st.title("🔍 WAF Assessment Dashboard")
 st.markdown("**💡 Use the sidebar (←) to understand each metric and see recommended actions**")
 st.markdown("---")
 
-# Read-only display of catalog and schema
-_catalog = os.environ.get("WAF_CATALOG", "useast1")
+# --- Run info (written by reload_data.py after each reload) ---
+import json as _json
+_run_info = {}
+try:
+    with open("/tmp/waf_run_info.json", encoding="utf-8") as _f:
+        _run_info = _json.load(_f)
+except FileNotFoundError:
+    pass
+except Exception:
+    pass
+
+# Read-only display of catalog, schema, and latest run
+_catalog = _run_info.get("catalog") or os.environ.get("WAF_CATALOG", "useast1")
 _schema = "waf_cache"
-_info_col1, _info_col2, _info_col3 = st.columns(3)
+_info_col1, _info_col2, _info_col3, _info_col4 = st.columns(4)
 with _info_col1:
     st.metric("Data Catalog", _catalog)
 with _info_col2:
     st.metric("Schema", _schema)
 with _info_col3:
-    st.metric("Full Path", f"{_catalog}.{_schema}")
+    if _run_info:
+        _ts = _run_info.get("triggered_at", "—")
+        st.metric("Last Reload", _ts[:16] if _ts else "—")  # trim seconds
+    else:
+        st.metric("Last Reload", "No data yet")
+with _info_col4:
+    if _run_info:
+        _sid = _run_info.get("short_id", "—")
+        _ok  = _run_info.get("tables_succeeded", 0)
+        _fail = _run_info.get("tables_failed", 0)
+        _icon = "✅" if _run_info.get("status") == "success" else "⚠️"
+        st.metric("Run ID", f"{_icon} {_sid}…", delta=f"{_ok}/{_ok+_fail} tables", delta_color="off")
+    else:
+        st.metric("Run ID", "—")
 
 st.markdown("---")
 
