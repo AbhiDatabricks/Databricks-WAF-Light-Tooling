@@ -10,7 +10,7 @@ st.set_page_config(
 
 # Dashboard configuration
 INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
-DASHBOARD_ID = "01f10ca0b3131f41b932b91dc46b774f"
+DASHBOARD_ID = "01f10cbeacfb108dbae8bc34fb686707"
 WORKSPACE_ID = "7474648347311915"
 EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}"
 
@@ -1382,8 +1382,12 @@ st.info(
     icon="ℹ️",
 )
 
-# Embed the dashboard
-st.components.v1.iframe(EMBED_URL, height=800, scrolling=True)
+# Embed the dashboard using raw iframe (Databricks recommended format)
+st.components.v1.html(
+    f'<iframe src="{EMBED_URL}" width="100%" height="800" frameborder="0"></iframe>',
+    height=810,
+    scrolling=True,
+)
 
 st.markdown("---")
 st.caption(f"Dashboard ID: {DASHBOARD_ID} | Workspace: {WORKSPACE_ID}")
