@@ -3,10 +3,14 @@
 Reload WAF dashboard data:
   1. Read dashboard_queries.yaml (single source of truth)
   2. For each active dataset, run the SQL on a Databricks warehouse
-  3. Materialise results as Delta table → {catalog}.waf_cache.{table_name}
+  3. APPEND results into {catalog}.waf_cache.{table_name}_hist  (history kept)
+  4. CREATE OR REPLACE VIEW {catalog}.waf_cache.{table_name}     (latest run only)
+
+The dashboard reads from the views — always sees the latest successful run.
+Historical data accumulates in the _hist tables.
 
 Credentials come exclusively from environment variables (injected by Databricks Apps):
-    DATABRICKS_HOST   – workspace URL  (e.g. https://dbc-xxx.cloud.databricks.com)
+    DATABRICKS_HOST   – workspace URL
     DATABRICKS_TOKEN  – OAuth token
     WAF_CATALOG       – Unity Catalog name (set in app.yaml by install.ipynb)
     WAF_YAML_PATH     – optional override path to dashboard_queries.yaml
@@ -112,51 +116,34 @@ def sanitize_col_name(name):
     return cleaned or 'col'
 
 
-def drop_all_tables(cursor, catalog):
-    """Drop every data table in {catalog}.waf_cache, preserving _run_log."""
+# ---------------------------------------------------------------------------
+# Schema migration (one-time: old plain tables → _hist + views model)
+# ---------------------------------------------------------------------------
+
+def migrate_old_plain_tables(cursor, catalog):
+    """
+    One-time migration: drop old plain tables that were created by the
+    previous drop+recreate model. They will be replaced by _hist tables
+    and views on the first reload after this upgrade.
+    """
     cursor.execute(
         f"SELECT table_name FROM `{catalog}`.information_schema.tables "
-        f"WHERE table_schema = 'waf_cache' AND table_type = 'MANAGED'"
-        f"  AND table_name != '_run_log'"
+        f"WHERE table_schema = 'waf_cache' "
+        f"  AND table_type = 'MANAGED' "
+        f"  AND table_name != '_run_log' "
+        f"  AND table_name NOT LIKE '%\\_hist'"  # skip already-migrated hist tables
     )
-    tables = [row[0] for row in cursor.fetchall()]
-    if not tables:
-        print("  waf_cache has no data tables to drop.")
-        return
-    for t in tables:
-        cursor.execute(f"DROP TABLE IF EXISTS `{catalog}`.`waf_cache`.`{t}`")
-        print(f"  Dropped: {t}")
-    print(f"  Dropped {len(tables)} table(s).")
+    old_tables = [row[0] for row in cursor.fetchall()]
+    if old_tables:
+        print(f"  Migrating {len(old_tables)} old plain table(s) → history model (one-time)...")
+        for t in old_tables:
+            cursor.execute(f"DROP TABLE IF EXISTS `{catalog}`.`waf_cache`.`{t}`")
+            print(f"  Dropped old table: {t}")
 
 
-def create_delta_table(cursor, catalog, table, sql, run_id, run_started_at):
-    """CREATE OR REPLACE TABLE in waf_cache stamped with integer run_id."""
-    wrapped = (
-        f"SELECT _q.*,\n"
-        f"  {run_id} AS _run_id,\n"
-        f"  TIMESTAMP('{run_started_at}') AS _run_started_at\n"
-        f"FROM (\n{sql}\n) AS _q"
-    )
-    full_sql = f"CREATE OR REPLACE TABLE `{catalog}`.`waf_cache`.`{table}` AS\n{wrapped}"
-    try:
-        cursor.execute(full_sql)
-    except Exception as first_err:
-        if 'DELTA_INVALID_CHARACTERS_IN_COLUMN_NAMES' not in str(first_err):
-            raise
-        tmp = f"_waf_tmp_{table}"
-        cursor.execute(f"CREATE OR REPLACE TEMPORARY VIEW `{tmp}` AS\n{sql}")
-        cursor.execute(f"SELECT * FROM `{tmp}` LIMIT 0")
-        raw_cols = [desc[0] for desc in cursor.description]
-        renames = ', '.join(f'`{c}` AS `{sanitize_col_name(c)}`' for c in raw_cols)
-        cursor.execute(
-            f"CREATE OR REPLACE TABLE `{catalog}`.`waf_cache`.`{table}` AS\n"
-            f"SELECT {renames},\n"
-            f"  {run_id} AS _run_id,\n"
-            f"  TIMESTAMP('{run_started_at}') AS _run_started_at\n"
-            f"FROM `{tmp}`"
-        )
-        cursor.execute(f"DROP VIEW IF EXISTS `{tmp}`")
-
+# ---------------------------------------------------------------------------
+# _run_log helpers
+# ---------------------------------------------------------------------------
 
 def ensure_run_log(cursor, catalog):
     """Create _run_log with INT run_id. Auto-migrates from old STRING schema."""
@@ -208,6 +195,78 @@ def update_run_finished(cursor, catalog, run_id, finished_at, status, succeeded,
 
 
 # ---------------------------------------------------------------------------
+# Append data + create view
+# ---------------------------------------------------------------------------
+
+def append_to_hist_table(cursor, catalog, table, sql, run_id, run_started_at):
+    """
+    Append this run's data into {table}_hist.
+    Creates the table on first run, then INSERTs on subsequent runs.
+    """
+    hist = f"{table}_hist"
+    wrapped = (
+        f"SELECT _q.*,\n"
+        f"  {run_id} AS _run_id,\n"
+        f"  TIMESTAMP('{run_started_at}') AS _run_started_at\n"
+        f"FROM (\n{sql}\n) AS _q"
+    )
+
+    try:
+        cursor.execute(
+            f"INSERT INTO `{catalog}`.`waf_cache`.`{hist}`\n{wrapped}"
+        )
+    except Exception as first_err:
+        err_str = str(first_err)
+        if 'TABLE_OR_VIEW_NOT_FOUND' in err_str or 'Table or view not found' in err_str:
+            # First run — create the table
+            cursor.execute(
+                f"CREATE TABLE `{catalog}`.`waf_cache`.`{hist}` AS\n{wrapped}"
+            )
+        elif 'DELTA_INVALID_CHARACTERS_IN_COLUMN_NAMES' in err_str:
+            # Sanitize column names and retry
+            tmp = f"_waf_tmp_{table}"
+            cursor.execute(f"CREATE OR REPLACE TEMPORARY VIEW `{tmp}` AS\n{sql}")
+            cursor.execute(f"SELECT * FROM `{tmp}` LIMIT 0")
+            raw_cols = [desc[0] for desc in cursor.description]
+            renames = ', '.join(f'`{c}` AS `{sanitize_col_name(c)}`' for c in raw_cols)
+            clean_sql = f"SELECT {renames} FROM `{tmp}`"
+            clean_wrapped = (
+                f"SELECT _q.*,\n"
+                f"  {run_id} AS _run_id,\n"
+                f"  TIMESTAMP('{run_started_at}') AS _run_started_at\n"
+                f"FROM (\n{clean_sql}\n) AS _q"
+            )
+            try:
+                cursor.execute(
+                    f"INSERT INTO `{catalog}`.`waf_cache`.`{hist}`\n{clean_wrapped}"
+                )
+            except Exception:
+                cursor.execute(
+                    f"CREATE TABLE `{catalog}`.`waf_cache`.`{hist}` AS\n{clean_wrapped}"
+                )
+            cursor.execute(f"DROP VIEW IF EXISTS `{tmp}`")
+        else:
+            raise
+
+
+def create_latest_view(cursor, catalog, table):
+    """
+    Create or replace a VIEW named {table} that always returns only the
+    latest successful (or partial) run's data from {table}_hist.
+    The dashboard reads from this view — no dashboard changes needed.
+    """
+    hist = f"{table}_hist"
+    cursor.execute(
+        f"CREATE OR REPLACE VIEW `{catalog}`.`waf_cache`.`{table}` AS\n"
+        f"SELECT * FROM `{catalog}`.`waf_cache`.`{hist}`\n"
+        f"WHERE _run_id = (\n"
+        f"  SELECT MAX(run_id) FROM `{catalog}`.`waf_cache`.`_run_log`\n"
+        f"  WHERE status IN ('success', 'partial')\n"
+        f")"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -248,7 +307,7 @@ def main():
 
     if args.dry_run:
         for ds in active:
-            print(f"-- {ds['display_name']} → {catalog}.waf_cache.{ds['table_name']}")
+            print(f"-- {ds['display_name']} → {catalog}.waf_cache.{ds['table_name']}_hist")
             print(substitute_date_params(ds['sql'])[:200])
             print()
         return
@@ -276,27 +335,27 @@ def main():
             cursor.execute(f"CREATE SCHEMA IF NOT EXISTS `{catalog}`.`waf_cache`")
 
             ensure_run_log(cursor, catalog)
+            migrate_old_plain_tables(cursor, catalog)
+
             run_id = get_next_run_id(cursor, catalog)
             print(f"\nRun #:   {run_id}")
-            print(f"Started: {run_started_at} UTC")
+            print(f"Started: {run_started_at} UTC\n")
 
             insert_run_started(cursor, catalog, run_id, run_started_at)
 
-            print(f"\nDropping existing data tables in {catalog}.waf_cache...")
-            drop_all_tables(cursor, catalog)
-
+            # --- Append data into _hist tables ---
             for i, ds in enumerate(active, 1):
                 name = ds['display_name']
                 table = ds['table_name']
                 t0 = time.time()
-                print(f"[{i:2d}/{len(active)}] {name} → {catalog}.waf_cache.{table}")
+                print(f"[{i:2d}/{len(active)}] {name} → {catalog}.waf_cache.{table}_hist")
                 try:
                     prepared_sql = strip_trailing_semicolon(substitute_date_params(ds['sql']))
-                    create_delta_table(cursor, catalog, table, prepared_sql,
-                                       run_id, run_started_at)
+                    append_to_hist_table(cursor, catalog, table, prepared_sql,
+                                         run_id, run_started_at)
                     elapsed = time.time() - t0
                     print(f"       ✓ {elapsed:.1f}s")
-                    successes.append(name)
+                    successes.append(table)
                 except Exception as exc:
                     elapsed = time.time() - t0
                     print(f"       ✗ FAILED ({elapsed:.1f}s): {exc}")
@@ -306,6 +365,16 @@ def main():
             final_status = 'success' if not failures else 'partial' if successes else 'failed'
             update_run_finished(cursor, catalog, run_id, run_finished_at,
                                 final_status, len(successes), len(failures))
+
+            # --- Refresh views for succeeded tables ---
+            if successes:
+                print(f"\nRefreshing views for {len(successes)} table(s)...")
+                for table in successes:
+                    try:
+                        create_latest_view(cursor, catalog, table)
+                    except Exception as exc:
+                        print(f"  ⚠ Could not create view for {table}: {exc}")
+
             print(f"\nRun log updated: status={final_status}")
 
     finally:
