@@ -1,6 +1,5 @@
 streamlit==1.38.0
 databricks-sdk
 boto3
-psycopg2-binary
 databricks-sql-connector>=3.0.0
 pyyaml
