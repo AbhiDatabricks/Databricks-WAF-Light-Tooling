@@ -303,9 +303,29 @@ The dashboard analyzes data from Databricks System Tables:
 
 ### Embedding Issues
 
-- Ensure `*.databricksapps.com` is added to embedding domains
-- Check dashboard sharing settings
-- Verify app URL is correct
+**"Embedding dashboards is not available on this domain"**
+
+This error requires a **workspace admin** to enable embedding at the workspace level first. The per-dashboard domain allowlist will not take effect until this is done.
+
+**Step 1 — Enable workspace-level embedding (Admin only)**
+
+Follow the official Databricks guide:
+[Control allowed embed destinations](https://docs.databricks.com/aws/en/ai-bi/admin/embed#-control-allowed-embed-destinations)
+
+In short:
+1. Go to **Admin Console → Advanced**
+2. Enable **"Allow AI/BI dashboard embedding"**
+3. Save
+
+**Step 2 — Add `databricksapps.com` as an allowed destination**
+
+Once workspace embedding is enabled, add the domain in the dashboard's Share settings:
+1. Open the deployed WAF dashboard
+2. Click **Share → Embed dashboard**
+3. Add `*.databricksapps.com` to the allowed domains list
+4. Save
+
+The `install.ipynb` notebook attempts to configure this automatically via API, but the API call only takes effect after the workspace-level flag is turned on (Step 1 above).
 
 For more help, see the manual deployment steps provided in the installation notebook output.
 
