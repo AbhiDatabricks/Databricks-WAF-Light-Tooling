@@ -1316,13 +1316,13 @@ with _info_col3:
         st.metric("Last Reload", "No data yet")
 with _info_col4:
     if _run_info:
-        _sid = _run_info.get("short_id", "—")
-        _ok  = _run_info.get("tables_succeeded", 0)
+        _rid  = _run_info.get("run_id", "—")
+        _ok   = _run_info.get("tables_succeeded", 0)
         _fail = _run_info.get("tables_failed", 0)
         _icon = "✅" if _run_info.get("status") == "success" else "⚠️"
-        st.metric("Run ID", f"{_icon} {_sid}…", delta=f"{_ok}/{_ok+_fail} tables", delta_color="off")
+        st.metric("Run", f"{_icon} #{_rid}", delta=f"{_ok}/{_ok+_fail} tables", delta_color="off")
     else:
-        st.metric("Run ID", "—")
+        st.metric("Run", "—")
 
 st.markdown("---")
 
@@ -1350,6 +1350,7 @@ with col2:
                     capture_output=True,
                     text=True,
                     cwd=os.path.dirname(_reload_script),
+                    env=os.environ.copy(),  # explicitly pass Databricks App env vars
                 )
                 if result.returncode == 0:
                     st.success("✅ Data refreshed successfully")
