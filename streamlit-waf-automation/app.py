@@ -11,7 +11,7 @@ st.set_page_config(
 # Dashboard configuration
 INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
 DASHBOARD_ID = "01f10ca0b3131f41b932b91dc46b774f"
-WORKSPACE_ID = "7545f99bd884"
+WORKSPACE_ID = "7474648347311915"
 EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}"
 
 # Sidebar with explanations
