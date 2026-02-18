@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 
 # Set page config
@@ -8,9 +9,9 @@ st.set_page_config(
 )
 
 # Dashboard configuration
-INSTANCE_URL = "https://dbc-2a8b378f-7d51.cloud.databricks.com"
-DASHBOARD_ID = "01f103607e78117592509ae89bd0d7da"
-WORKSPACE_ID = "2a8b378f7d51"
+INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
+DASHBOARD_ID = "01f10ca0b3131f41b932b91dc46b774f"
+WORKSPACE_ID = "7545f99bd884"
 EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}"
 
 # Sidebar with explanations
@@ -1286,6 +1287,57 @@ with st.sidebar:
 # Main content
 st.title("🔍 WAF Assessment Dashboard")
 st.markdown("**💡 Use the sidebar (←) to understand each metric and see recommended actions**")
+st.markdown("---")
+
+# Read-only display of catalog and schema
+_catalog = os.environ.get("WAF_CATALOG", "useast1")
+_schema = "waf_cache"
+_info_col1, _info_col2, _info_col3 = st.columns(3)
+with _info_col1:
+    st.metric("Data Catalog", _catalog)
+with _info_col2:
+    st.metric("Schema", _schema)
+with _info_col3:
+    st.metric("Full Path", f"{_catalog}.{_schema}")
+
+st.markdown("---")
+
+# Reload Data button — materialises query results into Lakebase + Delta tables
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    if st.button("🔄 Reload Data", use_container_width=True, type="primary"):
+        with st.spinner("Running WAF queries and refreshing Lakebase..."):
+            import subprocess
+            import sys
+
+            # Find reload_data.py: same dir as app.py (deployed), or DONOTCHECKIN (local dev)
+            _app_dir = os.path.dirname(os.path.abspath(__file__))
+            _reload_script = os.path.join(_app_dir, "reload_data.py")
+            if not os.path.exists(_reload_script):
+                _reload_script = os.path.abspath(
+                    os.path.join(_app_dir, "..", "DONOTCHECKIN", "reload_data.py")
+                )
+
+            if not os.path.exists(_reload_script):
+                st.error("❌ reload_data.py not found. Ensure it is co-deployed with app.py.")
+            else:
+                result = subprocess.run(
+                    [sys.executable, _reload_script],
+                    capture_output=True,
+                    text=True,
+                    cwd=os.path.dirname(_reload_script),
+                )
+                if result.returncode == 0:
+                    st.success("✅ Data refreshed successfully")
+                    with st.expander("Details"):
+                        st.code(result.stdout[-3000:] if result.stdout else "(no output)")
+                else:
+                    st.error(f"❌ Refresh failed")
+                    with st.expander("Error details"):
+                        st.code(result.stderr[-1000:] if result.stderr else "(no stderr)")
+                        if result.stdout:
+                            st.code(result.stdout[-1000:])
+
 st.markdown("---")
 
 # Embed the dashboard
