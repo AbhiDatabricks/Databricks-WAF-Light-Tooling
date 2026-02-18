@@ -1351,9 +1351,10 @@ with _open_col2:
     )
 
 st.info(
-    "If the dashboard below shows an embedding error, your workspace admin needs to enable "
-    "**Allow AI/BI dashboard embedding** in Admin Console → Advanced. "
-    "Until then, use the button above to open the dashboard directly in Databricks.",
+    "**First time?** The dashboard below may show a Databricks login screen inside the iframe. "
+    "Just click **Continue** — it will use your existing Databricks SSO session and sign you in "
+    "automatically (no password needed). This is a one-time step per browser session. "
+    "If you prefer, use the button above to open the dashboard directly in Databricks.",
     icon="ℹ️",
 )
 
