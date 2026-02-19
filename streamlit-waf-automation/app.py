@@ -1296,11 +1296,35 @@ st.title("🔍 WAF Assessment Dashboard")
 st.markdown("**💡 Use the sidebar (←) to understand each metric and see recommended actions**")
 st.markdown("---")
 
+# --- Auth token resolution ---
+def _get_token():
+    """Return a bearer token for Databricks API calls.
+
+    Priority:
+    1. DATABRICKS_TOKEN env var (PAT, local dev, or classic Apps injection)
+    2. Databricks SDK credential chain (handles OAuth M2M in newer Apps runtimes)
+    """
+    t = os.environ.get("DATABRICKS_TOKEN", "")
+    if t:
+        return t
+    try:
+        from databricks.sdk import WorkspaceClient
+        w = WorkspaceClient(host=INSTANCE_URL)
+        _h = {}
+        w.config.authenticate(_h)   # fills _h with {"Authorization": "Bearer <token>"}
+        _auth = _h.get("Authorization", "")
+        if _auth.startswith("Bearer "):
+            return _auth[7:]
+    except Exception:
+        pass
+    return ""
+
+
 # --- Run info: query _run_log from Delta table via SQL API ---
 def _load_run_info():
     """Return latest run info from _run_log table, or {} if unavailable."""
     _host  = os.environ.get("DATABRICKS_HOST", INSTANCE_URL).rstrip("/")
-    _token = os.environ.get("DATABRICKS_TOKEN", "")
+    _token = _get_token()
     _wh    = WAREHOUSE_ID
     _cat   = os.environ.get("WAF_CATALOG", "useast1")
     if not _token or not _wh:
@@ -1377,7 +1401,7 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     if st.button("🔄 Reload Data", use_container_width=True, type="primary"):
         _host    = os.environ.get("DATABRICKS_HOST", INSTANCE_URL).rstrip("/")
-        _token   = os.environ.get("DATABRICKS_TOKEN", "")
+        _token   = _get_token()
         _catalog = os.environ.get("WAF_CATALOG", "useast1")
         _headers = {"Authorization": f"Bearer {_token}", "Content-Type": "application/json"}
 
