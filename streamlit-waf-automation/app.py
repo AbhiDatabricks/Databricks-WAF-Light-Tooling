@@ -20,6 +20,7 @@ EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}"
 # Reload job config — injected via app.yaml env vars at deploy time
 JOB_ID       = os.environ.get("WAF_JOB_ID", "")
 WAREHOUSE_ID = os.environ.get("WAF_WAREHOUSE_ID", "")
+GENIE_URL    = os.environ.get("WAF_GENIE_URL", "")
 
 # Sidebar with explanations
 with st.sidebar:
@@ -1434,15 +1435,30 @@ with col2:
 
 st.markdown("---")
 
-# Dashboard access — open link + embedded iframe
+# Dashboard access — open link + Genie + embedded iframe
 _dashboard_direct_url = f"{INSTANCE_URL}/sql/dashboardsv3/{DASHBOARD_ID}"
-_open_col1, _open_col2, _open_col3 = st.columns([1, 2, 1])
-with _open_col2:
-    st.link_button(
-        "↗ Open Dashboard in Databricks",
-        _dashboard_direct_url,
-        use_container_width=True,
-    )
+if GENIE_URL:
+    _btn_col1, _btn_col2, _btn_col3, _btn_col4 = st.columns([1, 2, 2, 1])
+    with _btn_col2:
+        st.link_button(
+            "↗ Open Dashboard in Databricks",
+            _dashboard_direct_url,
+            use_container_width=True,
+        )
+    with _btn_col3:
+        st.link_button(
+            "🧞 Ask Genie",
+            GENIE_URL,
+            use_container_width=True,
+        )
+else:
+    _open_col1, _open_col2, _open_col3 = st.columns([1, 2, 1])
+    with _open_col2:
+        st.link_button(
+            "↗ Open Dashboard in Databricks",
+            _dashboard_direct_url,
+            use_container_width=True,
+        )
 
 st.info(
     "**First time?** The dashboard below may show a Databricks login screen inside the iframe. "
