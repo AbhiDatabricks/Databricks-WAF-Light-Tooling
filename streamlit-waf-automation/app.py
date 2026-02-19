@@ -1388,7 +1388,7 @@ with col2:
         else:
             # Trigger the job run
             _run_resp = requests.post(
-                f"{_host}/api/2.0/jobs/runs/now",
+                f"{_host}/api/2.1/jobs/run-now",
                 headers=_headers,
                 json={"job_id": int(JOB_ID), "notebook_params": {"catalog": _catalog}},
             )
