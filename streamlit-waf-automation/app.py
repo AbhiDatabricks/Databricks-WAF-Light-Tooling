@@ -1296,65 +1296,46 @@ st.title("🔍 WAF Assessment Dashboard")
 st.markdown("**💡 Use the sidebar (←) to understand each metric and see recommended actions**")
 st.markdown("---")
 
-# --- Auth token resolution ---
-def _get_token():
-    """Return a bearer token for Databricks API calls.
+# --- Databricks client (handles Apps OAuth M2M + local PAT automatically) ---
+def _get_ws_client():
+    """Return a WorkspaceClient auto-configured from the runtime environment.
 
-    Priority:
-    1. DATABRICKS_TOKEN env var (PAT, local dev, or classic Apps injection)
-    2. Databricks SDK credential chain (handles OAuth M2M in newer Apps runtimes)
+    In Databricks Apps the SDK discovers the app's service principal credentials
+    (DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET) automatically.
+    Locally it falls back to DATABRICKS_TOKEN or ~/.databrickscfg.
     """
-    t = os.environ.get("DATABRICKS_TOKEN", "")
-    if t:
-        return t
     try:
         from databricks.sdk import WorkspaceClient
-        w = WorkspaceClient(host=INSTANCE_URL)
-        _h = {}
-        w.config.authenticate(_h)   # fills _h with {"Authorization": "Bearer <token>"}
-        _auth = _h.get("Authorization", "")
-        if _auth.startswith("Bearer "):
-            return _auth[7:]
+        return WorkspaceClient()
     except Exception:
-        pass
-    return ""
+        return None
 
 
-# --- Run info: query _run_log from Delta table via SQL API ---
+# --- Run info: query _run_log via SDK statement execution ---
 def _load_run_info():
-    """Return latest run info from _run_log table, or {} if unavailable."""
-    _host  = os.environ.get("DATABRICKS_HOST", INSTANCE_URL).rstrip("/")
-    _token = _get_token()
-    _wh    = WAREHOUSE_ID
-    _cat   = os.environ.get("WAF_CATALOG", "useast1")
-    if not _token or not _wh:
-        # Fallback: read from /tmp/waf_run_info.json (local dev)
+    """Return latest successful run info from _run_log, or {} if unavailable."""
+    _cat = os.environ.get("WAF_CATALOG", "useast1")
+    if not WAREHOUSE_ID:
+        return {}
+    _wc = _get_ws_client()
+    if _wc:
         try:
-            with open("/tmp/waf_run_info.json", encoding="utf-8") as _f:
-                return _json.load(_f)
-        except Exception:
-            return {}
-    try:
-        r = requests.post(
-            f"{_host}/api/2.0/sql/statements",
-            headers={"Authorization": f"Bearer {_token}", "Content-Type": "application/json"},
-            json={
-                "statement": (
-                    f"SELECT run_id, triggered_at, finished_at, status, "
-                    f"tables_succeeded, tables_failed "
-                    f"FROM `{_cat}`.`waf_cache`.`_run_log` "
-                    f"WHERE status IN ('success','partial') "
-                    f"ORDER BY run_id DESC LIMIT 1"
-                ),
-                "warehouse_id": _wh,
-                "wait_timeout": "10s",
-            },
-            timeout=15,
-        )
-        if r.status_code == 200:
-            rows = r.json().get("result", {}).get("data_array", [])
-            if rows:
-                row = rows[0]
+            from databricks.sdk.service.sql import StatementState
+            _stmt = (
+                f"SELECT run_id, triggered_at, finished_at, status, "
+                f"tables_succeeded, tables_failed "
+                f"FROM `{_cat}`.`waf_cache`.`_run_log` "
+                f"WHERE status IN ('success','partial') "
+                f"ORDER BY run_id DESC LIMIT 1"
+            )
+            _r = _wc.statement_execution.execute_statement(
+                statement=_stmt,
+                warehouse_id=WAREHOUSE_ID,
+                wait_timeout="10s",
+            )
+            if (_r.status and _r.status.state == StatementState.SUCCEEDED
+                    and _r.result and _r.result.data_array):
+                row = _r.result.data_array[0]
                 return {
                     "run_id":           row[0],
                     "triggered_at":     row[1],
@@ -1364,9 +1345,14 @@ def _load_run_info():
                     "tables_failed":    int(row[5] or 0),
                     "catalog":          _cat,
                 }
+        except Exception:
+            pass
+    # Fallback for local dev: read cached file
+    try:
+        with open("/tmp/waf_run_info.json", encoding="utf-8") as _f:
+            return _json.load(_f)
     except Exception:
-        pass
-    return {}
+        return {}
 
 _run_info = _load_run_info()
 
@@ -1396,57 +1382,53 @@ with _info_col4:
 
 st.markdown("---")
 
-# Reload Data button — triggers a Databricks Job (decoupled from app process)
+# Reload Data button — triggers a Databricks Job via SDK (handles Apps OAuth M2M)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     if st.button("🔄 Reload Data", use_container_width=True, type="primary"):
-        _host    = os.environ.get("DATABRICKS_HOST", INSTANCE_URL).rstrip("/")
-        _token   = _get_token()
         _catalog = os.environ.get("WAF_CATALOG", "useast1")
-        _headers = {"Authorization": f"Bearer {_token}", "Content-Type": "application/json"}
 
-        if not _token:
-            st.error("❌ DATABRICKS_TOKEN not available. Check app environment variables.")
-        elif not JOB_ID:
+        if not JOB_ID:
             st.error("❌ Reload job not configured (WAF_JOB_ID missing). Re-run install.ipynb.")
         else:
-            # Trigger the job run
-            _run_resp = requests.post(
-                f"{_host}/api/2.1/jobs/run-now",
-                headers=_headers,
-                json={"job_id": int(JOB_ID), "notebook_params": {"catalog": _catalog}},
-            )
-            if _run_resp.status_code not in [200, 201]:
-                st.error(f"❌ Failed to start reload job: {_run_resp.text[:300]}")
+            _wc = _get_ws_client()
+            if not _wc:
+                st.error("❌ Databricks SDK could not initialise. Check app configuration.")
             else:
-                _run_id  = _run_resp.json()["run_id"]
-                _run_url = f"{_host}/?o={WORKSPACE_ID}#job/{JOB_ID}/run/{_run_id}"
-                _status_ph = st.empty()
-
-                # Poll until terminal state (up to 5 min)
-                _final_state = None
-                for _attempt in range(60):
-                    _time.sleep(5)
-                    _s = requests.get(
-                        f"{_host}/api/2.0/jobs/runs/get?run_id={_run_id}",
-                        headers=_headers,
-                    ).json().get("state", {})
-                    _lc = _s.get("life_cycle_state", "")
-                    _status_ph.info(
-                        f"⏳ Reload running ({(_attempt+1)*5}s elapsed) — "
-                        f"[View job run ↗]({_run_url})"
+                try:
+                    _resp    = _wc.jobs.run_now(
+                        job_id=int(JOB_ID),
+                        notebook_params={"catalog": _catalog},
                     )
-                    if _lc == "TERMINATED":
-                        _final_state = _s.get("result_state", "UNKNOWN")
-                        break
+                    _run_id  = _resp.run_id
+                    _run_url = f"{INSTANCE_URL}/?o={WORKSPACE_ID}#job/{JOB_ID}/run/{_run_id}"
+                    _status_ph = st.empty()
 
-                _status_ph.empty()
-                if _final_state == "SUCCESS":
-                    st.success(f"✅ Reload complete — [View job run ↗]({_run_url})")
-                elif _final_state is None:
-                    st.warning(f"⏳ Reload still running — [Check status ↗]({_run_url})")
-                else:
-                    st.error(f"❌ Reload failed ({_final_state}) — [View job run ↗]({_run_url})")
+                    # Poll until terminal state (up to 5 min)
+                    _final_state = None
+                    for _attempt in range(60):
+                        _time.sleep(5)
+                        _run     = _wc.jobs.runs.get(run_id=_run_id)
+                        _lc      = _run.state.life_cycle_state.value if (
+                            _run.state and _run.state.life_cycle_state) else ""
+                        _status_ph.info(
+                            f"⏳ Reload running ({(_attempt+1)*5}s elapsed) — "
+                            f"[View job run ↗]({_run_url})"
+                        )
+                        if _lc == "TERMINATED":
+                            _final_state = _run.state.result_state.value if (
+                                _run.state and _run.state.result_state) else "UNKNOWN"
+                            break
+
+                    _status_ph.empty()
+                    if _final_state == "SUCCESS":
+                        st.success(f"✅ Reload complete — [View job run ↗]({_run_url})")
+                    elif _final_state is None:
+                        st.warning(f"⏳ Reload still running — [Check status ↗]({_run_url})")
+                    else:
+                        st.error(f"❌ Reload failed ({_final_state}) — [View job run ↗]({_run_url})")
+                except Exception as _exc:
+                    st.error(f"❌ Failed to trigger reload: {_exc}")
 
                 st.rerun()
 
