@@ -49,22 +49,6 @@ spark.sql(f"""
     ) USING DELTA
 """)
 
-# Auto-migrate STRING → INT run_id if needed (one-time)
-try:
-    _schema = {r["col_name"]: r["data_type"].lower()
-               for r in spark.sql(f"DESCRIBE `{catalog}`.`waf_cache`.`_run_log`").collect()}
-    if _schema.get("run_id", "") == "string":
-        print("  Migrating _run_log: run_id STRING → INT (one-time)")
-        spark.sql(f"DROP TABLE `{catalog}`.`waf_cache`.`_run_log`")
-        spark.sql(f"""
-            CREATE TABLE `{catalog}`.`waf_cache`.`_run_log` (
-                run_id INT, triggered_at TIMESTAMP, finished_at TIMESTAMP,
-                status STRING, tables_succeeded INT, tables_failed INT
-            ) USING DELTA
-        """)
-except Exception:
-    pass  # table not yet created — will be done by CREATE TABLE IF NOT EXISTS above
-
 _run_id_row = spark.sql(
     f"SELECT COALESCE(MAX(run_id), 0) + 1 FROM `{catalog}`.`waf_cache`.`_run_log`"
 ).collect()[0]
