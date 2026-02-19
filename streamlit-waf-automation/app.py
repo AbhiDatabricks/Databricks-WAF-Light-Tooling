@@ -11,6 +11,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+if "waf_page" not in st.session_state:
+    st.session_state.waf_page = "dashboard"
+
 # Dashboard configuration — values replaced at install time by install.ipynb
 INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
 DASHBOARD_ID = "01f10cbeacfb108dbae8bc34fb686707"
@@ -21,6 +24,54 @@ EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}"
 JOB_ID       = os.environ.get("WAF_JOB_ID", "")
 WAREHOUSE_ID = os.environ.get("WAF_WAREHOUSE_ID", "")
 GENIE_URL    = os.environ.get("WAF_GENIE_URL", "")
+
+
+def _get_ws_client():
+    """Return a WorkspaceClient auto-configured from the runtime environment."""
+    try:
+        from databricks.sdk import WorkspaceClient
+        return WorkspaceClient()
+    except Exception:
+        return None
+
+
+def _load_run_info():
+    """Return latest successful run info from _run_log, or {} if unavailable."""
+    _cat = os.environ.get("WAF_CATALOG", "useast1")
+    if not WAREHOUSE_ID:
+        return {}
+    _wc = _get_ws_client()
+    if _wc:
+        try:
+            from databricks.sdk.service.sql import StatementState
+            _stmt = (
+                f"SELECT run_id, triggered_at, finished_at, status, "
+                f"tables_succeeded, tables_failed "
+                f"FROM `{_cat}`.`waf_cache`.`_run_log` "
+                f"WHERE status IN ('success','partial') "
+                f"ORDER BY run_id DESC LIMIT 1"
+            )
+            _r = _wc.statement_execution.execute_statement(
+                statement=_stmt,
+                warehouse_id=WAREHOUSE_ID,
+                wait_timeout="10s",
+            )
+            if (_r.status and _r.status.state == StatementState.SUCCEEDED
+                    and _r.result and _r.result.data_array):
+                row = _r.result.data_array[0]
+                return {
+                    "run_id": row[0], "triggered_at": row[1], "finished_at": row[2],
+                    "status": row[3], "tables_succeeded": int(row[4] or 0),
+                    "tables_failed": int(row[5] or 0), "catalog": _cat,
+                }
+        except Exception:
+            pass
+    try:
+        with open("/tmp/waf_run_info.json", encoding="utf-8") as _f:
+            return _json.load(_f)
+    except Exception:
+        return {}
+
 
 # Sidebar with explanations
 with st.sidebar:
@@ -1292,74 +1343,77 @@ with st.sidebar:
             📚 [SQL Warehouse Auto-Scaling](https://docs.databricks.com/aws/en/sql/admin/sql-endpoints.html#configure-auto-scaling) | [Warehouse Configuration](https://docs.databricks.com/aws/en/sql/admin/sql-endpoints.html)
             """)
 
-# Main content
+# --- Run info (needed for catalog/warehouse on both pages) ---
+_run_info = _load_run_info()
+_catalog = _run_info.get("catalog") or os.environ.get("WAF_CATALOG", "useast1")
+_schema = "waf_cache"
+
+# Main content: Dashboard vs Recommendations page
+if st.session_state.waf_page == "recommendations":
+    st.title("📋 WAF Recommendations (Not Met)")
+    st.markdown("Controls that did not meet threshold and their recommended actions.")
+    st.markdown("---")
+    if st.button("← Back to Dashboard", type="secondary"):
+        st.session_state.waf_page = "dashboard"
+        st.rerun()
+    if not WAREHOUSE_ID:
+        st.warning("No warehouse configured (WAF_WAREHOUSE_ID). Run install and set app env vars.")
+    else:
+        _wc = _get_ws_client()
+        if not _wc:
+            st.error("Databricks SDK could not initialise.")
+        else:
+            try:
+                from databricks.sdk.service.sql import StatementState
+                _stmt = f"SELECT waf_id, pillar_name, principle, best_practice, score_percentage, control_threshold_pct, recommendation_if_not_met FROM `{_catalog}`.`{_schema}`.waf_recommendations_not_met ORDER BY pillar_name, waf_id"
+                _r = _wc.statement_execution.execute_statement(
+                    statement=_stmt,
+                    warehouse_id=WAREHOUSE_ID,
+                    wait_timeout="30s",
+                )
+                if _r.status and _r.status.state == StatementState.SUCCEEDED and _r.result and _r.result.data_array:
+                    cols = [c.name for c in (_r.result.manifest.schema.columns or [])]
+                    rows = _r.result.data_array
+                    import pandas as pd
+                    _df = pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame(rows)
+                    st.dataframe(_df, use_container_width=True, height=400)
+                    # Export to PDF
+                    if st.button("Export to PDF", type="primary", use_container_width=False):
+                        from fpdf import FPDF
+                        import io
+                        pdf = FPDF()
+                        pdf.set_auto_page_break(True, margin=10)
+                        pdf.add_page()
+                        pdf.set_font("Helvetica", "B", 14)
+                        pdf.cell(0, 10, "WAF Recommendations (Not Met)", ln=True)
+                        pdf.set_font("Helvetica", "", 9)
+                        pdf.cell(0, 6, f"Catalog: {_catalog}  |  Schema: {_schema}", ln=True)
+                        pdf.ln(4)
+                        for _, row in _df.iterrows():
+                            pdf.set_font("Helvetica", "B", 10)
+                            waf_id = str(row.get("waf_id", ""))
+                            pillar = str(row.get("pillar_name", ""))
+                            pdf.cell(0, 6, f"{waf_id} — {pillar}", ln=True)
+                            pdf.set_font("Helvetica", "", 9)
+                            rec = str(row.get("recommendation_if_not_met", ""))[:500]
+                            pdf.multi_cell(0, 5, rec or "(No recommendation)")
+                            pdf.ln(2)
+                        st.session_state.waf_pdf_bytes = pdf.output()
+                        st.rerun()
+                    if st.session_state.get("waf_pdf_bytes"):
+                        st.download_button("Download PDF", data=st.session_state.waf_pdf_bytes, file_name="waf_recommendations_not_met.pdf", mime="application/pdf", key="pdf_dl")
+                else:
+                    st.info("No rows returned. Run Reload Data and ensure the view `waf_recommendations_not_met` exists.")
+            except Exception as e:
+                st.error(f"Failed to load recommendations: {e}")
+    st.stop()
+
+# Dashboard page
 st.title("🔍 WAF Assessment Dashboard")
 st.markdown("**💡 Use the sidebar (←) to understand each metric and see recommended actions**")
 st.markdown("---")
 
-# --- Databricks client (handles Apps OAuth M2M + local PAT automatically) ---
-def _get_ws_client():
-    """Return a WorkspaceClient auto-configured from the runtime environment.
-
-    In Databricks Apps the SDK discovers the app's service principal credentials
-    (DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET) automatically.
-    Locally it falls back to DATABRICKS_TOKEN or ~/.databrickscfg.
-    """
-    try:
-        from databricks.sdk import WorkspaceClient
-        return WorkspaceClient()
-    except Exception:
-        return None
-
-
-# --- Run info: query _run_log via SDK statement execution ---
-def _load_run_info():
-    """Return latest successful run info from _run_log, or {} if unavailable."""
-    _cat = os.environ.get("WAF_CATALOG", "useast1")
-    if not WAREHOUSE_ID:
-        return {}
-    _wc = _get_ws_client()
-    if _wc:
-        try:
-            from databricks.sdk.service.sql import StatementState
-            _stmt = (
-                f"SELECT run_id, triggered_at, finished_at, status, "
-                f"tables_succeeded, tables_failed "
-                f"FROM `{_cat}`.`waf_cache`.`_run_log` "
-                f"WHERE status IN ('success','partial') "
-                f"ORDER BY run_id DESC LIMIT 1"
-            )
-            _r = _wc.statement_execution.execute_statement(
-                statement=_stmt,
-                warehouse_id=WAREHOUSE_ID,
-                wait_timeout="10s",
-            )
-            if (_r.status and _r.status.state == StatementState.SUCCEEDED
-                    and _r.result and _r.result.data_array):
-                row = _r.result.data_array[0]
-                return {
-                    "run_id":           row[0],
-                    "triggered_at":     row[1],
-                    "finished_at":      row[2],
-                    "status":           row[3],
-                    "tables_succeeded": int(row[4] or 0),
-                    "tables_failed":    int(row[5] or 0),
-                    "catalog":          _cat,
-                }
-        except Exception:
-            pass
-    # Fallback for local dev: read cached file
-    try:
-        with open("/tmp/waf_run_info.json", encoding="utf-8") as _f:
-            return _json.load(_f)
-    except Exception:
-        return {}
-
-_run_info = _load_run_info()
-
 # Read-only display of catalog, schema, and latest run
-_catalog = _run_info.get("catalog") or os.environ.get("WAF_CATALOG", "useast1")
-_schema = "waf_cache"
 _info_col1, _info_col2, _info_col3, _info_col4 = st.columns(4)
 with _info_col1:
     st.metric("Data Catalog", _catalog)
@@ -1432,6 +1486,13 @@ with col2:
                     st.error(f"❌ Failed to trigger reload: {_exc}")
 
                 st.rerun()
+
+st.markdown("---")
+
+# View Recommendations button (opens second page)
+if st.button("📋 View Recommendations (Not Met)", use_container_width=False, type="secondary"):
+    st.session_state.waf_page = "recommendations"
+    st.rerun()
 
 st.markdown("---")
 

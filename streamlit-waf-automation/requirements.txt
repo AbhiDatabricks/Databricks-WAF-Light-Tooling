@@ -3,3 +3,4 @@ databricks-sdk
 boto3
 databricks-sql-connector>=3.0.0
 pyyaml
+fpdf2>=2.7.0

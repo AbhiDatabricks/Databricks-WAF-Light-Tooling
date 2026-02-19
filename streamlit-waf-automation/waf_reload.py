@@ -138,6 +138,53 @@ for table in succeeded:
 
 # COMMAND ----------
 
+# Create view: waf_recommendations_not_met (join controls with recommendations table, filter Not Met)
+# Depends on: waf_controls_g, waf_controls_c, waf_controls_p, waf_controls_r, waf_controls_with_recommendations
+try:
+    spark.sql(f"""
+        CREATE OR REPLACE VIEW `{catalog}`.`waf_cache`.`waf_recommendations_not_met` AS
+        SELECT
+            r.waf_id,
+            r.pillar_name,
+            r.principle,
+            r.best_practice,
+            r.capabilities,
+            r.details,
+            r.query_table_name,
+            r.threshold_percentage AS rec_threshold_pct,
+            r.metric_definition,
+            r.recommendation_if_not_met,
+            c.score_percentage,
+            c.threshold_percentage AS control_threshold_pct,
+            c.threshold_met
+        FROM (
+            SELECT waf_id, 'Data & AI Governance' AS pillar, principle,
+                   description AS best_practice,
+                   score_percentage, threshold_percentage, threshold_met
+            FROM `{catalog}`.`waf_cache`.`waf_controls_g`
+            UNION ALL
+            SELECT waf_id, 'Cost Optimization', principle, best_practice,
+                   score_percentage, threshold_percentage, threshold_met
+            FROM `{catalog}`.`waf_cache`.`waf_controls_c`
+            UNION ALL
+            SELECT waf_id, 'Performance Efficiency', principle, best_practice,
+                   score_percentage, threshold_percentage, threshold_met
+            FROM `{catalog}`.`waf_cache`.`waf_controls_p`
+            UNION ALL
+            SELECT waf_id, 'Reliability', principle, best_practice,
+                   score_percentage, threshold_percentage, threshold_met
+            FROM `{catalog}`.`waf_cache`.`waf_controls_r`
+        ) c
+        INNER JOIN `{catalog}`.`waf_cache`.`waf_controls_with_recommendations` r
+          ON r.waf_id = c.waf_id
+        WHERE c.threshold_met = 'Not Met'
+    """)
+    print("  ✅ View: waf_recommendations_not_met")
+except Exception as ve:
+    print(f"  ⚠️  View waf_recommendations_not_met: {ve}")
+
+# COMMAND ----------
+
 # Finalize _run_log
 _status      = "success" if not failed else ("partial" if succeeded else "failed")
 _finished_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
