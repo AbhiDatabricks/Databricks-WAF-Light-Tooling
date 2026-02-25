@@ -35,3 +35,6 @@ ENV/
 *.tmp
 *.bak
 *.backup
+
+# MkDocs build output
+site/

@@ -1,0 +1,89 @@
+site_name: Databricks WAF Light Tooling
+site_description: Automated Well-Architected Framework assessments for Databricks Lakehouses — one notebook install.
+site_url: https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/
+repo_url: https://github.com/AbhiDatabricks/Databricks-WAF-Light-Tooling
+repo_name: AbhiDatabricks/Databricks-WAF-Light-Tooling
+edit_uri: edit/main/docs/
+copyright: Built with ❤️ by Databricks Field Engineering
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: deep-orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: deep-orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    logo: material/database-search
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.indexes
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+    - announce.dismiss
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: installation/quickstart.md
+    - Required Permissions: installation/permissions.md
+    - Grant Access to Users: installation/grant-access.md
+  - Features:
+    - Lakeview Dashboard: features/dashboard.md
+    - Streamlit App: features/app.md
+    - Genie AI Space: features/genie.md
+  - Architecture: architecture.md
+  - Troubleshooting: troubleshooting.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.keys
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/AbhiDatabricks/Databricks-WAF-Light-Tooling
+      name: GitHub Repository
+
+extra_css:
+  - stylesheets/extra.css
