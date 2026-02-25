@@ -767,7 +767,7 @@
   <span class="md-ellipsis">
     
   
-    Streamlit App
+    Databricks App
   
 
     
@@ -1083,13 +1083,13 @@
 <h2 id="refreshing-data">Refreshing data<a class="headerlink" href="#refreshing-data" title="Permanent link">&para;</a></h2>
 <p>Dashboard data reflects the last time the WAF Reload Job ran. To refresh:</p>
 <ul>
-<li>Click <strong>Reload Data</strong> in the Streamlit App, or</li>
+<li>Click <strong>Reload Data</strong> in the Databricks App, or</li>
 <li>Run the WAF Reload Job manually from the Databricks Jobs UI</li>
 </ul>
 <p>The job takes ~3–5 minutes to complete. The dashboard updates automatically once new data is written to <code>waf_cache</code>.</p>
 <hr />
 <h2 id="embedding">Embedding<a class="headerlink" href="#embedding" title="Permanent link">&para;</a></h2>
-<p>The dashboard is embedded inside the Streamlit App via an <code>&lt;iframe&gt;</code>. The installer automatically configures <code>*.databricksapps.com</code> as an allowed embedding domain.</p>
+<p>The dashboard is embedded inside the Databricks App via an <code>&lt;iframe&gt;</code>. The installer automatically configures <code>*.databricksapps.com</code> as an allowed embedding domain.</p>
 <div class="admonition warning">
 <p class="admonition-title">Workspace-level embedding must be enabled by an admin</p>
 <p>If you see "Embedding dashboards is not available on this domain", a workspace admin must first enable embedding in <strong>Admin Console → Advanced</strong>. See <a href="../../troubleshooting/#embedding-issues">Troubleshooting</a> for details.</p>

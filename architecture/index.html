@@ -649,7 +649,7 @@
   <span class="md-ellipsis">
     
   
-    Streamlit App
+    Databricks App
   
 
     
@@ -1024,7 +1024,7 @@
 <h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
 <h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
 <p><img alt="System Architecture" class="screenshot" src="../assets/images/System_Architecture_Overview.png" /></p>
-<p>The WAF Light Tooling stack has three layers: a <strong>data layer</strong> (system tables → waf_cache), an <strong>application layer</strong> (Lakeview dashboard + Streamlit App), and an <strong>AI layer</strong> (Genie Space).</p>
+<p>The WAF Light Tooling stack has three layers: a <strong>data layer</strong> (system tables → waf_cache), an <strong>application layer</strong> (Databricks App — the central hub that embeds the Lakeview dashboard and surfaces all functionality), and an <strong>AI layer</strong> (Genie Space).</p>
 <hr />
 <h2 id="component-map">Component map<a class="headerlink" href="#component-map" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>install.ipynb  (run once, in Databricks)
@@ -1063,7 +1063,7 @@
 <a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>                                        │
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>                              ┌─────────┼──────────────────┐
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>                              ▼         ▼                   ▼
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>                     Lakeview        Streamlit          Genie Space
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>                     Lakeview        Databricks         Genie Space
 <a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>                     Dashboard       App (App)          AI Assistant
 </code></pre></div>
 <hr />

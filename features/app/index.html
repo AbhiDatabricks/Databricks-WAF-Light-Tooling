@@ -27,7 +27,7 @@
     
     
       
-        <title>Streamlit App - Databricks WAF Light Tooling</title>
+        <title>Databricks App - Databricks WAF Light Tooling</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#streamlit-app" class="md-skip">
+        <a href="#databricks-app" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Streamlit App
+              Databricks App
             
           </span>
         </div>
@@ -663,7 +663,7 @@
   <span class="md-ellipsis">
     
   
-    Streamlit App
+    Databricks App
   
 
     
@@ -681,7 +681,7 @@
   <span class="md-ellipsis">
     
   
-    Streamlit App
+    Databricks App
   
 
     
@@ -705,6 +705,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-app-as-central-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The App as central hub
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#pages" class="md-nav__link">
@@ -761,17 +772,6 @@
     <span class="md-ellipsis">
       
         WAF Guide sidebar
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#navigation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Navigation
       
     </span>
   </a>
@@ -914,6 +914,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-app-as-central-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The App as central hub
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pages" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -975,17 +986,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#navigation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Navigation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#app-url" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1016,41 +1016,58 @@
   
 
 
-<h1 id="streamlit-app">Streamlit App<a class="headerlink" href="#streamlit-app" title="Permanent link">&para;</a></h1>
-<p>The WAF Automation Tool is a Databricks App (Streamlit) that wraps the Lakeview dashboard in an interactive interface. It is the primary entry point for end-users.</p>
+<h1 id="databricks-app">Databricks App<a class="headerlink" href="#databricks-app" title="Permanent link">&para;</a></h1>
+<p>The WAF Automation Tool is a <strong>Databricks App</strong> — the central hub that brings the entire WAF Assessment experience together in one place. The dashboard, Genie AI Space, Reload Job, and Recommendations are all accessible from here; users never need to navigate directly to individual Databricks resources.</p>
 <p><img alt="WAF App Dashboard View" class="screenshot" src="../../assets/images/waf-app-dashboard.png" /></p>
+<hr />
+<h2 id="the-app-as-central-hub">The App as central hub<a class="headerlink" href="#the-app-as-central-hub" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────────────────────────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│              WAF Automation Tool (Databricks App)    │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│                                                      │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  ┌──────────────────────────────────────────────┐   │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│  │         Lakeview Dashboard (embedded)        │   │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  │  Reliability · Governance · Cost · Perf      │   │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│  │  Summary · AI Assistant (Genie embedded)     │   │
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│  └──────────────────────────────────────────────┘   │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│                                                      │
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│  [Reload Data]  [Recommendations]  [Progress]        │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│  [Open in Databricks]  [Ask Genie]                   │
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│                                                      │
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│  ◀ WAF Guide sidebar                                 │
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>└─────────────────────────────────────────────────────┘
+</code></pre></div>
+<p>Everything the user needs is surfaced from a single URL — no need to share links to the dashboard, Genie Space, or job separately.</p>
 <hr />
 <h2 id="pages">Pages<a class="headerlink" href="#pages" title="Permanent link">&para;</a></h2>
 <h3 id="dashboard-default-view">Dashboard (default view)<a class="headerlink" href="#dashboard-default-view" title="Permanent link">&para;</a></h3>
-<p>The main view embeds the full Lakeview dashboard in an <code>&lt;iframe&gt;</code>. All pillar tabs and the AI Assistant tab are accessible here.</p>
-<p><strong>Toolbar buttons:</strong></p>
+<p>The main view embeds the full Lakeview dashboard. All pillar tabs (Reliability, Governance, Cost, Performance, Summary) and the AI Assistant tab (Genie) are accessible here without leaving the app.</p>
+<p><strong>Toolbar actions:</strong></p>
 <table>
 <thead>
 <tr>
 <th>Button</th>
-<th>Action</th>
+<th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Reload Data</strong></td>
-<td>Triggers the WAF Reload Job — refreshes all WAF cache tables (~3–5 min)</td>
+<td>Triggers the WAF Reload Job — all WAF cache tables refresh in ~3–5 min</td>
 </tr>
 <tr>
-<td><strong>Open Dashboard in Databricks</strong></td>
-<td>Opens the published dashboard in a new tab</td>
+<td><strong>Open in Databricks</strong></td>
+<td>Opens the published dashboard directly in Databricks (new tab)</td>
 </tr>
 <tr>
 <td><strong>Ask Genie</strong></td>
-<td>Deep-links to the Genie Space for natural-language queries</td>
+<td>Deep-links to the Genie Space for natural-language WAF queries</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h3 id="recommendations-not-met">Recommendations (Not Met)<a class="headerlink" href="#recommendations-not-met" title="Permanent link">&para;</a></h3>
 <p><img alt="WAF Recommendations" class="screenshot" src="../../assets/images/waf-recommendations.png" /></p>
-<p>Click <strong>View Recommendations (Not Met)</strong> to open a dedicated page listing every failing control.</p>
-<p>Each row includes:</p>
+<p>Every failing WAF control — in one table. No need to open the dashboard or query tables manually.</p>
 <table>
 <thead>
 <tr>
@@ -1089,39 +1106,35 @@
 </tr>
 <tr>
 <td><strong>Recommendation</strong></td>
-<td>Exact action to take to remediate</td>
+<td>Exact remediation action</td>
 </tr>
 </tbody>
 </table>
 <p><img alt="WAF Recommendations Detail" class="screenshot" src="../../assets/images/waf-recommendations-detail.png" /></p>
-<p>Use this page to prioritize remediation work — sort by pillar or gap size to focus on the biggest wins first.</p>
 <hr />
 <h3 id="progress">Progress<a class="headerlink" href="#progress" title="Permanent link">&para;</a></h3>
 <p><img alt="WAF Progress" class="screenshot" src="../../assets/images/waf-progress.png" /></p>
-<p>Click <strong>View Progress</strong> to see a trend chart of WAF scores over time, broken out by pillar. Each data point represents one reload run.</p>
-<p>Use this to demonstrate improvement to stakeholders or track the impact of remediation work.</p>
+<p>Score trend across all reload runs, broken out by pillar. Use this to demonstrate improvement to stakeholders or track the impact of remediation work — all without leaving the app.</p>
 <hr />
 <h2 id="waf-guide-sidebar">WAF Guide sidebar<a class="headerlink" href="#waf-guide-sidebar" title="Permanent link">&para;</a></h2>
-<p>The app includes a collapsible sidebar with:</p>
+<p>Built-in reference documentation:</p>
 <ul>
-<li><strong>Score calculation methodology</strong> — how each metric is derived from system tables</li>
-<li><strong>Threshold explanations</strong> — what each band means and why thresholds are set where they are</li>
-<li><strong>Code examples</strong> — SQL and Python snippets for common WAF improvements</li>
+<li><strong>Score methodology</strong> — how each metric is derived from system tables</li>
+<li><strong>Threshold guide</strong> — what each band (Critical / At Risk / Progressing / Mature) means</li>
+<li><strong>Code examples</strong> — SQL snippets for common WAF improvements</li>
 <li><strong>Control reference</strong> — quick lookup for any WAF ID</li>
 </ul>
 <hr />
-<h2 id="navigation">Navigation<a class="headerlink" href="#navigation" title="Permanent link">&para;</a></h2>
-<p>The app uses session-state navigation to switch between pages without reloading the page. Each page has a <strong>← Back to Dashboard</strong> button that returns to the main view cleanly.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Query parameters (<code>?page=recommendations</code>) are cleared when navigating back, so the back button always works correctly regardless of how you arrived at the page.</p>
-</div>
-<hr />
 <h2 id="app-url">App URL<a class="headerlink" href="#app-url" title="Permanent link">&para;</a></h2>
-<p>The App URL is printed at the end of <code>install.ipynb</code>. It follows the pattern:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>https://&lt;workspace&gt;-waf-automation-tool.databricksapps.com
+<p>Printed at the end of <code>install.ipynb</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>https://&lt;workspace&gt;-waf-automation-tool.databricksapps.com
 </code></pre></div>
-<p>Share this URL with your team after completing <a href="../../installation/grant-access/#step-b-grant-app-access">Step B — Grant App access</a>.</p>
+<p>This is the <strong>only URL users need to bookmark</strong>. The dashboard, Genie Space, and reload job are all accessible from here.</p>
+<div class="admonition warning">
+<p class="admonition-title">Grant App access before sharing</p>
+<p>Users need <strong>CAN USE</strong> on the app before the URL works for them.
+See <a href="../../installation/grant-access/#step-b-grant-app-access">Grant Access — Step B</a>.</p>
+</div>
 
 
 
