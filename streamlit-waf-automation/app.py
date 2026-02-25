@@ -13,6 +13,15 @@ st.set_page_config(
 
 if "waf_page" not in st.session_state:
     st.session_state.waf_page = "dashboard"
+# Open recommendations or progress in new tab when URL has ?page=...
+try:
+    _qp = st.query_params.get("page")
+    if _qp == "recommendations":
+        st.session_state.waf_page = "recommendations"
+    elif _qp == "progress":
+        st.session_state.waf_page = "progress"
+except Exception:
+    pass
 
 # Dashboard configuration — values replaced at install time by install.ipynb
 INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
@@ -1348,7 +1357,77 @@ _run_info = _load_run_info()
 _catalog = _run_info.get("catalog") or os.environ.get("WAF_CATALOG", "useast1")
 _schema = "waf_cache"
 
-# Main content: Dashboard vs Recommendations page
+# Main content: Dashboard vs Recommendations vs Progress page
+if st.session_state.waf_page == "progress":
+    st.title("WAF Assessment Progress")
+    st.markdown("Total score over time (average across pillars per run).")
+    st.markdown("---")
+    if st.button("← Back to Dashboard", type="secondary", key="back_progress"):
+        st.session_state.waf_page = "dashboard"
+        st.rerun()
+    if not WAREHOUSE_ID:
+        st.warning("No warehouse configured (WAF_WAREHOUSE_ID). Run install and set app env vars.")
+    else:
+        _wc = _get_ws_client()
+        if not _wc:
+            st.error("Databricks SDK could not initialise.")
+        else:
+            try:
+                from databricks.sdk.service.sql import StatementState
+                _stmt = (
+                    f"SELECT r.run_id, r.triggered_at, ROUND(avg_score.overall_score, 2) AS overall_score "
+                    f"FROM `{_catalog}`.`{_schema}`.`_run_log` r "
+                    f"INNER JOIN ("
+                    f"  SELECT _run_id, AVG(completion_percent) AS overall_score "
+                    f"  FROM `{_catalog}`.`{_schema}`.waf_total_percentage_across_pillars_hist "
+                    f"  GROUP BY _run_id"
+                    f") avg_score ON avg_score._run_id = r.run_id "
+                    f"WHERE r.status IN ('success', 'partial') "
+                    f"ORDER BY r.run_id"
+                )
+                _r = _wc.statement_execution.execute_statement(
+                    statement=_stmt,
+                    warehouse_id=WAREHOUSE_ID,
+                    wait_timeout="20s",
+                )
+                if _r.status and _r.status.state == StatementState.SUCCEEDED and _r.result and _r.result.data_array:
+                    rows = _r.result.data_array
+                    cols = None
+                    for _src in (_r.result, _r):
+                        if getattr(_src, "manifest", None) and getattr(_src.manifest, "schema", None) and getattr(_src.manifest.schema, "columns", None):
+                            cols = [c.name for c in (_src.manifest.schema.columns or [])]
+                            break
+                    if not cols and rows:
+                        cols = ["run_id", "triggered_at", "overall_score"] if len(rows[0]) == 3 else [f"col{i}" for i in range(len(rows[0]))]
+                    import pandas as pd
+                    labels = []
+                    scores = []
+                    for row in (rows or []):
+                        run_id, triggered_at_val, score = row[0], row[1], row[2]
+                        labels.append(triggered_at_val[:19] if triggered_at_val else str(run_id))
+                        scores.append(float(score) if score is not None else 0)
+                    if rows:
+                        _progress_df = pd.DataFrame({"Run time": labels, "Score (%)": scores})
+                        _progress_df["Score (%)"] = _progress_df["Score (%)"].astype(float)
+                        _n_runs = len(rows)
+                        _latest = scores[-1] if scores else 0
+                        _p1, _p2, _p3 = st.columns(3)
+                        with _p1:
+                            st.metric("Runs", _n_runs)
+                        with _p2:
+                            st.metric("Latest score", f"{_latest:.1f}%")
+                        with _p3:
+                            st.metric("Trend", f"{(scores[-1] - scores[0]):.1f}%" if len(scores) > 1 else "—", delta="vs first run" if len(scores) > 1 else None, delta_color="off")
+                        st.line_chart(_progress_df.set_index("Run time"), y="Score (%)")
+                        st.caption("Overall WAF score (average of 4 pillars) per Reload Data run.")
+                    else:
+                        st.info("No completed runs yet. Run Reload Data to populate history.")
+                else:
+                    st.info("No run history with scores. Run Reload Data and ensure waf_total_percentage_across_pillars_hist exists.")
+            except Exception as e:
+                st.error(f"Failed to load progress: {e}")
+    st.stop()
+
 if st.session_state.waf_page == "recommendations":
     st.title("📋 WAF Recommendations (Not Met)")
     st.markdown("Controls that did not meet threshold and their recommended actions.")
@@ -1372,36 +1451,123 @@ if st.session_state.waf_page == "recommendations":
                     wait_timeout="30s",
                 )
                 if _r.status and _r.status.state == StatementState.SUCCEEDED and _r.result and _r.result.data_array:
-                    cols = [c.name for c in (_r.result.manifest.schema.columns or [])]
                     rows = _r.result.data_array
+                    # Column names: manifest may be on result or on response; SDK versions vary
+                    cols = None
+                    for _src in (_r.result, _r):
+                        if getattr(_src, "manifest", None) and getattr(_src.manifest, "schema", None) and getattr(_src.manifest.schema, "columns", None):
+                            cols = [c.name for c in (_src.manifest.schema.columns or [])]
+                            break
+                    if not cols and rows:
+                        _n = len(rows[0]) if rows else 0
+                        _known = ["waf_id", "pillar_name", "principle", "best_practice", "score_percentage", "control_threshold_pct", "recommendation_if_not_met"]
+                        cols = _known if _n == len(_known) else [f"col{i}" for i in range(_n)]
                     import pandas as pd
                     _df = pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame(rows)
-                    st.dataframe(_df, use_container_width=True, height=400)
-                    # Export to PDF
-                    if st.button("Export to PDF", type="primary", use_container_width=False):
+
+                    # ---- Beautiful HTML: one card per waf_id with recommendation text ----
+                    import html as _html_mod
+                    def _html_esc(s):
+                        return _html_mod.escape(str(s)) if s is not None else ""
+                    def _strip_platform(s):
+                        if s is None:
+                            return ""
+                        return str(s).replace("AWS | Azure | GCP", "").strip()
+
+                    _card_css = """
+                    <style>
+                    .waf-rec-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid #0ea5e9; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+                    .waf-rec-card .waf-id { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.25rem; }
+                    .waf-rec-card .waf-meta { font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem; }
+                    .waf-rec-card .waf-rec-label { font-size: 0.75rem; font-weight: 600; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.75rem; margin-bottom: 0.35rem; }
+                    .waf-rec-card .waf-rec-text { font-size: 0.95rem; line-height: 1.55; color: #334155; white-space: pre-wrap; }
+                    .waf-rec-score { display: inline-block; background: #e2e8f0; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; margin-left: 0.5rem; }
+                    </style>
+                    """
+                    _html_parts = [_card_css]
+                    for _, row in _df.iterrows():
+                        waf_id = _html_esc((str(row.get("waf_id", "")).strip() or "—"))
+                        pillar = _html_esc(_strip_platform(row.get("pillar_name")) or "—")
+                        principle = _html_esc(_strip_platform(row.get("principle")) or "—")
+                        best_practice = _html_esc(_strip_platform(row.get("best_practice")) or "—")
+                        rec = _html_esc(_strip_platform(row.get("recommendation_if_not_met")) or "(No recommendation)")
+                        score = row.get("score_percentage")
+                        thresh = row.get("control_threshold_pct")
+                        score_str = ""
+                        if score is not None or thresh is not None:
+                            score_str = f' <span class="waf-rec-score">Score: {score}% / Threshold: {thresh}%</span>' if thresh is not None else f' <span class="waf-rec-score">Score: {score}%</span>'
+                        _html_parts.append(
+                            f'<div class="waf-rec-card">'
+                            f'<div class="waf-id">{waf_id}{score_str}</div>'
+                            f'<div class="waf-meta"><strong>Pillar:</strong> {pillar} &nbsp;|&nbsp; <strong>Principle:</strong> {principle}</div>'
+                            f'<div class="waf-meta"><strong>Best practice:</strong> {best_practice}</div>'
+                            f'<div class="waf-rec-label">Recommendations</div>'
+                            f'<div class="waf-rec-text">{rec}</div>'
+                            f'</div>'
+                        )
+                    st.markdown("\n".join(_html_parts), unsafe_allow_html=True)
+
+                    # Export to PDF: one-click download, dynamic filename, pillar/principle/score in body
+                    def _pdf_sanitize(s):
+                        if not s:
+                            return ""
+                        s = str(s)
+                        replacements = (
+                            ("—", "-"), ("–", "-"), ("\"", '"'), ("\"", '"'), ("'", "'"), ("'", "'"),
+                            ("…", "..."), ("\u00a0", " "), ("\u2014", "-"), ("\u2013", "-"),
+                        )
+                        for a, b in replacements:
+                            s = s.replace(a, b)
+                        return "".join(c for c in s if ord(c) < 256 or c in " \n\t")
+
+                    def _build_recommendations_pdf(pdf_date):
                         from fpdf import FPDF
-                        import io
                         pdf = FPDF()
-                        pdf.set_auto_page_break(True, margin=10)
+                        pdf.set_auto_page_break(True, margin=12)
+                        pdf.set_margins(14, 12, 14)
                         pdf.add_page()
-                        pdf.set_font("Helvetica", "B", 14)
-                        pdf.cell(0, 10, "WAF Recommendations (Not Met)", ln=True)
+                        # Title
+                        pdf.set_font("Helvetica", "B", 16)
+                        pdf.cell(0, 10, _pdf_sanitize("WAF Assessment - Recommendations (Not Met)"), ln=True)
                         pdf.set_font("Helvetica", "", 9)
-                        pdf.cell(0, 6, f"Catalog: {_catalog}  |  Schema: {_schema}", ln=True)
-                        pdf.ln(4)
+                        pdf.cell(0, 6, _pdf_sanitize(f"Workspace: {WORKSPACE_ID}  |  Date: {pdf_date}  |  Catalog: {_catalog}.{_schema}"), ln=True)
+                        pdf.ln(2)
+                        pdf.set_draw_color(200, 200, 200)
+                        pdf.line(14, pdf.get_y(), pdf.w - 14, pdf.get_y())
+                        pdf.ln(6)
                         for _, row in _df.iterrows():
-                            pdf.set_font("Helvetica", "B", 10)
-                            waf_id = str(row.get("waf_id", ""))
-                            pillar = str(row.get("pillar_name", ""))
-                            pdf.cell(0, 6, f"{waf_id} — {pillar}", ln=True)
+                            waf_id = _pdf_sanitize(str(row.get("waf_id", "")))
+                            pillar = _pdf_sanitize(_strip_platform(row.get("pillar_name", "")))
+                            principle = _pdf_sanitize(_strip_platform(row.get("principle", "")))
+                            score = row.get("score_percentage")
+                            thresh = row.get("control_threshold_pct")
+                            score_txt = "N/A"
+                            if score is not None and thresh is not None:
+                                score_txt = f"{score}% / {thresh}%"
+                            elif score is not None:
+                                score_txt = f"{score}%"
+                            rec = _pdf_sanitize(_strip_platform(row.get("recommendation_if_not_met", "")))[:2000]
+                            # Control header
+                            pdf.set_font("Helvetica", "B", 11)
+                            pdf.set_fill_color(240, 248, 255)
+                            pdf.cell(0, 7, f"  {waf_id}", ln=True, fill=True)
                             pdf.set_font("Helvetica", "", 9)
-                            rec = str(row.get("recommendation_if_not_met", ""))[:500]
+                            pdf.cell(0, 5, _pdf_sanitize(f"Pillar: {pillar}"), ln=True)
+                            pdf.cell(0, 5, _pdf_sanitize(f"Principle: {principle}"), ln=True)
+                            pdf.cell(0, 5, _pdf_sanitize(f"Current score / Threshold: {score_txt}"), ln=True)
+                            pdf.set_font("Helvetica", "B", 9)
+                            pdf.cell(0, 5, "Recommendations:", ln=True)
+                            pdf.set_font("Helvetica", "", 9)
                             pdf.multi_cell(0, 5, rec or "(No recommendation)")
-                            pdf.ln(2)
-                        st.session_state.waf_pdf_bytes = pdf.output()
-                        st.rerun()
-                    if st.session_state.get("waf_pdf_bytes"):
-                        st.download_button("Download PDF", data=st.session_state.waf_pdf_bytes, file_name="waf_recommendations_not_met.pdf", mime="application/pdf", key="pdf_dl")
+                            pdf.ln(4)
+                        out = pdf.output()
+                        return bytes(out) if not isinstance(out, bytes) else out
+
+                    from datetime import datetime as _dt
+                    _pdf_date = _dt.utcnow().strftime("%Y-%m-%d")
+                    _pdf_bytes = _build_recommendations_pdf(_pdf_date)
+                    _pdf_filename = f"WAF_ASSESSMENT_Recommendation_{WORKSPACE_ID}_{_pdf_date}.pdf"
+                    st.download_button("Export to PDF", data=_pdf_bytes, file_name=_pdf_filename, mime="application/pdf", type="primary", use_container_width=False, key="pdf_export")
                 else:
                     st.info("No rows returned. Run Reload Data and ensure the view `waf_recommendations_not_met` exists.")
             except Exception as e:
@@ -1489,37 +1655,46 @@ with col2:
 
 st.markdown("---")
 
-# View Recommendations button (opens second page)
-if st.button("📋 View Recommendations (Not Met)", use_container_width=False, type="secondary"):
-    st.session_state.waf_page = "recommendations"
-    st.rerun()
+# View Recommendations + View Progress (open in new tab)
+_rec_col1, _rec_col2, _rec_col3, _rec_col4 = st.columns([1, 2, 2, 1])
+_link_style = (
+    'display:inline-block;width:100%;padding:0.5rem 1rem;border-radius:0.5rem;'
+    'background-color:#f0f2f6;color:#31333f;text-align:center;text-decoration:none;'
+    'font-weight:500;border:1px solid rgba(49,51,63,0.2);box-sizing:border-box;'
+)
+with _rec_col2:
+    st.markdown(
+        f'<a href="?page=recommendations" target="_blank" rel="noopener noreferrer" style="{_link_style}">'
+        '📋 View Recommendations (Not Met)</a>',
+        unsafe_allow_html=True,
+    )
+with _rec_col3:
+    st.markdown(
+        f'<a href="?page=progress" target="_blank" rel="noopener noreferrer" style="{_link_style}">'
+        '📈 View Progress</a>',
+        unsafe_allow_html=True,
+    )
 
 st.markdown("---")
 
-# Dashboard access — open link + Genie + embedded iframe
+# Dashboard access — Open Dashboard + Ask Genie (always show both; Genie URL from install)
 _dashboard_direct_url = f"{INSTANCE_URL}/sql/dashboardsv3/{DASHBOARD_ID}"
-if GENIE_URL:
-    _btn_col1, _btn_col2, _btn_col3, _btn_col4 = st.columns([1, 2, 2, 1])
-    with _btn_col2:
-        st.link_button(
-            "↗ Open Dashboard in Databricks",
-            _dashboard_direct_url,
-            use_container_width=True,
-        )
-    with _btn_col3:
-        st.link_button(
-            "🧞 Ask Genie",
-            GENIE_URL,
-            use_container_width=True,
-        )
-else:
-    _open_col1, _open_col2, _open_col3 = st.columns([1, 2, 1])
-    with _open_col2:
-        st.link_button(
-            "↗ Open Dashboard in Databricks",
-            _dashboard_direct_url,
-            use_container_width=True,
-        )
+_genie_url = GENIE_URL or f"{INSTANCE_URL}/genie"  # fallback to Genie home if not set by install
+_btn_col1, _btn_col2, _btn_col3, _btn_col4 = st.columns([1, 2, 2, 1])
+with _btn_col2:
+    st.link_button(
+        "↗ Open Dashboard in Databricks",
+        _dashboard_direct_url,
+        use_container_width=True,
+    )
+with _btn_col3:
+    st.link_button(
+        "🧞 Ask Genie",
+        _genie_url,
+        use_container_width=True,
+    )
+if not GENIE_URL:
+    st.caption("💡 **Ask Genie**: Re-run install to link the WAF Genie room; the button above opens Genie.")
 
 st.info(
     "**First time?** The dashboard below may show a Databricks login screen inside the iframe. "
