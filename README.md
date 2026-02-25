@@ -110,13 +110,19 @@ The WAF Assessment Tool can be installed in your Databricks workspace with a sin
   
 > **Note**: This tool collects masked email addresses (first 5 characters only) and workspace IDs for usage analytics during the initial installation only. This is a one-time telemetry collection to understand adoption. To disable telemetry, set `ENABLE_TELEMETRY = False` in the `install.ipynb` notebook.
 
-![WAF Assessment Dashboard](assets/waf-dashboard.png?raw=true)
+**WAF Assessment App — main dashboard view:**
 
-**Streamlit App with WAF Guide Sidebar:**
+![WAF Assessment App Dashboard](assets/waf-app-dashboard.png?raw=true)
 
-![WAF Assessment Dashboard with WAF Guide](assets/waf-dashboard-with-guide.png?raw=true)
+**WAF Recommendations (Not Met) — failing controls with actionable fixes:**
 
-*The Streamlit app features an interactive WAF Guide sidebar that provides detailed explanations, score calculations, thresholds, and actionable recommendations for each metric.*
+![WAF Recommendations Not Met](assets/waf-recommendations.png?raw=true)
+
+![WAF Recommendations Detail](assets/waf-recommendations-detail.png?raw=true)
+
+**WAF Assessment Progress — score trend over time:**
+
+![WAF Assessment Progress](assets/waf-progress.png?raw=true)
 
 ### 🎯 What You Get
 
@@ -128,14 +134,24 @@ After installation, you'll have access to:
    - 💰 **Cost Optimization** - Resource efficiency
    - ⚡ **Performance Efficiency** - Compute and query performance
    - 📊 **Summary** - Aggregated scores across all pillars
+   - 🤖 **AI Assistant tab** - Genie Space embedded directly in the dashboard
 
-2. **Streamlit App with WAF Guide** - Interactive application featuring:
+2. **Streamlit App** - Interactive application featuring:
    - Embedded dashboard visualization
-   - Comprehensive WAF Guide sidebar with:
-     - Score calculation explanations
-     - Thresholds and action items
-     - Code examples for improvements
-     - Best practices for each metric
+   - **WAF Recommendations (Not Met)** page — every failing control with score, threshold gap, and actionable fix
+   - **Reload Data** button — triggers the background reload job on demand
+   - **Genie** button — deep-links to the AI assistant for natural-language WAF queries
+   - Comprehensive WAF Guide sidebar with score calculation explanations, thresholds, and code examples
+
+3. **Genie Space** - AI assistant pre-loaded with all 15 WAF tables and detailed instructions:
+   - Ask questions like *"Which controls are failing and what should I do?"*
+   - Pre-built SQL examples for every pillar
+   - Linked as an AI Assistant tab inside the dashboard
+
+4. **WAF Reload Job** - Background Databricks Job that refreshes all WAF cache tables:
+   - Triggered automatically at the end of install
+   - Invokable on demand from the app's Reload button
+   - Runs with full service principal permissions on `waf_cache`
 
 ---
 
@@ -174,34 +190,40 @@ See `architecture/README.md` for details on viewing and generating diagrams.
 
 ```
 Databricks-WAF-Light-Tooling/
-├── install.ipynb              # Main installation notebook (dashboard + app)
-├── README.md                   # This file
-├── DEVELOPER_DOC.md            # Developer documentation
-├── LICENSE                     # MIT License
+├── install.ipynb                          # Main installation notebook
+├── README.md
+├── LICENSE
 │
-├── dashboards/                 # Dashboard definitions
-│   ├── WAF_ASSESSMENTv1.6.lvdash.json
-│   └── README.md
+├── dashboards/
+│   └── WAF_ASSESSMENTv1.7.1.lvdash.json  # Lakeview dashboard template
 │
-├── streamlit-waf-automation/   # Streamlit app source
-│   ├── app.py                  # Main app with WAF Guide sidebar
-│   ├── app.yaml                # App configuration
-│   └── requirements.txt        # Python dependencies
+├── streamlit-waf-automation/              # Databricks App source
+│   ├── app.py                            # Main Streamlit app
+│   ├── app.yaml                          # App config (catalog, job_id, warehouse_id, genie_url)
+│   ├── waf_reload.py                     # Notebook: refreshes all waf_cache tables
+│   ├── dashboard_queries.yaml            # All WAF SQL queries (source of truth)
+│   ├── waf_controls_with_recommendations.csv  # Static recommendations catalog
+│   └── requirements.txt
 │
-├── architecture/               # Architecture diagrams and docs
-│   ├── *.mmd                   # Mermaid diagram source files
-│   ├── render_diagrams.html    # Browser-based diagram viewer
-│   ├── README.md               # Architecture documentation
-│   └── DIAGRAM_LIST.md         # Complete diagram list
+├── assets/                               # Screenshots for README
+│   ├── waf-app-dashboard.png             # Main app view
+│   ├── waf-recommendations.png           # Recommendations (Not Met) page
+│   ├── waf-recommendations-detail.png    # Recommendations detail
+│   └── waf-progress.png                 # Progress trend page
 │
-├── assets/                     # Images and assets
-│   └── waf-dashboard.png
+├── waf_core/                             # Shared Python client library
+│   ├── databricks_client.py
+│   ├── models.py
+│   └── queries.py
 │
-└── DONOTCHECKIN/               # Development utilities (not in git)
-    ├── utils/
-    │   ├── scripts/            # Utility scripts
-    │   └── docs/               # Planning and technical docs
-    └── Integration/            # Integration examples
+├── waf_api/                              # FastAPI REST service (optional)
+│   └── main.py
+│
+├── waf_agent/                            # LangChain AI agent (optional)
+│   └── agent.py
+│
+└── waf_mcp/                              # MCP server for AI tool integration (optional)
+    └── server.py
 ```
 
 ---
@@ -210,30 +232,52 @@ Databricks-WAF-Light-Tooling/
 
 ### Installation Process
 
-The `install.ipynb` notebook performs the following steps:
+The `install.ipynb` notebook performs the following steps automatically (run all cells once):
 
-1. **Dashboard Deployment**
-   - Reads dashboard JSON from `dashboards/` folder
-   - Creates Lakeview dashboard via API
-   - Handles existing dashboards (updates if found)
+1. **Environment Checks** *(new)*
+   - Validates Unity Catalog is enabled
+   - Checks accessibility of `system.billing.usage`, `system.compute.clusters`, `system.access.audit`, `system.information_schema.tables`
+   - Warns clearly if any are unavailable (greenfield workspaces) instead of failing silently
 
-2. **Dashboard Publishing**
-   - Finds available SQL warehouse
-   - Publishes dashboard with warehouse configuration
-   - Verifies dashboard exists and is published
+2. **Catalog & Schema Setup**
+   - Creates the target catalog if it doesn't exist
+   - Creates `waf_cache` schema
 
-3. **Embedding Configuration**
-   - Configures `*.databricksapps.com` as allowed embedding domain
-   - Required for Streamlit app to embed the dashboard
+3. **WAF Recommendations Ingest** *(new)*
+   - Ingests `waf_controls_with_recommendations.csv` into Delta table
+   - Powers the "Recommendations (Not Met)" view in the app
 
-4. **App Configuration**
-   - Updates `app.py` with correct dashboard ID, instance URL, and workspace ID
-   - Preserves comprehensive WAF Guide sidebar
+4. **Genie Space Creation** *(new)*
+   - Creates a Genie Space with all 15 WAF tables
+   - Configures pillar-specific instructions and 6 pre-built SQL queries
+   - Captures `genie_space_id` for dashboard linking
 
-5. **App Deployment**
-   - Uploads app files to workspace using Workspace API
-   - Deploys app using REST API (CLI not supported in notebooks)
-   - Provides app URL upon successful deployment
+5. **Dashboard Deployment**
+   - Reads the Lakeview dashboard template from `dashboards/`
+   - Embeds the Genie Space via `uiSettings.overrideId` so the AI Assistant tab appears automatically
+   - Creates or updates the dashboard via API
+
+6. **Dashboard Publishing**
+   - Publishes with a SQL warehouse
+   - Configures `*.databricksapps.com` embedding domain
+
+7. **App Deployment**
+   - Patches `app.py` in-memory with correct `DASHBOARD_ID`, `INSTANCE_URL`, `WORKSPACE_ID`
+   - Uploads all app files to workspace
+   - Creates the WAF Reload Job (serverless notebook task)
+   - Deploys the Databricks App and waits for it to reach RUNNING
+
+8. **Service Principal Permissions**
+   - Grants the app's SP: `USE CATALOG`, `USE SCHEMA`, `CREATE TABLE`, `MODIFY`, `SELECT` on `waf_cache`
+   - Grants `USE SCHEMA + SELECT` on all relevant `system.*` schemas
+   - Grants `CAN_MANAGE_RUN` on the reload job
+
+9. **Initial Data Reload** *(new)*
+   - Triggers the reload job immediately — data populates in the background (~5–10 min)
+
+10. **Installation Summary** *(new)*
+    - Per-step ✅/❌ status
+    - Direct links to dashboard, app, Genie Space, reload job, and first run
 
 ### Deployment Methods
 
@@ -255,20 +299,37 @@ The installation notebook uses Databricks notebook context for authentication:
 ### Dashboard Features
 
 - **Real-time Scoring**: Automatic calculation of WAF scores from system tables
-- **4 Pillar Assessment**: Reliability, Governance, Cost, Performance
-- **Summary View**: Aggregated scores across all pillars
-- **Interactive Visualizations**: Charts and tables for each metric
+- **4 Pillar Assessment**: Reliability, Governance, Cost Optimization, Performance Efficiency
+- **Summary View**: Aggregated scores across all pillars with completion percentage bar chart
+- **AI Assistant Tab**: Genie Space embedded directly in the dashboard — ask WAF questions in natural language
 - **Historical Tracking**: Monitor improvements over time
 
 ### Streamlit App Features
 
-- **Embedded Dashboard**: Full dashboard visualization within the app
-- **Interactive WAF Guide**: Comprehensive sidebar with:
-  - Score calculation methodology
-  - Threshold explanations
-  - Actionable improvement steps
-  - Code examples for each metric
-- **User-Friendly Interface**: Clean, modern UI with best UX practices
+- **Embedded Dashboard**: Full Lakeview dashboard visualization within the app
+- **Reload Data**: One-click button to trigger the WAF Reload background job and refresh all scores
+- **View Recommendations (Not Met)**: Dedicated page listing every failing control with:
+  - WAF ID, pillar, principle, best practice
+  - Current score vs threshold gap
+  - Full actionable recommendation text
+- **View Progress**: Trend chart showing WAF score evolution across all reload runs
+- **Open Dashboard in Databricks**: Direct link to the published Lakeview dashboard
+- **Ask Genie**: Deep-link to the AI assistant for natural-language WAF queries
+- **WAF Guide Sidebar**: Score calculation methodology, threshold explanations, and code examples for each metric
+
+### Genie Space Features
+
+- Pre-loaded with all 15 WAF cache tables (`waf_controls_*`, `waf_total_percentage_*`, `waf_recommendations_not_met`, etc.)
+- Detailed instructions covering all 4 pillars with score band guidance (Critical / At Risk / Progressing / Mature)
+- 6 pre-built SQL example queries covering the most common WAF questions
+- Linked as an **AI Assistant tab** inside the Lakeview dashboard
+
+### Installation Features
+
+- **Greenfield Checks**: Validates Unity Catalog availability and system table accessibility at startup — warns early instead of failing silently
+- **Automatic Genie Linking**: Genie Space is created before the dashboard and embedded via `uiSettings.overrideId`
+- **Initial Data Reload**: Triggers the reload job automatically at the end of install — data is ready when you open the app
+- **Installation Summary**: Per-step status (✅/❌) with direct links to dashboard, app, Genie Space, reload job, and first run
 
 ---
 
