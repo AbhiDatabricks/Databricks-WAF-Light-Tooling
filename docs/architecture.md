@@ -4,7 +4,7 @@
 
 ![System Architecture](assets/images/System_Architecture_Overview.png){ .screenshot }
 
-The WAF Light Tooling stack has three layers: a **data layer** (system tables → waf_cache), an **application layer** (Lakeview dashboard + Streamlit App), and an **AI layer** (Genie Space).
+The WAF Light Tooling stack has three layers: a **data layer** (system tables → waf_cache), an **application layer** (Databricks App — the central hub that embeds the Lakeview dashboard and surfaces all functionality), and an **AI layer** (Genie Space).
 
 ---
 
@@ -52,7 +52,7 @@ Databricks System Tables
                                         │
                               ┌─────────┼──────────────────┐
                               ▼         ▼                   ▼
-                     Lakeview        Streamlit          Genie Space
+                     Lakeview        Databricks         Genie Space
                      Dashboard       App (App)          AI Assistant
 ```
 

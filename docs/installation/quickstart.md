@@ -124,5 +124,5 @@ The app, dashboard, and Genie Space are private by default. See [Grant Access to
 
 - [Grant Access to Users](grant-access.md) — share with your team
 - [Dashboard features](../features/dashboard.md) — understand the WAF pillars
-- [Streamlit App features](../features/app.md) — reload data, view recommendations
+- [Databricks App features](../features/app.md) — reload data, view recommendations
 - [Genie AI Space](../features/genie.md) — ask WAF questions in plain English

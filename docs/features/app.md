@@ -1,8 +1,31 @@
-# Streamlit App
+# Databricks App
 
-The WAF Automation Tool is a Databricks App (Streamlit) that wraps the Lakeview dashboard in an interactive interface. It is the primary entry point for end-users.
+The WAF Automation Tool is a **Databricks App** — the central hub that brings the entire WAF Assessment experience together in one place. The dashboard, Genie AI Space, Reload Job, and Recommendations are all accessible from here; users never need to navigate directly to individual Databricks resources.
 
 ![WAF App Dashboard View](../assets/images/waf-app-dashboard.png){ .screenshot }
+
+---
+
+## The App as central hub
+
+```
+┌─────────────────────────────────────────────────────┐
+│              WAF Automation Tool (Databricks App)    │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐   │
+│  │         Lakeview Dashboard (embedded)        │   │
+│  │  Reliability · Governance · Cost · Perf      │   │
+│  │  Summary · AI Assistant (Genie embedded)     │   │
+│  └──────────────────────────────────────────────┘   │
+│                                                      │
+│  [Reload Data]  [Recommendations]  [Progress]        │
+│  [Open in Databricks]  [Ask Genie]                   │
+│                                                      │
+│  ◀ WAF Guide sidebar                                 │
+└─────────────────────────────────────────────────────┘
+```
+
+Everything the user needs is surfaced from a single URL — no need to share links to the dashboard, Genie Space, or job separately.
 
 ---
 
@@ -10,15 +33,15 @@ The WAF Automation Tool is a Databricks App (Streamlit) that wraps the Lakeview 
 
 ### Dashboard (default view)
 
-The main view embeds the full Lakeview dashboard in an `<iframe>`. All pillar tabs and the AI Assistant tab are accessible here.
+The main view embeds the full Lakeview dashboard. All pillar tabs (Reliability, Governance, Cost, Performance, Summary) and the AI Assistant tab (Genie) are accessible here without leaving the app.
 
-**Toolbar buttons:**
+**Toolbar actions:**
 
-| Button | Action |
+| Button | What it does |
 |---|---|
-| **Reload Data** | Triggers the WAF Reload Job — refreshes all WAF cache tables (~3–5 min) |
-| **Open Dashboard in Databricks** | Opens the published dashboard in a new tab |
-| **Ask Genie** | Deep-links to the Genie Space for natural-language queries |
+| **Reload Data** | Triggers the WAF Reload Job — all WAF cache tables refresh in ~3–5 min |
+| **Open in Databricks** | Opens the published dashboard directly in Databricks (new tab) |
+| **Ask Genie** | Deep-links to the Genie Space for natural-language WAF queries |
 
 ---
 
@@ -26,9 +49,7 @@ The main view embeds the full Lakeview dashboard in an `<iframe>`. All pillar ta
 
 ![WAF Recommendations](../assets/images/waf-recommendations.png){ .screenshot }
 
-Click **View Recommendations (Not Met)** to open a dedicated page listing every failing control.
-
-Each row includes:
+Every failing WAF control — in one table. No need to open the dashboard or query tables manually.
 
 | Column | Description |
 |---|---|
@@ -39,11 +60,9 @@ Each row includes:
 | **Current Score** | Score at last reload |
 | **Threshold** | Minimum passing score |
 | **Gap** | How far below threshold |
-| **Recommendation** | Exact action to take to remediate |
+| **Recommendation** | Exact remediation action |
 
 ![WAF Recommendations Detail](../assets/images/waf-recommendations-detail.png){ .screenshot }
-
-Use this page to prioritize remediation work — sort by pillar or gap size to focus on the biggest wins first.
 
 ---
 
@@ -51,38 +70,31 @@ Use this page to prioritize remediation work — sort by pillar or gap size to f
 
 ![WAF Progress](../assets/images/waf-progress.png){ .screenshot }
 
-Click **View Progress** to see a trend chart of WAF scores over time, broken out by pillar. Each data point represents one reload run.
-
-Use this to demonstrate improvement to stakeholders or track the impact of remediation work.
+Score trend across all reload runs, broken out by pillar. Use this to demonstrate improvement to stakeholders or track the impact of remediation work — all without leaving the app.
 
 ---
 
 ## WAF Guide sidebar
 
-The app includes a collapsible sidebar with:
+Built-in reference documentation:
 
-- **Score calculation methodology** — how each metric is derived from system tables
-- **Threshold explanations** — what each band means and why thresholds are set where they are
-- **Code examples** — SQL and Python snippets for common WAF improvements
+- **Score methodology** — how each metric is derived from system tables
+- **Threshold guide** — what each band (Critical / At Risk / Progressing / Mature) means
+- **Code examples** — SQL snippets for common WAF improvements
 - **Control reference** — quick lookup for any WAF ID
-
----
-
-## Navigation
-
-The app uses session-state navigation to switch between pages without reloading the page. Each page has a **← Back to Dashboard** button that returns to the main view cleanly.
-
-!!! note
-    Query parameters (`?page=recommendations`) are cleared when navigating back, so the back button always works correctly regardless of how you arrived at the page.
 
 ---
 
 ## App URL
 
-The App URL is printed at the end of `install.ipynb`. It follows the pattern:
+Printed at the end of `install.ipynb`:
 
 ```
 https://<workspace>-waf-automation-tool.databricksapps.com
 ```
 
-Share this URL with your team after completing [Step B — Grant App access](../installation/grant-access.md#step-b-grant-app-access).
+This is the **only URL users need to bookmark**. The dashboard, Genie Space, and reload job are all accessible from here.
+
+!!! warning "Grant App access before sharing"
+    Users need **CAN USE** on the app before the URL works for them.
+    See [Grant Access — Step B](../installation/grant-access.md#step-b-grant-app-access).

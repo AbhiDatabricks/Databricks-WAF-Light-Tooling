@@ -71,8 +71,8 @@ The WAF Assessment Tool can be installed in your Databricks workspace with a sin
 
 1. **Deploys the WAF Assessment Dashboard** - Creates a Lakeview dashboard with real-time WAF scores
 2. **Publishes the Dashboard** - Configures it with a SQL warehouse for data queries
-3. **Configures Embedding** - Sets up embedding domains for the Streamlit app
-4. **Deploys the Streamlit App** - Creates a Databricks App with interactive WAF Guide sidebar
+3. **Configures Embedding** - Sets up embedding domains for the Databricks App
+4. **Deploys the Databricks App** - The central hub with embedded dashboard, Recommendations, Progress, Reload, and Genie access
 5. **Updates Configuration** - Automatically configures dashboard IDs and workspace settings
 
 #### Permissions Required by the Installer
@@ -137,7 +137,7 @@ After installation, you'll have access to:
    - 📊 **Summary** - Aggregated scores across all pillars
    - 🤖 **AI Assistant tab** - Genie Space embedded directly in the dashboard
 
-2. **Streamlit App** - Interactive application featuring:
+2. **Databricks App** *(central hub)* - The single URL your team needs, featuring:
    - Embedded dashboard visualization
    - **WAF Recommendations (Not Met)** page — every failing control with score, threshold gap, and actionable fix
    - **Reload Data** button — triggers the background reload job on demand
@@ -161,7 +161,7 @@ After installation, you'll have access to:
 ### For Users
 
 - **Installation Guide**: See [Getting Started](#-getting-started) section above
-- **Dashboard Guide**: Interactive WAF Guide is available in the Streamlit app sidebar
+- **Dashboard Guide**: Interactive WAF Guide is available in the Databricks App sidebar
 - **Architecture Diagrams**: See `architecture/` folder for visual documentation
 
 ### For Developers
@@ -199,7 +199,7 @@ Databricks-WAF-Light-Tooling/
 │   └── WAF_ASSESSMENTv1.7.1.lvdash.json  # Lakeview dashboard template
 │
 ├── streamlit-waf-automation/              # Databricks App source
-│   ├── app.py                            # Main Streamlit app
+│   ├── app.py                            # Databricks App (central hub)
 │   ├── app.yaml                          # App config (catalog, job_id, warehouse_id, genie_url)
 │   ├── waf_reload.py                     # Notebook: refreshes all waf_cache tables
 │   ├── dashboard_queries.yaml            # All WAF SQL queries (source of truth)
@@ -305,7 +305,7 @@ The installation notebook uses Databricks notebook context for authentication:
 - **AI Assistant Tab**: Genie Space embedded directly in the dashboard — ask WAF questions in natural language
 - **Historical Tracking**: Monitor improvements over time
 
-### Streamlit App Features
+### Databricks App Features
 
 - **Embedded Dashboard**: Full Lakeview dashboard visualization within the app
 - **Reload Data**: One-click button to trigger the WAF Reload background job and refresh all scores

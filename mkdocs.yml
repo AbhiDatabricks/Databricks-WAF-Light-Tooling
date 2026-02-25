@@ -50,7 +50,7 @@ nav:
     - Grant Access to Users: installation/grant-access.md
   - Features:
     - Lakeview Dashboard: features/dashboard.md
-    - Streamlit App: features/app.md
+    - Databricks App: features/app.md
     - Genie AI Space: features/genie.md
   - Architecture: architecture.md
   - Troubleshooting: troubleshooting.md

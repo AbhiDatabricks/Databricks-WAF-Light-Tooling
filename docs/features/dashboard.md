@@ -60,7 +60,7 @@ See [Genie AI Space](genie.md) for full details on what the AI assistant can do.
 
 Dashboard data reflects the last time the WAF Reload Job ran. To refresh:
 
-- Click **Reload Data** in the Streamlit App, or
+- Click **Reload Data** in the Databricks App, or
 - Run the WAF Reload Job manually from the Databricks Jobs UI
 
 The job takes ~3–5 minutes to complete. The dashboard updates automatically once new data is written to `waf_cache`.
@@ -69,7 +69,7 @@ The job takes ~3–5 minutes to complete. The dashboard updates automatically on
 
 ## Embedding
 
-The dashboard is embedded inside the Streamlit App via an `<iframe>`. The installer automatically configures `*.databricksapps.com` as an allowed embedding domain.
+The dashboard is embedded inside the Databricks App via an `<iframe>`. The installer automatically configures `*.databricksapps.com` as an allowed embedding domain.
 
 !!! warning "Workspace-level embedding must be enabled by an admin"
     If you see "Embedding dashboards is not available on this domain", a workspace admin must first enable embedding in **Admin Console → Advanced**. See [Troubleshooting](../troubleshooting.md#embedding-issues) for details.

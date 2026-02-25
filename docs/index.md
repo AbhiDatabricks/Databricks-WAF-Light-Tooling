@@ -34,11 +34,11 @@ One notebook install · Real-time scoring · Actionable recommendations · AI-po
 
     [:octicons-arrow-right-24: Dashboard features](features/dashboard.md)
 
--   :material-application: &nbsp;**Streamlit App**
+-   :material-application: &nbsp;**Databricks App** *(central hub)*
 
     ---
 
-    Interactive app with embedded dashboard, one-click data reload, Recommendations page, Progress trend chart, and a full WAF Guide sidebar.
+    The command centre. Embeds the dashboard, surfaces Recommendations, tracks Progress, triggers the Reload Job, and deep-links to Genie — all in one place.
 
     [:octicons-arrow-right-24: App features](features/app.md)
 
