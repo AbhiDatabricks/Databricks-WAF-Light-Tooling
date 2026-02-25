@@ -1,0 +1,269 @@
+waf_id,pillar_name,principle,best_practice,capabilities,details,query_table_name,threshold_percentage,metric_definition,recommendation_if_not_met
+DG-01-03,01 - Data And AI Governance,Unify data and AI management,Track data and AI lineage to drive visibility of the data,Unity Catalog,"Data lineage is a powerful tool that helps data leaders drive greater visibility and understanding of the data in their organizations. It describes the transformation and refinement of data from source to insight. Lineage includes the capture of all relevant metadata and events associated with the data in its lifecycle, including the source of the data set, what other data sets were used to create it, who created it and when, what transformations were performed, what other data sets use it, and many other events and attributes. Data lineage can be used for many data-related use cases:
+
+- Compliance and audit readiness: Data lineage helps organizations trace the source of tables and fields. This is important for meeting the requirements of many compliance regulations, such as General Data Protection Regulation (GDPR), California Consumer Privacy Act (CCPA), Health Insurance Portability and Accountability Act (HIPAA), Basel Committee on Banking Supervision (BCBS) 239, and Sarbanes-Oxley Act (SOX).
+
+- Impact analysis/change management: Data goes through multiple transformations from the source to the final business-ready table. Understanding the potential impact of data changes on downstream users becomes important from a risk-management perspective. This impact can be easily determined using the data lineage collected by Unity Catalog.
+
+- Data quality assurance: Understanding where a data set came from and what transformations have been applied provides much better context for data scientists and analysts, enabling them to gain better and more accurate insights.
+
+- Debugging and diagnostics: In the event of an unexpected result, data lineage helps data teams perform root cause analysis by tracing the error back to its source. This dramatically reduces debugging time.
+
+Unity Catalog captures runtime data lineage across queries run on Databricks. Lineage is supported for all languages and is captured down to the column level. Lineage data includes notebooks, workflows, and dashboards related to the query. Lineage can be visualized in Catalog Explorer in near real-time and retrieved with the Databricks Data Lineage REST API.
+AWS | Azure | GCP ",waf_controls_g,50,% of managed/external UC tables with lineage entries in system.access.table_lineage (target_table_full_name).,"Enable Unity Catalog lineage and ensure workloads run on UC-managed objects so lineage is captured.
+- Verify system tables are enabled: https://docs.databricks.com/aws/en/admin/system-tables/
+- Use Catalog Explorer lineage or query lineage system tables: https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage and https://docs.databricks.com/aws/en/admin/system-tables/lineage
+- Adopt a standard for writing via UC tables/views (avoid direct path writes that bypass governance)."
+DG-01-04,01 - Data And AI Governance,Unify data and AI management,Add consistent descriptions to your metadata,Databricks IQ; Unity Catalog,"Enriching metadata with comments can help accelerate processes...
+
+AI-generated comments are intended to provide a general description of tables and columns based on the schema. The descriptions are tuned for data in a business and enterprise context, using example schemas from several open datasets across various industries. The model was evaluated with hundreds of simulated samples to verify it avoids generating harmful or inappropriate descriptions.
+AWS | Azure | GCP",waf_controls_g,50,% of managed/external UC tables with a non-null COMMENT in system.information_schema.tables.,"Roll out a metadata hygiene program and enforce COMMENT population for tables/views.
+- Use Information Schema metadata to find missing comments and bulk-fix: https://docs.databricks.com/aws/en/admin/system-tables/
+- Add “description required” to your onboarding/checklist and data product templates.
+- Optionally enforce via CI checks (e.g., fail PR if new objects lack comments)."
+DG-01-05,01 - Data And AI Governance,Unify data and AI management,Allow easy data discovery for data consumers ,Unity Catalog,"Easy data discovery enables data scientists, data analysts, and data engineers to quickly discover and reference relevant data and accelerate time to value.
+
+Databricks Catalog Explorer provides a UI to explore and manage data, schemas (databases), tables, and permissions, data owners, external locations, and credentials. Additionally, you can use the Insights tab in Catalog Explorer to view the most frequent recent queries and users of any table registered in Unity Catalog.
+AWS | Azure | GCP",waf_controls_g,50,% of managed/external UC tables with tags present (checks existence of system.information_schema.table_tags; score uses % tagged).,"Adopt Unity Catalog tags for discovery, ownership, and classification.
+- Create a tagging taxonomy (owner, domain, pii, retention) and apply tags: https://docs.databricks.com/aws/en/database-objects/tags
+- Use INFORMATION_SCHEMA.TABLE_TAGS to audit coverage: https://docs.databricks.com/aws/en/sql/language-manual/information-schema/table_tags
+- Consider ABAC later if you want policy-driven tag enforcement at scale."
+DG-02-01,01 - Data And AI Governance,Unify data and AI security,Centralize access control for all data and AI assets,Unity Catalog,"Centralizing access control for all data assets is important because it simplifies the security and governance of your data and AI assets by providing a central place to administer and audit access to these assets. This approach helps in managing data and AI object access more efficiently, ensuring that operational requirements around segregation of duty are enforced, which is crucial for regulatory compliance and risk avoidance.
+
+Databricks provides access to audit logs of activities performed by Databricks users, allowing your enterprise to monitor detailed Databricks usage patterns. There are two types of logs: Workspace-level audit logs with workspace-level events and account-level audit logs with account-level events.
+AWS | Azure | GCP
+AWS | Azure | GCP",waf_controls_g,100,Row-level/column-level controls present (checks existence of Unity Catalog row filters in system.information_schema.row_filters).,"Implement row filters and column masks (or ABAC policies) for sensitive data.
+- Start with row filters/column masks per table: https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/
+- Centralize logic in UDFs / mapping tables and reuse across datasets.
+- Validate with least-privilege groups and test with impersonation."
+DG-02-02,01 - Data And AI Governance,Unify data and AI security,Configure audit logging,Unity Catalog,"Audit logging is important for providing a detailed account of system activities (user actions, changes to settings, etc.) that could impact the system's integrity. Whereas standard system logs are designed to help developers troubleshoot errors, audit logs provide a historical record of activity for compliance purposes and other business policy enforcement. Maintaining robust audit logs can help identify and ensure preparedness in the face of threats, breaches, fraud, and other system issues.
+
+Databricks provides access to audit logs of activities performed by Databricks users, allowing your enterprise to monitor detailed Databricks usage patterns. There are two types of logs: Workspace-level audit logs with workspace-level events and account-level audit logs with account-level events.
+AWS | Azure | GCP
+AWS | Azure | GCP",waf_controls_g,100,Audit log system table enabled and queryable (checks existence of system.access.audit).,"Enable and grant access to the audit log system table.
+- Audit log system table reference: https://docs.databricks.com/aws/en/admin/system-tables/audit-logs
+- Event catalog/reference for what is logged: https://docs.databricks.com/aws/en/admin/account-settings/audit-logs
+- Build standard dashboards/alerts (admin actions, permission changes, anomalous access)."
+DG-02-03,01 - Data And AI Governance,Unify data and AI security,Audit data platform events,Unity Catalog,"Auditing data platform events is important because (see above)
+
+Unity Catalog captures an audit log of actions performed against the metastore. This enables admins to access fine-grained details about who accessed a given dataset and what actions they performed. 
+AWS | Azure | GCP
+AWS | Azure | GCP
+
+For secure sharing with Delta Sharing, Databricks provides audit logs to monitor Delta Sharing events, including:
+
+- When someone creates, modifies, updates, or deletes a share or a recipient.
+- When a recipient accesses an activation link and downloads the credential.
+- When a recipient accesses shares or data in shared tables.
+- When a recipient’s credential is rotated or expires. 
+AWS | Azure | GCP",waf_controls_g,100,Marketplace listing access events available (checks system.marketplace.listing_access_events exists).,"If you use Databricks Marketplace, enable/confirm marketplace access-event tracking and use it in governance reporting.
+- System tables overview and enablement: https://docs.databricks.com/aws/en/admin/system-tables/
+- Grant read access to the marketplace schema tables for the governance/reporting group.
+- Monitor who accessed what listings and when; route to SIEM if required."
+DG-03-02,01 - Data And AI Governance,Establish data quality standards,"Use data quality tools for profiling, cleansing, validating, and monitoring data",,"Leverage data quality tools for profiling, cleansing, validating, and monitoring data. These tools help in automating the processes of detecting and correcting data quality issues, which is vital for scaling data quality initiatives across large datasets typical in data lakes.
+
+For teams using DLT, you can use expectations to define data quality constraints on the contents of a dataset. Expectations allow you to guarantee data arriving in tables meets data quality requirements and provide insights into data quality for each pipeline update.
+AWS | Azure | GCP",waf_controls_g,100,Data quality monitoring artifacts exist (looks for tables with suffix _drift_metrics or _profile_metrics).,"Adopt platform-native data quality monitoring/profiling and publish the results as drift/profile metrics.
+- Standardize profiling for ‘gold’ datasets (nulls, distribution drift, freshness).
+- Use system tables for operational monitoring and build alerting pipelines: https://docs.databricks.com/aws/en/admin/system-tables/
+- Ensure metric tables are registered in UC and discoverable (tags + comments)."
+DG-03-03,01 - Data And AI Governance,Establish data quality standards,Implement and enforce standardized data formats and definitions,,"Standardized data formats and definitions helps achieve uniformity in data representation across all systems to facilitate easier data integration and analysis, reduce costs, and improve decision-making via enhance communication and collaboration between different teams and departments. It also helps provide structure for creating and maintaining data quality.
+
+Develop and enforce a standard data dictionary that includes definitions, formats, and acceptable values for all data elements used across the organization.
+
+Use consistent naming conventions, date formats, and measurement units across all databases and applications to prevent discrepancies and confusion.",waf_controls_g,80,% of UC managed/external tables stored in DELTA/ICEBERG/DELTASHARING format.,"Standardize on Delta (or Iceberg) for managed reliability and governance.
+- Delta Lake overview: https://docs.databricks.com/aws/en/delta/
+- Why ACID matters on Databricks: https://docs.databricks.com/aws/en/lakehouse/acid
+- Migrate high-value tables first; keep external formats only for justified interoperability cases."
+R-01-01,Use a data format that supports ACID transactions,Delta Lake,"Delta Lake is an open source storage format that brings reliability to data lakes. Delta Lake provides ACID transactions, schema enforcement, scalable metadata handling, and unifies streaming and batch data processing. Delta Lake runs on top of your existing data lake and is fully compatible with Apache Spark APIs. Delta Lake on Databricks allows you to configure Delta Lake based on your workload patterns. 
+
+AWS | Azure | GCP",,,waf_controls_r,80,% of UC tables stored in DELTA/ICEBERG format (ACID-capable).,"Standardize on Delta/Iceberg tables for transactional reliability.
+- Delta Lake overview: https://docs.databricks.com/aws/en/delta/
+- ACID guarantees explanation: https://docs.databricks.com/aws/en/lakehouse/acid
+- Prioritize critical datasets and pipelines; add schema enforcement and expectations where appropriate."
+R-01-03,Automatically rescue invalid or nonconforming data ,Delta Live Tables,"Invalid or nonconforming data can lead to crashes of workloads that rely on an established data format. To increase the end-to-end resilience of the whole process, it is best practice to filter out invalid and nonconforming data at ingestion. Supporting rescued data ensures you never lose or miss out on data during ingest or ETL. The rescued data column contains any data that wasn’t parsed, either because it was missing from the given schema, because there was a type mismatch, or the column casing in the record or file didn’t match that in the schema. 
+
+AWS | Azure | GCP
+AWS | Azure | GCP",,,waf_controls_r,30,% of compute usage attributed to Lakeflow/Delta Live Tables pipelines (from system.billing.usage usage_metadata.dlt_pipeline_id).,"Increase adoption of managed pipelines (Lakeflow Spark Declarative Pipelines / DLT) for built-in orchestration, quality, and recovery.
+- Configure serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
+- Lakeflow SDP overview: https://docs.databricks.com/gcp/en/ldp/
+- Migrate brittle jobs first (multi-step ETL with retries/backfills); standardize expectations and monitoring."
+R-01-05,Use a scalable and production-grade model serving infrastructure,Databricks Model Serving,"For batch and streaming inference, use Databricks jobs and MLflow to deploy models as Apache Spark UDFs to leverage job scheduling, retries, autoscaling, and so on. 
+Model serving provides a scalable and production-grade model real-time serving infrastructure. It processes your machine learning models using MLflow and exposes them as REST API endpoints. This functionality uses serverless compute, which means that the endpoints and associated compute resources are managed and run in the Databricks cloud account. 
+
+AWS | Azure | GCP
+AWS | Azure | GCP",,,waf_controls_r,20,% of ML compute usage attributed to Mosaic AI Model Serving (billing_origin_product / sku mapping).,"Use Mosaic AI Model Serving for production inference (reliability, scaling, governance).
+- Model Serving overview: https://docs.databricks.com/aws/en/machine-learning/model-serving/
+- Cost/usage monitoring via system tables: https://docs.databricks.com/aws/en/admin/system-tables/model-serving-cost
+- Move ad-hoc notebook inference to endpoints; set autoscaling + logging/monitoring and rollout strategy."
+R-01-06,Use managed services for your workloads,Databricks Platform,"Leverage managed services of the Databricks Data Intelligence Platform like serverless compute, model serving, or Delta Live Tables where possible. These services are - without extra effort by the customer - operated by Databricks in a reliable and scalable way, making workloads more reliable.
+
+AWS | Azure | GCP
+AWS | Azure | GCP
+AWS | Azure | GCP",,,waf_controls_r,50,% of compute usage running on serverless SKUs.,"Prefer serverless for steady-state reliability (fewer cluster ops) where workload/network constraints allow.
+- Serverless SQL warehouses: https://docs.databricks.com/aws/en/admin/sql/serverless
+- Serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
+- Define ‘serverless-first’ defaults in your platform standards and exceptions process."
+R-02-04,Use constraints and data expectations,Delta Live Tables,"Delta tables support standard SQL constraint management clauses that ensure that the quality and integrity of data added to a table are automatically verified. When a constraint is violated, Delta Lake throws an InvariantViolationException error to signal that the new data can’t be added. See Constraints on Databricks.
+
+To further improve this handling, Delta Live Tables supports Expectations: Expectations define data quality constraints on the contents of a data set. An expectation consists of a description, an invariant, and an action to take when a record fails the invariant. Expectations to queries use Python decorators or SQL constraint clauses. See Manage data quality with Delta Live Tables. 
+
+AWS | Azure | GCP",,,waf_controls_r,30,Same as R-01-03: DLT/Lakeflow usage share (data pipeline reliability).,"Increase adoption of managed pipelines (Lakeflow Spark Declarative Pipelines / DLT) for built-in orchestration, quality, and recovery.
+- Configure serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
+- Lakeflow SDP overview: https://docs.databricks.com/gcp/en/ldp/
+- Migrate brittle jobs first (multi-step ETL with retries/backfills); standardize expectations and monitoring."
+R-03-01,Enable autoscaling for ETL workloads,Databricks Workflows,"Autoscaling allows clusters to resize automatically based on workloads. Autoscaling can benefit many use cases and scenarios from both a cost and performance perspective. The documentation provides considerations for determining whether to use Autoscaling and how to get the most benefit.
+
+For streaming workloads, Databricks recommends using Delta Live Tables with autoscaling. See Use autoscaling to increase efficiency and reduce resource usage. 
+
+AWS | Azure | GCP
+AWS | Azure | GCP",,,waf_controls_r,80,% of clusters configured with autoscaling (min/max_autoscale_workers not null).,"Increase cluster autoscaling coverage to handle workload variability without manual intervention.
+- Autoscaling configuration guidance: https://docs.databricks.com/aws/en/compute/configure
+- Compute system tables reference (autoscale fields): https://docs.databricks.com/aws/en/admin/system-tables/compute
+- Use compute policies to enforce min/max ranges and auto-termination."
+R-03-02,Use autoscaling for SQL Warehouses,Databricks SQL,"The scaling parameter of a SQL warehouse sets the minimum and the maximum number of clusters over which queries sent to the warehouse are distributed. The default is a minimum of one and a maximum of one cluster.
+
+To handle more concurrent users for a given warehouse, increase the cluster count. To learn how Databricks adds clusters to and removes clusters from a warehouse, see SQL warehouse sizing, scaling, and queuing behavior. 
+
+AWS | Azure | GCP
+AWS | Azure | GCP
+
+Databricks enhanced autoscaling optimizes cluster utilization by automatically allocating cluster resources based on workload volume, with minimal impact on the data processing latency of your pipelines. 
+
+AWS | Azure | GCP
+AWS | Azure | GCP",,,waf_controls_r,80,% of SQL warehouses configured with autoscaling (min/max clusters > 1 or autoscale enabled; as per query).,"Enable autoscaling (and right-sizing) for SQL warehouses to meet concurrency while controlling costs.
+- Warehouse sizing/scaling behavior: https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior
+- Warehouse types (consider serverless): https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-types
+- Set sensible min/max clusters; monitor queue times and tune per workload class."
+PE-01-01,06 - Performance efficiency,Utilize serverless capabilities,Use serverless architecture,Databricks Serverless Compute,"With the serverless compute on the Databricks Data Intelligence Platform, the compute layer runs in the customer’s Databricks account. Workspace admins can create serverless SQL warehouses that enable instant compute and are managed by Databricks. A serverless SQL warehouse uses compute clusters hosted in the Databricks customer account. Use them with Databricks SQL queries just like you usually would with the original Databricks SQL warehouses. Serverless compute comes with a very fast starting time for SQL warehouses (10s and below), and the infrastructure is managed by Databricks.
+
+This leads to improved productivity:
+
+Cloud administrators no longer have to manage complex cloud environments, for example by adjusting quotas, creating and maintaining networking assets, and joining billing sources.
+
+Users benefit from near-zero waiting times for cluster start and improved concurrency on their queries.
+
+Cloud administrators can refocus their time on higher-value projects instead of managing low-level cloud components. 
+
+AWS | Azure | GCP",waf_controls_p,50,% of compute usage running on serverless SKUs.,"Drive more workloads onto serverless compute for faster startup and better efficiency.
+- Serverless SQL warehouses: https://docs.databricks.com/aws/en/admin/sql/serverless
+- Serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
+- Start with interactive BI + scheduled queries; then expand to eligible ETL."
+PE-01-02,06 - Performance efficiency,Utilize serverless capabilities,Use an enterprise grade model serving service,Databricks Model Serving,"Databricks Model Serving provides a unified interface to deploy, govern, and query AI models. Each model you serve is available as a REST API that you can integrate into your web or client application.
+
+Model Serving provides a highly available and low-latency service for deploying models. The service automatically scales up or down to meet demand changes, saving infrastructure costs while optimizing latency performance. This functionality uses serverless compute. 
+
+AWS | Azure | GCP",waf_controls_p,100,Enterprise-grade real-time inference usage present (checks sku_name contains SERVERLESS_REAL_TIME_INFERENCE).,"Adopt Mosaic AI Model Serving (including serverless real-time inference SKUs) for enterprise inference.
+- Model Serving overview: https://docs.databricks.com/aws/en/machine-learning/model-serving/
+- Use route-optimized endpoints and autoscaling to meet latency/SLA targets.
+- Monitor serving costs via system tables: https://docs.databricks.com/aws/en/admin/system-tables/model-serving-cost"
+PE-02-02,06 - Performance efficiency,Design workloads for performance,Use parallel computation where it is beneficial,Apache Spark,"Time to value is an important dimension when working with data. While many use cases can be easily implemented on a single machine (small data, few and simple computation steps), often use cases come up that:
+
+Need to process large data sets.
+
+Have long running times due to complicated algorithms.
+
+Must be repeated 100s and 1000s of times.
+
+The cluster environment of the Databricks platform is a great environment to distribute these workloads efficiently. It automatically parallelism SQL queries across all nodes of a cluster and it provides libraries for Python and Scala to do the same. Under the hood, the engines Apache Spark and Photon analyze the queries, determine the optimal way of parallel execution, and manage the distributed execution in a resilient way.
+Here are some parallel procesing capabilities in databricks that works with apache sparrk
+
+AWS | Azure | GCP
+AWS | Azure | GCP
+AWS | Azure | GCP
+MLlib
+AWS | Azure | GCP
+AWS | Azure | GCP",waf_controls_p,80,% of clusters with more than 1 worker (parallel compute).,"Refactor workloads to exploit parallelism: partitioning, parallel reads/writes, and adequate worker counts.
+- Use compute autoscaling where appropriate: https://docs.databricks.com/aws/en/compute/configure
+- Avoid single-node clusters for distributed ETL unless it’s intentionally small.
+- Benchmark and right-size using job metrics and query history."
+PE-02-04,06 - Performance efficiency,Design workloads for performance,Prefer larger clusters,Databricks Cluster Configuration,"Plan for larger clusters, especially when the workload scales linearly. In that case, it is not more expensive to use a large cluster for a workload than to use a smaller one. It’s just faster. The key is that you're renting the cluster for the length of the workload. So, if you spin up two worker clusters and it takes an hour, you're paying for those workers for the full hour. Similarly, if you spin up a four-worker cluster and it takes only half an hour (here comes the linear scalability into play), the costs are the same. If costs are the primary driver with a very flexible SLA, an autoscaling cluster is almost always going to be the cheapest but not necessarily the fastest. ",waf_controls_p,50,% of clusters considered 'large' by worker count thresholds in query (scale up).,"Right-size compute for heavy workloads (scale up/out) and avoid chronic under-provisioning.
+- Compute configuration (workers, autoscaling): https://docs.databricks.com/aws/en/compute/configure
+- Use workload-specific policy families (ETL-large, BI-large) and enforce minimums.
+- Track saturation symptoms (spill, long GC, queueing) and iterate."
+PE-02-06,06 - Performance efficiency,Design workloads for performance,Use native platform engines,Photon,"Photon is the engine on Databricks that provides fast query performance at low cost – from data ingestion, ETL, streaming, data science, and interactive queries – directly on your data lake. Photon is compatible with Apache Spark APIs, so getting started is as easy as turning it on – no code changes and no lock-in.
+
+Photon is part of a high-performance runtime that runs your existing SQL and DataFrame API calls faster and reduces your total cost per workload. Photon is used by default in Databricks SQL warehouses. 
+Photon is available by default for all Databricks SQL Warehouse Types
+
+AWS | Azure | GCP",waf_controls_p,80,% of compute usage with Photon enabled.,"Enable Photon broadly for eligible workloads to improve performance efficiency.
+- Photon overview and enablement: https://docs.databricks.com/aws/en/compute/photon
+- Validate with representative ETL/SQL jobs; monitor runtime/DBU changes."
+PE-02-07,06 - Performance efficiency,Design workloads for performance,Understand your hardware and workload type,Databricks Cluster Configuration,"Not all cloud VMs are created equally. The different families of machines offered by cloud providers are all different enough to matter. There are obvious differences - RAM and cores - and more subtle differences - processor type and generation, network bandwidth guarantees, and local high-speed storage versus local disk versus remote disk. There are also differences in the “spot” markets. These should be understood before deciding on the best VM type for your workload. 
+
+AWS | Azure | GCP
+
+Please note - Serverless compute manages clusters automatically, so this is not needed for serverless compute.",waf_controls_p,80,% of compute usage on serverless (higher bar than PE-01-01).,"Raise the serverless adoption bar (80%+) by making serverless the default for SQL + pipelines.
+- Serverless SQL warehouses: https://docs.databricks.com/aws/en/admin/sql/serverless
+- Serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
+- Use an exceptions process for workloads needing classic compute (custom networking, special libs)."
+CO-01-01,07 - Cost Optimization,Choose optimal resources,Use performance optimized data formats,Delta Lake,"Delta Lake is an open-source storage layer that enhances data lakes by providing ACID transactions, scalable metadata handling, and schema enforcement, primarily built on Apache Spark and Parquet. It supports a lakehouse architecture, allowing integration with various compute engines and programming languages. Delta Lake offers significant performance optimizations such as data skipping, indexing, and file management techniques like compaction and Z-Ordering. Additionally, it includes features like time travel for data versioning and Delta Live Tables for managing batch and streaming data pipelines efficiently. These capabilities make Delta Lake suitable for handling large-scale, transactional workloads and real-time analytics, ensuring data integrity and consistency across diverse data management scenarios
+Blog",waf_controls_c,80,% of UC tables that are MANAGED vs EXTERNAL (managed percentage).,"Prefer managed tables where practical to reduce operational overhead and improve governance.
+- For externally-managed locations, still use UC external locations + governed access.
+- Convert legacy/external patterns selectively (start with shared ‘gold’ tables).
+- Use system metadata to track progress: https://docs.databricks.com/aws/en/admin/system-tables/"
+CO-01-03,07 - Cost Optimization,Choose optimal resources,Use SQL warehouse for SQL workloads,Databricks Serverless SQL,"For interactive SQL workloads, a Databricks SQL warehouse is the most cost-efficient engine 
+
+AWS | Azure | GCP",waf_controls_c,50,% of compute usage attributed to SQL warehouses (sql_compute / total_compute from system.billing.usage).,"Route SQL/BI workloads to SQL Warehouses (serverless where available) and keep notebook clusters for engineering/DS.
+- Warehouse types and guidance: https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-types
+- Serverless SQL warehouse enablement: https://docs.databricks.com/aws/en/admin/sql/serverless
+- Review queries in query history and migrate scheduled SQL jobs/dashboards to warehouses."
+CO-01-04,07 - Cost Optimization,Choose optimal resources,Use up-to-date runtimes for your workloads,Databricks Cluster Configuration,"The Databricks platform provides different runtimes that are optimized for data engineering tasks (Databricks Runtime) or for Machine Learning (Databricks Runtime for Machine Learning). The runtimes are built to provide the best selection of libraries for the tasks and ensure that all provided libraries are up-to-date and work together optimally. Databricks Runtime is released on a regular cadence and offers performance improvements between major releases. These improvements in performance often lead to cost savings due to more efficient usage of cluster resources.
+
+AWS | Azure | GCP",waf_controls_c,80,% of clusters using an up-to-date Databricks Runtime version (regex-based) from system.compute.clusters at usage time.,"Enforce runtime currency (DBR upgrades) using compute policies and upgrade playbooks.
+- Create/attach compute policies: https://docs.databricks.com/aws/en/admin/clusters/policies
+- Policy attribute reference (to restrict/require DBR): https://docs.databricks.com/aws/en/admin/clusters/policy-definition
+- Set an org standard (e.g., ‘latest LTS or newer’) and automate compliance reporting."
+CO-01-06,07 - Cost Optimization,Choose optimal resources,Use Serverless for your workloads,Databricks Serverless,"BI workloads typically use data in bursts and generate multiple concurrent queries. For example, someone using a BI tool might update a dashboard, write a query, or simply analyze query results without interacting further with the platform. This example demonstrates two requirements:
+
+Terminate clusters during idle periods to save costs.
+Have compute resources available quickly (for both start-up and scale-up) to satisfy user queries when they request new or updated data with the BI tool.
+
+Serverless SQL warehouses start and scale up in seconds, so both immediate availability and termination during idle times can be achieved. This results in a great user experience and overall cost savings.
+Additionally, serverless SQL warehouses scale down earlier than non-serverless warehouses, resulting lower costs. 
+
+AWS | Azure | GCP
+
+
+Databricks Model Serving provides a unified interface to deploy, govern, and query AI models. Each model you serve is available as a REST API that you can integrate into your web or client application.
+
+Model Serving provides a highly available and low-latency service for deploying models. The service automatically scales up or down to meet demand changes, saving infrastructure costs while optimizing latency performance. This functionality uses serverless compute. 
+
+AWS | Azure | GCP",waf_controls_c,50,% of compute usage running on serverless SKUs (from system.billing.usage sku_name contains SERVERLESS).,"Increase serverless adoption for eligible workloads to reduce idle costs and ops.
+- Serverless SQL warehouse enablement: https://docs.databricks.com/aws/en/admin/sql/serverless
+- For pipelines, consider serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
+- Start with dashboards/scheduled SQL + light ETL; keep classic compute for special networking/runtime needs."
+CO-01-09,07 - Cost Optimization,Choose optimal resources,Evaluate performance optimized query engines,Databricks Cluster Configuration,"Photon is a high-performance Databricks-native vectorized query engine that speeds up your SQL workloads and DataFrame API calls (for data ingestion, ETL, streaming, data science, and interactive queries). Photon is compatible with Apache Spark APIs, so getting started is as easy as turning it on – no code changes and no lock-in.
+The observed speedup can lead to significant cost savings, and jobs that run regularly should be evaluated to see whether they are not only faster but also cheaper with Photon.",waf_controls_c,80,% of compute usage with Photon enabled (from system.billing.usage/runtime_engine or sku indicators; as implemented in query).,"Enable Photon for eligible SQL/DataFrame workloads to improve price/performance.
+- Photon overview and enablement: https://docs.databricks.com/aws/en/compute/photon
+- Use compute policies to default Photon on (and allow opt-out only with justification).
+- Validate with representative workloads; monitor DBU + runtime improvements."
+CO-02-03,07 - Cost Optimization,Dynamically allocate resources ,Use compute policies to control costs,Databricks Cluster Policies,"Cluster policies can enforce many cost specific restrictions for clusters. See Operational Excellence - Use cluster policies. For example:
+
+Enable cluster autoscaling with a set minimum number of worker nodes.
+Enable cluster auto termination with a reasonable value (for example, 1 hour) to avoid paying for idle times.
+Ensure that only cost-efficient VM instances can be selected. Follow the best practices for cluster configuration. See Compute configuration best practices.
+Apply a spot instance strategy.
+
+AWS | Azure | GCP",waf_controls_c,80,% of clusters attached to a compute policy (cluster_policy_id present in system.compute.clusters).,"Expand compute policy coverage and make policies the default entry point for new compute.
+- Create and manage compute policies: https://docs.databricks.com/aws/en/admin/clusters/policies
+- Compute policy reference (attributes, tags, libraries): https://docs.databricks.com/aws/en/admin/clusters/policy-definition
+- Provide policy families for common use cases (ETL, BI, DS) and lock down unsafe settings."
+CO-03-01,07 - Cost Optimization,Monitor and control cost,Monitor costs,Unity Catalog,"The account console allows viewing the billable usage. As a Databricks account owner or account admin, you can also use the account console to download billable usage logs. Databricks system tables provide detailed usage details with system tables you can use these to monitor usage.
+
+As a best practice, the full costs (including VMs, storage, and network infrastructure) should be monitored. This can be achieved by cloud provider cost management tools or by adding third party tools.
+
+AWS | Azure | GCP",waf_controls_c,10,# of distinct days in last 30 days where queries referenced system.billing.usage or system.billing.list_prices (system.query.history).,"Operationalize FinOps using system billing tables, dashboards, and chargeback tags.
+- Billable usage system table reference: https://docs.databricks.com/aws/en/admin/system-tables/billing
+- Monitor costs using system tables: https://docs.databricks.com/aws/en/admin/usage/system-tables
+- Set a weekly cadence: top spenders, unused warehouses, idle clusters, anomalous spikes."
+CO-03-02,07 - Cost Optimization,Monitor and control cost,Tag clusters for cost attribution,Databricks Cluster Configuration,"To monitor cost and accurately attribute Databricks usage to your organization’s business units and teams (for example, for chargebacks), you can tag clusters and pools. These tags propagate to detailed DBU usage reports and to cloud provider VMs and blob storage instances for cost analysis.
+
+Ensure that cost control and attribution are already in mind when setting up workspaces and clusters for teams and use cases. This streamlines tagging and improves the accuracy of cost attributions.
+
+For the overall costs, DBU virtual machine, disk, and any associated network costs must be considered. For serverless SQL warehouses this is simpler since the DBU costs already include virtual machine and disk costs.
+
+AWS | Azure | GCP",waf_controls_c,80,% of clusters with user-defined tags set (system.compute.clusters.tags map not empty).,"Adopt a mandatory tagging standard (cost center, owner, env, project) and enforce it via policies.
+- Using tags for usage attribution: https://docs.databricks.com/aws/en/admin/account-settings/usage-detail-tags
+- Enforce tags via compute policies: https://docs.databricks.com/aws/en/admin/clusters/policies
+- Make dashboards/chargeback depend on tags so teams feel the incentive to comply."

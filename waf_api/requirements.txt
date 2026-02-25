@@ -1,0 +1,13 @@
+# WAF API Requirements
+# Note: Databricks Apps pre-installs fastapi, uvicorn, databricks-sdk
+# Only specify additional dependencies not in the platform
+
+# Core dependencies (use platform versions if available)
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# Databricks SDK (platform has 0.33.0, only override if needed)
+# databricks-sdk>=0.20.0
+
+# SQL Connector (if not pre-installed)
+databricks-sql-connector>=3.0.0

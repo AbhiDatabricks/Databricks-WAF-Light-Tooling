@@ -1,0 +1,678 @@
+datasets:
+- name: 303a6758
+  display_name: Count of Tables
+  sql: SELECT COUNT(*) FROM system.information_schema.tables;
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_tables
+  is_coming_soon: false
+- name: f5bf425c
+  display_name: Count of Volumes
+  sql: SELECT COUNT(*) FROM system.information_schema.volumes;
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_volumes
+  is_coming_soon: false
+- name: 5fdcd556
+  display_name: Count of Functions
+  sql: SELECT COUNT(*) FROM system.information_schema.routines;
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_functions
+  is_coming_soon: false
+- name: a92ace17
+  display_name: Count of Unused Tables
+  sql: "SELECT \n\n  COUNT(DISTINCT CONCAT(ist.table_catalog, '.', ist.table_schema, '.', ist.table_name)) AS full_name_count\n\nFROM \n\n  system.information_schema.tables ist\n\n  LEFT JOIN \n\n    (SELECT \n\n       tl.source_table_catalog,\n\n       tl.source_table_schema,\n\n       tl.source_table_name\n\n     FROM \n\n       system.access.table_lineage tl\n\n     WHERE \n\n       tl.event_time BETWEEN :date_range_start AND :date_range_end\n\n       AND tl.source_type IN ('TABLE', 'STREAMING_TABLE')\n\n    ) tl\n\n    ON \n\n      tl.source_table_catalog = ist.table_catalog \n\n      AND tl.source_table_schema = ist.table_schema \n\n      AND tl.source_table_name = ist.table_name\n\nWHERE\n\n  tl.source_table_catalog IS NULL;"
+  parameters:
+  - date_range_end
+  - date_range_start
+  pillar: governance
+  table_name: waf_count_of_unused_tables
+  is_coming_soon: false
+- name: 55e66413
+  display_name: Count of Tables with Usage
+  sql: "SELECT \n\n  COUNT(DISTINCT CONCAT(source_table_catalog, '.', source_table_schema, '.', source_table_name)) AS distinct_tables\n\nFROM \n\n  system.access.table_lineage\n\nWHERE \n\n  event_time BETWEEN :date_range_start AND :date_range_end\n\n  AND source_table_full_name IS NOT NULL\n\n  AND source_type IN ('TABLE', 'STREAMING_TABLE');"
+  parameters:
+  - date_range_end
+  - date_range_start
+  pillar: governance
+  table_name: waf_count_of_tables_with_usage
+  is_coming_soon: false
+- name: 90d7e6f1
+  display_name: Count of Unique Users with Table Read/Write Event
+  sql: "SELECT \n\n  COUNT(DISTINCT created_by) AS distinct_users\n\n\n\nFROM \n\n  system.access.table_lineage AS tl\n\n\n\nWHERE \n\n  event_time >= :date_range_start\n\n  AND event_time <= :date_range_end\n\n  AND (source_table_full_name IS NOT NULL);"
+  parameters:
+  - date_range_end
+  - date_range_start
+  pillar: governance
+  table_name: waf_count_of_unique_users_with_table_read_write_event
+  is_coming_soon: false
+- name: 628c2773
+  display_name: Count of Unsecured Tables
+  sql: "SELECT \n\n    COUNT(DISTINCT CONCAT(TABLE_CATALOG, '.', TABLE_SCHEMA, '.', TABLE_NAME)) AS full_name_count\n\nFROM \n\n    system.information_schema.table_privileges\n\nWHERE \n\n    grantee = 'account users' \n\n    AND privilege_type = 'SELECT';"
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_unsecured_tables
+  is_coming_soon: false
+- name: 1f951287
+  display_name: Count of Sensitive Tables
+  sql: "SELECT COUNT(DISTINCT CONCAT(table_catalog, '.', table_schema, '.', table_name)) AS distinct_table_count\n\nFROM (\n\n    SELECT \n\n        table_catalog, table_schema, table_name\n\n    FROM \n\n        system.information_schema.column_masks\n\n\n\n    UNION\n\n\n\n    SELECT \n\n        table_catalog, table_schema, table_name\n\n    FROM \n\n        system.information_schema.row_filters\n\n) AS combined;\n"
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_sensitive_tables
+  is_coming_soon: false
+- name: 913b3827
+  display_name: Pie Chart of Tagged vs. Untagged Tables
+  sql: "WITH tagged_count AS (\n\n    SELECT COUNT(*) AS count FROM system.information_schema.table_tags\n\n)\n\nSELECT 'Tagged' AS label, count \n\nFROM tagged_count\n\nUNION ALL\n\nSELECT 'Untagged' AS label, \n\n       (SELECT COUNT(*) FROM system.information_schema.tables) - count \n\nFROM tagged_count;"
+  parameters: []
+  pillar: governance
+  table_name: waf_pie_chart_of_tagged_vs_untagged_tables
+  is_coming_soon: false
+- name: 788914b8
+  display_name: Bar Chart of Popular Tags
+  sql: "SELECT \n\n  tag_name,\n\n  COUNT(*) AS usage_count\n\nFROM \n\n  system.information_schema.table_tags\n\nWHERE \n\n  tag_name IS NOT NULL\n\nGROUP BY \n\n  tag_name\n\nORDER BY \n\n  usage_count DESC\n\nLIMIT 10;"
+  parameters: []
+  pillar: governance
+  table_name: waf_bar_chart_of_popular_tags
+  is_coming_soon: false
+- name: 8d97349c
+  display_name: Usage Over Last Year
+  sql: "SELECT \n\n    DATE_TRUNC('month', event_time) AS usage_date,\n\n    COUNT(*) AS usage_count\n\nFROM \n\n    system.access.table_lineage\n\nWHERE \n\n    (event_time >= :date_range_start AND event_time <= :date_range_end )\n\nGROUP BY \n\n    usage_date\n\nORDER BY\n\n    usage_date;"
+  parameters:
+  - date_range_end
+  - date_range_start
+  pillar: governance
+  table_name: waf_usage_over_last_year
+  is_coming_soon: false
+- name: 763a2da9
+  display_name: Most Popular Tables with Staleness
+  sql: "WITH TableReads AS (\n  SELECT\n    CONCAT(source_table_catalog, '.', source_table_schema, '.', source_table_name) AS table_full_name,\n    COUNT(*) AS read_count\n  FROM system.access.table_lineage\n  WHERE source_table_catalog IS NOT NULL\n    AND :date_range_start <= event_date AND event_date <= :date_range_end\n  GROUP BY table_full_name\n),\nLatestTargetDate AS (\n  SELECT\n    CONCAT(target_table_catalog, '.', target_table_schema, '.', target_table_name) AS table_full_name,\n    MAX(event_date) AS latest_target_date\n  FROM system.access.table_lineage\n  WHERE target_table_catalog IS NOT NULL\n  GROUP BY table_full_name\n)\nSELECT\n  tr.table_full_name,\n  tr.read_count,\n  COALESCE(CAST(ltd.latest_target_date AS STRING), 'N/A') AS latest_target_date\nFROM TableReads tr\nLEFT JOIN LatestTargetDate ltd ON tr.table_full_name = ltd.table_full_name\nORDER BY tr.read_count DESC\nLIMIT 10"
+  parameters:
+  - date_range_end
+  - date_range_start
+  pillar: governance
+  table_name: waf_most_popular_tables_with_staleness
+  is_coming_soon: false
+- name: 1eab9fe1
+  display_name: waf_controls_g
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nlineage_usage AS (\n\n  SELECT \n\n    COUNT(DISTINCT CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name)) as total_tables,\n\n    COUNT(DISTINCT CASE WHEN tl.target_table_full_name IS NOT NULL THEN CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) END) as lineage_tables\n\n  FROM system.information_schema.tables t\n\n  LEFT JOIN system.access.table_lineage tl ON CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) = tl.target_table_full_name\n\n  WHERE t.table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nmetadata_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN comment IS NOT NULL THEN 1 ELSE 0 END) as tables_with_comments,\n\n    CASE WHEN EXISTS (SELECT 1 FROM system.information_schema.table_tags) \n\n      THEN (SELECT COUNT(*) FROM system.information_schema.tables WHERE table_catalog != 'hive_metastore' AND table_type IN ('MANAGED', 'EXTERNAL'))\n\n      ELSE 0 \n\n    END as tables_with_tags\n\n  FROM system.information_schema.tables t\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    description,\n\n    CASE \n\n    WHEN waf_id = 'DG-01-03' THEN (\n\n      SELECT CASE WHEN total_tables > 0 THEN (lineage_tables * 100.0 / total_tables) ELSE 0 END FROM lineage_usage\n\n    )\n\n    WHEN waf_id = 'DG-01-04' THEN (\n\n      SELECT CASE WHEN total_tables > 0 THEN (tables_with_comments * 100.0 / total_tables) ELSE 0 END FROM metadata_usage\n\n    )\n\n    WHEN waf_id = 'DG-01-05' THEN (\n\n      SELECT CASE WHEN total_tables > 0 THEN (tables_with_tags * 100.0 / total_tables) ELSE 0 END FROM metadata_usage\n\n    )\n\n    WHEN waf_id = 'DG-02-01' THEN (\n\n      CASE WHEN EXISTS (SELECT 1 FROM system.information_schema.row_filters) THEN 100 ELSE 0 END\n\n    )\n\n    WHEN waf_id = 'DG-02-02' THEN (\n\n      CASE WHEN EXISTS (SELECT 1 FROM system.access.audit) THEN 100 ELSE 0 END\n\n    )\n\n    WHEN waf_id = 'DG-02-03' THEN (\n\n      CASE WHEN EXISTS (\n\n        SELECT 1 FROM system.information_schema.tables\n\n        WHERE table_catalog = 'system' AND table_schema = 'marketplace' AND table_name = 'listing_access_events'\n\n      ) THEN 100 ELSE 0 END\n\n    )\n\n    WHEN waf_id = 'DG-03-02' THEN (\n\n      CASE WHEN EXISTS (\n\n        SELECT 1 FROM system.information_schema.tables \n\n        WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n\n      ) THEN 100 ELSE 0 END\n\n    )\n\n    WHEN waf_id = 'DG-03-03' THEN (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    )\n\n    ELSE 0\n\n    END AS current_percentage,\n\n    CASE \n\n    WHEN waf_id = 'DG-01-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (lineage_tables * 100.0 / total_tables) ELSE 0 END FROM lineage_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'DG-01-04' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (tables_with_comments * 100.0 / total_tables) ELSE 0 END FROM metadata_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'DG-01-05' AND EXISTS (SELECT 1 FROM system.information_schema.table_tags) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.row_filters) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-02' AND EXISTS (SELECT 1 FROM system.access.audit) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-03' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables\n\n      WHERE table_catalog = 'system' AND table_schema = 'marketplace' AND table_name = 'listing_access_events'\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'DG-03-02' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables \n\n      WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'DG-03-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('DG-01-03', 'Unify data and AI management', 'Track data and AI lineage'),\n\n    ('DG-01-04', 'Unify data and AI management', 'Add comments to metadata'),\n\n    ('DG-01-05', 'Unify data and AI management', 'Enable easy data discovery'),\n\n    ('DG-02-01', 'Unify data and AI security', 'Centralize access control (row/column level)'),\n\n    ('DG-02-02', 'Unify data and AI security', 'Configure audit logging'),\n\n    ('DG-02-03', 'Unify data and AI security', 'Audit data platform events'),\n\n    ('DG-03-02', 'Establish data quality standards', 'Use data quality tools and profiling'),\n\n    ('DG-03-03', 'Establish data quality standards', 'Enforce standardized data formats')\n\n    AS waf(waf_id, principle, description)\n\n  )\n\n)\n\nSELECT\n\n  waf_id,\n\n  principle,\n\n  description,\n\n  ROUND(current_percentage, 1) as score_percentage,\n\n  CASE \n\n  WHEN waf_id = 'DG-01-03' THEN 50\n\n  WHEN waf_id = 'DG-01-04' THEN 50\n\n  WHEN waf_id = 'DG-01-05' THEN 50\n\n  WHEN waf_id = 'DG-02-01' THEN 100\n\n  WHEN waf_id = 'DG-02-02' THEN 100\n\n  WHEN waf_id = 'DG-02-03' THEN 100\n\n  WHEN waf_id = 'DG-03-02' THEN 100\n\n  WHEN waf_id = 'DG-03-03' THEN 80\n\n  END as threshold_percentage,\n\n  CASE \n\n  WHEN implemented = 'Yes' THEN 'Met'\n\n  ELSE 'Not Met'\n\n  END as threshold_met,\n\n  implemented\n\nFROM waf_status\n\nORDER BY principle, waf_id;\n"
+  parameters: []
+  pillar: governance
+  table_name: waf_controls_g
+  is_coming_soon: false
+  is_control_query: true
+- name: '95258030'
+  display_name: waf_principal_percentage_g
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nlineage_usage AS (\n\n  SELECT \n\n    COUNT(DISTINCT CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name)) as total_tables,\n\n    COUNT(DISTINCT CASE WHEN tl.target_table_full_name IS NOT NULL THEN CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) END) as lineage_tables\n\n  FROM system.information_schema.tables t\n\n  LEFT JOIN system.access.table_lineage tl ON CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) = tl.target_table_full_name\n\n  WHERE t.table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nmetadata_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN comment IS NOT NULL THEN 1 ELSE 0 END) as tables_with_comments,\n\n    CASE WHEN EXISTS (SELECT 1 FROM system.information_schema.table_tags) \n\n      THEN (SELECT COUNT(*) FROM system.information_schema.tables WHERE table_catalog != 'hive_metastore' AND table_type IN ('MANAGED', 'EXTERNAL'))\n\n      ELSE 0 \n\n    END as tables_with_tags\n\n  FROM system.information_schema.tables t\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    CASE \n\n    WHEN waf_id = 'DG-01-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (lineage_tables * 100.0 / total_tables) ELSE 0 END FROM lineage_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'DG-01-04' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (tables_with_comments * 100.0 / total_tables) ELSE 0 END FROM metadata_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'DG-01-05' AND EXISTS (SELECT 1 FROM system.information_schema.table_tags) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.row_filters) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-02' AND EXISTS (SELECT 1 FROM system.access.audit) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-03' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables\n\n      WHERE table_catalog = 'system' AND table_schema = 'marketplace' AND table_name = 'listing_access_events'\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'DG-03-02' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables \n\n      WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'DG-03-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('DG-01-03', 'Unify data and AI management'),\n\n    ('DG-01-04', 'Unify data and AI management'),\n\n    ('DG-01-05', 'Unify data and AI management'),\n\n    ('DG-02-01', 'Unify data and AI security'),\n\n    ('DG-02-02', 'Unify data and AI security'),\n\n    ('DG-02-03', 'Unify data and AI security'),\n\n    ('DG-03-02', 'Establish data quality standards'),\n\n    ('DG-03-03', 'Establish data quality standards')\n\n    AS waf(waf_id, principle)\n\n  )\n\n)\n\nSELECT\n\n  principle,\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status\n\nGROUP BY principle\n\nORDER BY principle;\n"
+  parameters: []
+  pillar: governance
+  table_name: waf_principal_percentage_g
+  is_coming_soon: false
+- name: 920a8759
+  display_name: total_percentage_g
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nlineage_usage AS (\n\n  SELECT \n\n    COUNT(DISTINCT CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name)) as total_tables,\n\n    COUNT(DISTINCT CASE WHEN tl.target_table_full_name IS NOT NULL THEN CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) END) as lineage_tables\n\n  FROM system.information_schema.tables t\n\n  LEFT JOIN system.access.table_lineage tl ON CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) = tl.target_table_full_name\n\n  WHERE t.table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nmetadata_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN comment IS NOT NULL THEN 1 ELSE 0 END) as tables_with_comments,\n\n    CASE WHEN EXISTS (SELECT 1 FROM system.information_schema.table_tags) \n\n      THEN (SELECT COUNT(*) FROM system.information_schema.tables WHERE table_catalog != 'hive_metastore' AND table_type IN ('MANAGED', 'EXTERNAL'))\n\n      ELSE 0 \n\n    END as tables_with_tags\n\n  FROM system.information_schema.tables t\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    CASE \n\n    -- DG-01-03: >50% of tables have lineage tracked\n\n    WHEN waf_id = 'DG-01-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (lineage_tables * 100.0 / total_tables) ELSE 0 END FROM lineage_usage\n\n    ) >= 50 THEN 'Yes'\n\n    -- DG-01-04: >50% of tables have comments\n\n    WHEN waf_id = 'DG-01-04' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (tables_with_comments * 100.0 / total_tables) ELSE 0 END FROM metadata_usage\n\n    ) >= 50 THEN 'Yes'\n\n    -- DG-01-05: >50% of tables have tags\n\n    WHEN waf_id = 'DG-01-05' AND EXISTS (SELECT 1 FROM system.information_schema.table_tags) THEN 'Yes'\n\n    -- DG-02-01: Row filters exist\n\n    WHEN waf_id = 'DG-02-01' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.row_filters\n\n    ) THEN 'Yes'\n\n    -- DG-02-02: Audit logging exists\n\n    WHEN waf_id = 'DG-02-02' AND EXISTS (\n\n      SELECT 1 FROM system.access.audit\n\n    ) THEN 'Yes'\n\n    -- DG-02-03: Marketplace audit events exist\n\n    WHEN waf_id = 'DG-02-03' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables\n\n      WHERE table_catalog = 'system' AND table_schema = 'marketplace' AND table_name = 'listing_access_events'\n\n    ) THEN 'Yes'\n\n    -- DG-03-02: Data quality tools exist\n\n    WHEN waf_id = 'DG-03-02' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables \n\n      WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n\n    ) THEN 'Yes'\n\n    -- DG-03-03: >80% of tables use Delta/ICEBERG format\n\n    WHEN waf_id = 'DG-03-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('DG-01-03'), ('DG-01-04'), ('DG-01-05'),\n\n    ('DG-02-01'), ('DG-02-02'), ('DG-02-03'),\n\n    ('DG-03-02'), ('DG-03-03')\n\n    AS waf(waf_id)\n\n  )\n\n)\n\nSELECT\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status;\n"
+  parameters: []
+  pillar: governance
+  table_name: waf_total_percentage_g
+  is_coming_soon: false
+- name: b39d7f91
+  display_name: total_percentage_across_pillars
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nmanaged_usage AS (\n\n  SELECT \n\n    TRY_DIVIDE(\n      100.0 * SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END),\n      SUM(CASE WHEN table_type IN ('MANAGED', 'EXTERNAL') THEN 1 ELSE 0 END)\n    ) AS managed_percentage\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nlineage_usage AS (\n\n  SELECT \n\n    COUNT(DISTINCT CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name)) as total_tables,\n\n    COUNT(DISTINCT CASE WHEN tl.target_table_full_name IS NOT NULL THEN CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) END) as lineage_tables\n\n  FROM system.information_schema.tables t\n\n  LEFT JOIN system.access.table_lineage tl ON CONCAT(t.table_catalog, '.', t.table_schema, '.', t.table_name) = tl.target_table_full_name\n\n  WHERE t.table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nmetadata_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN comment IS NOT NULL THEN 1 ELSE 0 END) as tables_with_comments,\n\n    CASE WHEN EXISTS (SELECT 1 FROM system.information_schema.table_tags) \n\n      THEN (SELECT COUNT(*) FROM system.information_schema.tables WHERE table_catalog != 'hive_metastore' AND table_type IN ('MANAGED', 'EXTERNAL'))\n\n      ELSE 0 \n\n    END as tables_with_tags\n\n  FROM system.information_schema.tables t\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND t.table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\nserverless_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE\n\n          WHEN UPPER(sku_name) LIKE '%SERVERLESS%'\n\n            OR UPPER(usage_type) LIKE '%SERVERLESS%'\n\n          THEN 1 ELSE 0\n\n        END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type IN ('COMPUTE_TIME', 'GPU_TIME')\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\nsql_warehouse_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN compute.type = 'WAREHOUSE' THEN 1 ELSE 0 END) as sql_compute\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n),\n\ncluster_policies AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n\n  FROM (\n\n    SELECT policy_id, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\ncluster_tags AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n\n  FROM (\n\n    SELECT tags, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\ncluster_workers AS (\n\n  SELECT \n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n\n    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n\n  FROM (\n\n    SELECT worker_count, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\ndlt_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute_usage,\n\n    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nmodel_serving_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_ml_compute,\n\n    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n\n),\n\nautoscale_clusters AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN ifnull(max_autoscale_workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n\n  FROM (\n\n    SELECT max_autoscale_workers, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nautoscale_warehouses AS (\n\n  SELECT\n\n    COUNT(*) as total_warehouses,\n\n    SUM(CASE WHEN max_clusters > min_clusters THEN 1 ELSE 0 END) as autoscale_warehouses\n\n  FROM (\n\n    SELECT warehouse_id, min_clusters, max_clusters, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.warehouses\n\n    WHERE change_time >= current_timestamp() - INTERVAL 30 DAYS\n\n      AND warehouse_type IN ('CLASSIC', 'PRO')\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nruntime_versions AS (\n\n  SELECT\n\n    COUNT(*) AS total_clusters,\n\n    SUM(CASE WHEN TRY_CAST(split(regexp_replace(dbr_version, 'dlt:', ''), '[.]')[0] AS INT) >= 15 THEN 1 ELSE 0 END) AS up_to_date_clusters\n\n  FROM (\n\n    SELECT dbr_version, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL AND dbr_version IS NOT NULL\n\n),billing_monitoring AS (\n\n  SELECT\n\n    COUNT(DISTINCT DATE(start_time)) AS active_days_last_30\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n    AND LOWER(statement_text) RLIKE 'system\\.billing\\.(usage|list_prices)'\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    CASE \n\n    -- Governance (DG)\n\n    WHEN waf_id = 'DG-01-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (lineage_tables * 100.0 / total_tables) ELSE 0 END FROM lineage_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'DG-01-04' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (tables_with_comments * 100.0 / total_tables) ELSE 0 END FROM metadata_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'DG-01-05' AND EXISTS (SELECT 1 FROM system.information_schema.table_tags) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-01' AND EXISTS (SELECT 1 FROM system.information_schema.row_filters) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-02' AND EXISTS (SELECT 1 FROM system.access.audit) THEN 'Yes'\n\n    WHEN waf_id = 'DG-02-03' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables\n\n      WHERE table_catalog = 'system' AND table_schema = 'marketplace' AND table_name = 'listing_access_events'\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'DG-03-02' AND EXISTS (\n\n      SELECT 1 FROM system.information_schema.tables \n\n      WHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics' \n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'DG-03-03' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    -- Cost (CO)\n\n    WHEN waf_id = 'CO-01-01' AND (\n\n      SELECT managed_percentage FROM managed_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-03' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (sql_compute * 100.0 / total_compute) ELSE 0 END FROM sql_warehouse_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (up_to_date_clusters * 100.0 / total_clusters) ELSE 0 END FROM runtime_versions\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-09' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-02-03' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_policy * 100.0 / total_clusters) ELSE 0 END FROM cluster_policies\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-03-01' AND (\n\n      SELECT active_days_last_30 FROM billing_monitoring\n\n    ) >= 10 THEN 'Yes'\n\n    WHEN waf_id = 'CO-03-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_tags * 100.0 / total_clusters) ELSE 0 END FROM cluster_tags\n\n    ) >= 80 THEN 'Yes'\n\n    -- Performance (PE)\n\n    WHEN waf_id = 'PE-01-01' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-01-02' AND EXISTS (\n\n      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-07' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 80 THEN 'Yes'\n\n    -- Reliability (R)\n\n    WHEN waf_id = 'R-01-01' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-03' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-05' AND (\n\n      SELECT CASE WHEN total_ml_compute > 0 THEN (serving_compute * 100.0 / total_ml_compute) ELSE 0 END FROM model_serving_usage\n\n    ) >= 20 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'R-02-04' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    WHEN waf_id = 'R-03-01' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (autoscale_clusters * 100.0 / total_clusters) ELSE 0 END FROM autoscale_clusters\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'R-03-02' AND (\n\
+    \n      SELECT CASE WHEN total_warehouses > 0 THEN (autoscale_warehouses * 100.0 / total_warehouses) ELSE 0 END FROM autoscale_warehouses\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented,\n\n    CASE \n\n    WHEN waf_id LIKE 'DG-%' THEN 'Data & AI Governance'\n\n    WHEN waf_id LIKE 'CO-%' THEN 'Cost Optimization'\n\n    WHEN waf_id LIKE 'PE-%' THEN 'Performance Efficiency'\n\n    WHEN waf_id LIKE 'R-%'  THEN 'Reliability'\n\n    END AS pillar\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('DG-01-03'), ('DG-01-04'), ('DG-01-05'),\n\n    ('DG-02-01'), ('DG-02-02'), ('DG-02-03'),\n\n    ('DG-03-02'), ('DG-03-03'),\n\n    ('CO-01-01'), ('CO-01-03'), ('CO-01-04'), ('CO-01-06'), ('CO-01-09'),\n\n    ('CO-02-03'), ('CO-03-01'), ('CO-03-02'),\n\n    ('PE-01-01'), ('PE-01-02'),\n\n    ('PE-02-02'), ('PE-02-04'), ('PE-02-06'), ('PE-02-07'),\n\n    ('R-01-01'), ('R-01-03'), ('R-01-05'), ('R-01-06'),\n\n    ('R-02-04'),\n\n    ('R-03-01'), ('R-03-02')\n\n    AS waf(waf_id)\n\n  )\n\n)\n\nSELECT\n\n  pillar,\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status\n\nGROUP BY pillar\n\nORDER BY pillar;\n"
+  parameters: []
+  pillar: summary
+  table_name: waf_total_percentage_across_pillars
+  is_coming_soon: false
+- name: dbdc9433
+  display_name: waf_controls_c
+  sql: "WITH managed_usage AS (\n\n  SELECT \n\n    TRY_DIVIDE(\n      100.0 * SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END),\n      SUM(CASE WHEN table_type IN ('MANAGED', 'EXTERNAL') THEN 1 ELSE 0 END)\n    ) AS managed_percentage\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n),\n\nserverless_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE\n\n          WHEN UPPER(sku_name) LIKE '%SERVERLESS%'\n\n            OR UPPER(usage_type) LIKE '%SERVERLESS%'\n\n          THEN 1 ELSE 0\n\n        END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type IN ('COMPUTE_TIME', 'GPU_TIME')\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\nsql_warehouse_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN compute.type = 'WAREHOUSE' THEN 1 ELSE 0 END) as sql_compute\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n),\n\ncluster_policies AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n\n  FROM (\n\n    SELECT policy_id, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\ncluster_tags AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n\n  FROM (\n\n    SELECT tags, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nruntime_versions AS (\n\n  SELECT\n\n    COUNT(*) AS total_clusters,\n\n    SUM(CASE WHEN TRY_CAST(split(regexp_replace(dbr_version, 'dlt:', ''), '[.]')[0] AS INT) >= 15 THEN 1 ELSE 0 END) AS up_to_date_clusters\n\n  FROM (\n\n    SELECT dbr_version, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL AND dbr_version IS NOT NULL\n\n),billing_monitoring AS (\n\n  SELECT\n\n    COUNT(DISTINCT DATE(start_time)) AS active_days_last_30\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n    AND LOWER(statement_text) RLIKE 'system\\.billing\\.(usage|list_prices)'\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    best_practice,\n\n    CASE \n\n    WHEN waf_id = 'CO-01-01' THEN (\n\n      SELECT managed_percentage FROM managed_usage\n\n    )\n\n    WHEN waf_id = 'CO-01-03' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (sql_compute * 100.0 / total_compute) ELSE 0 END FROM sql_warehouse_usage\n\n    )\n\n    WHEN waf_id = 'CO-01-04' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (up_to_date_clusters * 100.0 / total_clusters) ELSE 0 END FROM runtime_versions\n\n    )\n\n    WHEN waf_id = 'CO-01-06' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    )\n\n    WHEN waf_id = 'CO-01-09' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    )\n\n    WHEN waf_id = 'CO-02-03' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_policy * 100.0 / total_clusters) ELSE 0 END FROM cluster_policies\n\n    )\n\n    WHEN waf_id = 'CO-03-01' THEN (\n\n      SELECT active_days_last_30 FROM billing_monitoring\n\n    )\n\n    WHEN waf_id = 'CO-03-02' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_tags * 100.0 / total_clusters) ELSE 0 END FROM cluster_tags\n\n    )\n\n    ELSE 0\n\n    END AS current_percentage,\n\n    CASE \n\n    WHEN waf_id = 'CO-01-01' AND (\n\n      SELECT managed_percentage FROM managed_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-03' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (sql_compute * 100.0 / total_compute) ELSE 0 END FROM sql_warehouse_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (up_to_date_clusters * 100.0 / total_clusters) ELSE 0 END FROM runtime_versions\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-09' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-02-03' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_policy * 100.0 / total_clusters) ELSE 0 END FROM cluster_policies\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-03-01' AND (\n\n      SELECT active_days_last_30 FROM billing_monitoring\n\n    ) >= 10 THEN 'Yes'\n\n    WHEN waf_id = 'CO-03-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_tags * 100.0 / total_clusters) ELSE 0 END FROM cluster_tags\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('CO-01-01', 'Choose optimal resources', 'Prefer Managed table type over External tables'),\n\n    ('CO-01-03', 'Choose optimal resources', 'Use SQL warehouse for SQL workloads'),\n\n    ('CO-01-04', 'Choose optimal resources', 'Use up-to-date runtimes'),\n\n    ('CO-01-06', 'Choose optimal resources', 'Use Serverless for your workloads'),\n\n    ('CO-01-09', 'Choose optimal resources', 'Evaluate performance optimized query engines'),\n\n    ('CO-02-03', 'Dynamically allocate resources', 'Use compute policies to control costs'),\n\n    ('CO-03-01', 'Monitor and control cost', 'Monitor costs'),\n\n    ('CO-03-02', 'Monitor and control cost', 'Tag clusters for cost attribution')\n\n    AS waf(waf_id, principle, best_practice)\n\n  )\n\n)\n\nSELECT\n\n  waf_id,\n\n  principle,\n\n  best_practice,\n\n  ROUND(current_percentage, 1) as score_percentage,\n\n  CASE \n\n  WHEN waf_id = 'CO-01-01' THEN 80\n\n  WHEN waf_id = 'CO-01-03' THEN 50\n\n  WHEN waf_id = 'CO-01-04' THEN 80\n\n  WHEN waf_id = 'CO-01-06' THEN 50\n\n  WHEN waf_id = 'CO-01-09' THEN 80\n\n  WHEN waf_id = 'CO-02-03' THEN 80\n\n  WHEN waf_id = 'CO-03-01' THEN 10\n\n  WHEN waf_id = 'CO-03-02' THEN 80\n\n  END as threshold_percentage,\n\n  CASE \n\n  WHEN implemented = 'Yes' THEN 'Met'\n\n  ELSE 'Not Met'\n\n  END as threshold_met,\n\n  implemented\n\nFROM waf_status\n\nORDER BY principle, waf_id;\n"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_controls_c
+  is_coming_soon: false
+  is_control_query: true
+- name: 81f0a6aa
+  display_name: waf_principal_percentage_c
+  sql: "WITH managed_usage AS (\n\n  SELECT \n\n    TRY_DIVIDE(\n      100.0 * SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END),\n      SUM(CASE WHEN table_type IN ('MANAGED', 'EXTERNAL') THEN 1 ELSE 0 END)\n    ) AS managed_percentage\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n),\n\nserverless_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE\n\n          WHEN UPPER(sku_name) LIKE '%SERVERLESS%'\n\n            OR UPPER(usage_type) LIKE '%SERVERLESS%'\n\n          THEN 1 ELSE 0\n\n        END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type IN ('COMPUTE_TIME', 'GPU_TIME')\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\nsql_warehouse_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN compute.type = 'WAREHOUSE' THEN 1 ELSE 0 END) as sql_compute\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n),\n\ncluster_policies AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n\n  FROM (\n\n    SELECT policy_id, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\ncluster_tags AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n\n  FROM (\n\n    SELECT tags, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nruntime_versions AS (\n\n  SELECT\n\n    COUNT(*) AS total_clusters,\n\n    SUM(CASE WHEN TRY_CAST(split(regexp_replace(dbr_version, 'dlt:', ''), '[.]')[0] AS INT) >= 15 THEN 1 ELSE 0 END) AS up_to_date_clusters\n\n  FROM (\n\n    SELECT dbr_version, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL AND dbr_version IS NOT NULL\n\n),billing_monitoring AS (\n\n  SELECT\n\n    COUNT(DISTINCT DATE(start_time)) AS active_days_last_30\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n    AND LOWER(statement_text) RLIKE 'system\\.billing\\.(usage|list_prices)'\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    CASE \n\n    WHEN waf_id = 'CO-01-01' AND (\n\n      SELECT managed_percentage FROM managed_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-03' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (sql_compute * 100.0 / total_compute) ELSE 0 END FROM sql_warehouse_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (up_to_date_clusters * 100.0 / total_clusters) ELSE 0 END FROM runtime_versions\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'CO-01-09' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-02-03' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_policy * 100.0 / total_clusters) ELSE 0 END FROM cluster_policies\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'CO-03-01' AND (\n\n      SELECT active_days_last_30 FROM billing_monitoring\n\n    ) >= 10 THEN 'Yes'\n\n    WHEN waf_id = 'CO-03-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_tags * 100.0 / total_clusters) ELSE 0 END FROM cluster_tags\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('CO-01-01', 'Choose optimal resources'),\n\n    ('CO-01-03', 'Choose optimal resources'),\n\n    ('CO-01-04', 'Choose optimal resources'),\n\n    ('CO-01-06', 'Choose optimal resources'),\n\n    ('CO-01-09', 'Choose optimal resources'),\n\n    ('CO-02-03', 'Dynamically allocate resources'),\n\n    ('CO-03-01', 'Monitor and control cost'),\n\n    ('CO-03-02', 'Monitor and control cost')\n\n    AS waf(waf_id, principle)\n\n  )\n\n)\n\nSELECT\n\n  principle,\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status\n\nGROUP BY principle\n\nORDER BY principle;\n"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_principal_percentage_c
+  is_coming_soon: false
+- name: 06f2987c
+  display_name: total_percentage_c
+  sql: "WITH managed_usage AS (\n\n  SELECT \n\n    TRY_DIVIDE(\n      100.0 * SUM(CASE WHEN table_type = 'MANAGED' THEN 1 ELSE 0 END),\n      SUM(CASE WHEN table_type IN ('MANAGED', 'EXTERNAL') THEN 1 ELSE 0 END)\n    ) AS managed_percentage\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n),\n\nserverless_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE\n\n          WHEN UPPER(sku_name) LIKE '%SERVERLESS%'\n\n            OR UPPER(usage_type) LIKE '%SERVERLESS%'\n\n          THEN 1 ELSE 0\n\n        END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type IN ('COMPUTE_TIME', 'GPU_TIME')\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\nsql_warehouse_usage AS (\n\n  SELECT\n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN compute.type = 'WAREHOUSE' THEN 1 ELSE 0 END) as sql_compute\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n),\n\ncluster_policies AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN policy_id IS NOT NULL THEN 1 ELSE 0 END) as clusters_with_policy\n\n  FROM (\n\n    SELECT policy_id, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\ncluster_tags AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN size(map_keys(tags)) > 0 THEN 1 ELSE 0 END) as clusters_with_tags\n\n  FROM (\n\n    SELECT tags, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nruntime_versions AS (\n\n  SELECT\n\n    COUNT(*) AS total_clusters,\n\n    SUM(CASE WHEN TRY_CAST(split(regexp_replace(dbr_version, 'dlt:', ''), '[.]')[0] AS INT) >= 15 THEN 1 ELSE 0 END) AS up_to_date_clusters\n\n  FROM (\n\n    SELECT dbr_version, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n  ) WHERE rn = 1 AND delete_time IS NULL AND dbr_version IS NOT NULL\n\n),billing_monitoring AS (\n\n  SELECT\n\n    COUNT(DISTINCT DATE(start_time)) AS active_days_last_30\n\n  FROM system.query.history\n\n  WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS\n\n    AND LOWER(statement_text) RLIKE 'system\\.billing\\.(usage|list_prices)'\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    CASE \n\n    -- CO-01-01: >80% of tables use Delta/ICEBERG format\n\n    WHEN waf_id = 'CO-01-01' AND (\n\n      SELECT managed_percentage FROM managed_usage\n\n    ) >= 80 THEN 'Yes'\n\n    -- CO-01-03: >50% of compute is SQL warehouse\n\n    WHEN waf_id = 'CO-01-03' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (sql_compute * 100.0 / total_compute) ELSE 0 END FROM sql_warehouse_usage\n\n    ) >= 50 THEN 'Yes'\n\n    -- CO-01-04: >=80% of cluster runs on DBR major version 15+\n\n    WHEN waf_id = 'CO-01-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (up_to_date_clusters * 100.0 / total_clusters) ELSE 0 END FROM runtime_versions\n\n    ) >= 80 THEN 'Yes'\n\n    -- CO-01-06: >50% of compute is serverless\n\n    WHEN waf_id = 'CO-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    -- CO-01-09: >80% of queries use Photon\n\n    WHEN waf_id = 'CO-01-09' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    -- CO-02-03: >80% of clusters have compute policies\n\n    WHEN waf_id = 'CO-02-03' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_policy * 100.0 / total_clusters) ELSE 0 END FROM cluster_policies\n\n    ) >= 80 THEN 'Yes'\n\n    -- CO-03-01: Billing tables queried on >=10 distinct days in last 30\n\n    WHEN waf_id = 'CO-03-01' AND (\n\n      SELECT active_days_last_30 FROM billing_monitoring\n\n    ) >= 10 THEN 'Yes'\n\n    -- CO-03-02: >80% of clusters have tags\n\n    WHEN waf_id = 'CO-03-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_with_tags * 100.0 / total_clusters) ELSE 0 END FROM cluster_tags\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('CO-01-01'), ('CO-01-03'), ('CO-01-04'), ('CO-01-06'), ('CO-01-09'),\n\n    ('CO-02-03'), ('CO-03-01'), ('CO-03-02')\n\n    AS waf(waf_id)\n\n  )\n\n)\n\nSELECT\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status;\n"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_total_percentage_c
+  is_coming_soon: false
+- name: 4745a0f9
+  display_name: waf_controls_p_old
+  sql: "WITH serverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\ncluster_workers AS (\n\n  SELECT \n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n\n    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n\n  FROM (\n\n    SELECT worker_count, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    best_practice,\n\n    CASE \n\n    WHEN waf_id = 'PE-01-01' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    )\n\n    WHEN waf_id = 'PE-01-02' THEN (\n\n      CASE WHEN EXISTS (SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1) THEN 100 ELSE 0 END\n\n    )\n\n    WHEN waf_id = 'PE-02-02' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    )\n\n    WHEN waf_id = 'PE-02-04' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    )\n\n    WHEN waf_id = 'PE-02-06' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    )\n\n    WHEN waf_id = 'PE-02-07' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    )\n\n    ELSE 0\n\n    END AS current_percentage,\n\n    CASE \n\n    WHEN waf_id = 'PE-01-01' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-01-02' AND EXISTS (\n\n      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-07' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('PE-01-01', 'Utilize serverless capabilities', 'Use serverless architecture'),\n\n    ('PE-01-02', 'Utilize serverless capabilities', 'Use an enterprise grade model serving service'),\n\n    ('PE-02-02', 'Design workloads for performance', 'Use parallel computation where it is beneficial'),\n\n    ('PE-02-04', 'Design workloads for performance', 'Prefer larger clusters'),\n\n    ('PE-02-06', 'Design workloads for performance', 'Use native platform engines'),\n\n    ('PE-02-07', 'Design workloads for performance', 'Use serverless compute for appropriate workloads')\n\n    AS waf(waf_id, principle, best_practice)\n\n  )\n\n)\n\nSELECT\n\n  waf_id,\n\n  principle,\n\n  best_practice,\n\n  ROUND(current_percentage, 1) as score_percentage,\n\n  CASE \n\n  WHEN waf_id = 'PE-01-01' THEN 50\n\n  WHEN waf_id = 'PE-01-02' THEN 100\n\n  WHEN waf_id = 'PE-02-02' THEN 80\n\n  WHEN waf_id = 'PE-02-04' THEN 50\n\n  WHEN waf_id = 'PE-02-06' THEN 80\n\n  WHEN waf_id = 'PE-02-07' THEN 80\n\n  END as threshold_percentage,\n\n  CASE \n\n  WHEN implemented = 'Yes' THEN 'Met'\n\n  ELSE 'Not Met'\n\n  END as threshold_met,\n\n  implemented\n\nFROM waf_status\n\nORDER BY principle, waf_id;\n"
+  parameters: []
+  pillar: null
+  table_name: waf_controls_p_old
+  is_coming_soon: false
+- name: 13e29e6c
+  display_name: waf_principal_percentage_p
+  sql: "WITH serverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\ncluster_workers AS (\n\n  SELECT \n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n\n    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n\n  FROM (\n\n    SELECT worker_count, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    CASE \n\n    WHEN waf_id = 'PE-01-01' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-01-02' AND EXISTS (\n\n      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-07' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('PE-01-01', 'Utilize serverless capabilities'),\n\n    ('PE-01-02', 'Utilize serverless capabilities'),\n\n    ('PE-02-02', 'Design workloads for performance'),\n\n    ('PE-02-04', 'Design workloads for performance'),\n\n    ('PE-02-06', 'Design workloads for performance'),\n\n    ('PE-02-07', 'Design workloads for performance')\n\n    AS waf(waf_id, principle)\n\n  )\n\n)\n\nSELECT\n\n  principle,\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status\n\nGROUP BY principle\n\nORDER BY principle;\n"
+  parameters: []
+  pillar: performance_efficiency
+  table_name: waf_principal_percentage_p
+  is_coming_soon: false
+- name: 87deca0d
+  display_name: total_percentage_p
+  sql: "WITH serverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\ncluster_workers AS (\n\n  SELECT \n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n\n    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n\n  FROM (\n\n    SELECT worker_count, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    CASE \n\n    -- PE-01-01: >50% of compute is serverless\n\n    WHEN waf_id = 'PE-01-01' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    -- PE-01-02: Model serving exists\n\n    WHEN waf_id = 'PE-01-02' AND EXISTS (\n\n      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n\n    ) THEN 'Yes'\n\n    -- PE-02-02: >80% of clusters have multiple workers\n\n    WHEN waf_id = 'PE-02-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 80 THEN 'Yes'\n\n    -- PE-02-04: >50% of clusters are large (>3 workers)\n\n    WHEN waf_id = 'PE-02-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 50 THEN 'Yes'\n\n    -- PE-02-06: >80% of queries use Photon\n\n    WHEN waf_id = 'PE-02-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    -- PE-02-07: >5% instance variety\n\n    WHEN waf_id = 'PE-02-07' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('PE-01-01'), ('PE-01-02'),\n\n    ('PE-02-02'), ('PE-02-04'), ('PE-02-06'), ('PE-02-07')\n\n    AS waf(waf_id)\n\n  )\n\n)\n\nSELECT\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status;\n"
+  parameters: []
+  pillar: performance_efficiency
+  table_name: waf_total_percentage_p
+  is_coming_soon: false
+- name: a5da7a83
+  display_name: waf_CO-01-01_vector_db
+  sql: select 'Coming Soon...'  as message;
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_01_vector_db
+  is_coming_soon: true
+- name: c436a496
+  display_name: waf_CO-01-01_managed_tables
+  sql: "SELECT \n\n    table_type,\n\n    round(count(table_type)/(select count(*) from system.information_schema.tables) * 100) as percent_of_tables\n\n    FROM system.information_schema.tables\n\n    group by ALL\n\n    having percent_of_tables > 0\n\n    order by percent_of_tables desc"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_01_managed_tables
+  is_coming_soon: false
+- name: feca6b37
+  display_name: waf_CO-01-02_jobs_on_all_purpose
+  sql: "with clusters AS (\n\n  SELECT\n\n    *,\n\n    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n\n  FROM system.compute.clusters\n\n  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n\n  QUALIFY rn=1\n\n),\n\njob_tasks_exploded AS (\n\n  SELECT\n\n    workspace_id,\n\n    job_id,\n\n    EXPLODE(compute_ids) as cluster_id\n\n  FROM system.lakeflow.job_task_run_timeline\n\n  WHERE period_start_time >= CURRENT_DATE() - INTERVAL 30 DAY\n\n  GROUP BY ALL\n\n),\n\nall_purpose_cluster_jobs AS (\n\n  SELECT\n\n    t1.*,\n\n    t2.cluster_name,\n\n    t2.owned_by,\n\n    t2.dbr_version\n\n  FROM job_tasks_exploded t1\n\n    INNER JOIN clusters t2 USING (workspace_id, cluster_id)\n\n)\n\nSELECT * FROM all_purpose_cluster_jobs LIMIT 10;"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_02_jobs_on_all_purpose
+  is_coming_soon: false
+- name: d654eb5a
+  display_name: waf_CO-01-03_sql_vs_allpurpose
+  sql: "-- ToDo: Use $DBUs with account_prices system table when it is available\n\n-- show SKU distribution between All-Purpose and SQL Warehouses, companies with primary DWH are expected even over 50 % of $DBUs on DWH\n\n-- docs: https://docs.databricks.com/aws/en/admin/system-tables/billing#billing-origin-product-reference\n\nselect billing_origin_product, sum(usage_quantity) as dbu from system.billing.usage where billing_origin_product in ('SQL','ALL_PURPOSE') and usage_date >= current_date() - interval 30 days \n\ngroup by billing_origin_product;"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_03_sql_vs_allpurpose
+  is_coming_soon: false
+- name: 898f3132
+  display_name: waf_CO-01-03_sql_on_allpurpose
+  sql: '-- ToDo
+
+
+    -- show SKU distribution between All-Purpose and SQL Warehouses, companies with primary DWH are expected even over 50 % on DWH
+
+
+    -- ToDo: What query? Check utilization metrics? Or track Academy?
+
+
+    select ''Coming Soon...''  as message;
+
+
+    -- select * from system.billing.usage where billing_origin_product in (''ALL_PURPOSE'',''SQL'');
+
+
+    -- optional Verbose logging shows command text, this can extract/guess the language https://docs.databricks.com/aws/en/admin/account-settings/verbose-logs
+
+
+    -- workloadTags=commandLanguage or notebookLanguage=sql and SKU All-Purpose'
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_03_sql_on_allpurpose
+  is_coming_soon: true
+- name: f4e7201f
+  display_name: waf_CO-01-04_latest_dbr
+  sql: "select \n\nregexp_extract(dbr_version, '^(\\\\d+\\\\.\\\\d+)',1) as runtime\n\n, workspace_id\n\n, cluster_id\n\n, cluster_name\n\n from system.compute.clusters\n\nQUALIFY\n\n    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\n    and delete_time is null\n\n    and cluster_source not in('PIPELINE','PIPELINE_MAINTENANCE') \n\n AND  not contains(dbr_version, 'custom') \n\nlimit 100"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_04_latest_dbr
+  is_coming_soon: false
+- name: 62126ae8
+  display_name: waf_CO-01-05_gpu
+  sql: '-- ToDo: List all VM instances with GPUs across clouds and check their usage in system tables. How to keep it up to date?
+
+
+    -- https://docs.databricks.com/aws/en/compute/gpu
+
+
+    -- SRTI Mockup for now:
+
+
+    --select * as DBUs from system.billing.usage u where contains(u.sku_name, ''SERVERLESS_REAL_TIME_INFERENCE'') and date_diff(day, u.usage_start_time, now()) <28;
+
+
+    -- ToDo: What query? Check utilization metrics? Or track Academy?
+
+
+    select ''Coming Soon...'' as message;
+
+    '
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_05_gpu
+  is_coming_soon: true
+- name: a36b2899
+  display_name: waf_CO-01-06_serverless
+  sql: "with serverless as (\n\n    select sum(usage_quantity) as dbu from system.billing.usage u where contains(u.sku_name, 'SERVERLESS') and u.billing_origin_product in ('ALL_PURPOSE','SQL','JOBS', 'DLT','INTERACTIVE') and date_diff(day, u.usage_start_time, now()) <28\n\n),\n\ntotal as (\n\n    select sum(usage_quantity) as dbu from system.billing.usage u where  u.billing_origin_product in ('ALL_PURPOSE','SQL','JOBS', 'DLT','INTERACTIVE') and date_diff(day, u.usage_start_time, now()) <28\n\n)\n\nselect serverless.dbu * 100 / total.dbu as serverless_dbu_percent from serverless cross join total;\n"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_06_serverless
+  is_coming_soon: false
+- name: aed75aae
+  display_name: waf_CO-01-06_serverless_sql
+  sql: "--ToDo: Use account_prices system table when available\n\nselect \n\n--t1.usage_date,\n\ncase when t1.sku_name like '%SERVERLESS_SQL%' then 'SQL_SERVERLESS' \n\nwhen t1.sku_name like '%ENTERPRISE_SQL_COMPUTE%' then 'SQL_CLASSIC'\n\nwhen t1.sku_name like '%SQL_PRO%' then 'SQL_PRO'\n\nelse 'Other' end as sql_sku_name,\n\nSUM(t1.usage_quantity * list_prices.pricing.default) as list_cost\n\nFROM system.billing.usage t1\n\nINNER JOIN system.billing.list_prices on\n\n   t1.cloud = list_prices.cloud and\n\n   t1.sku_name = list_prices.sku_name and\n\n   t1.usage_date >= list_prices.price_start_time and\n\n   (t1.usage_end_time <= list_prices.price_end_time or list_prices.price_end_time is null)\n\nwhere t1.sku_name like '%SQL%' and t1.usage_date >= current_date() - interval 30 days\n\ngroup by all"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_06_serverless_sql
+  is_coming_soon: false
+- name: efb892e1
+  display_name: waf_CO-01-07_instance_type
+  sql: '-- ToDo: What query? Check utilization metrics? Or track Academy?
+
+
+    -- Instance type: Compute-optimized, Memory-optimized etc?
+
+
+    select ''Coming Soon...''  as message;'
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_07_instance_type
+  is_coming_soon: true
+- name: 1de7073d
+  display_name: waf_CO-01-08_cluster_size
+  sql: '-- ToDo: What query? Check utilization metrics? Or track Academy?
+
+
+    -- Use CASE statement and bucket into Personal cluster / Small / Medium / Large
+
+
+    -- --ToDo: Show also % of Single VM vs multi? Eg in cluster sizes with tags.ResourceClass=''SingleNode''
+
+
+    select ''Coming Soon...''  as message;'
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_08_cluster_size
+  is_coming_soon: true
+- name: 31958c67
+  display_name: waf_CO-01-08_cluster_utilization
+  sql: "with cluster_name as (\n\n  select cluster_id, cluster_name from system.compute.clusters \n\n  QUALIFY\n\n    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\n    and delete_time is null)\n\n  select nt.cluster_id\n\n  , cn.cluster_name\n\n  , avg(nt.cpu_user_percent + nt.cpu_system_percent) AS `Avg CPU Utilization`\n\n  -- , avg(nt.mem_used_percent) AS `Avg Memory Utilization`\n\n  from system.compute.node_timeline nt\n\n  join cluster_name cn on nt.cluster_id = cn.cluster_id\n\n  WHERE\n\n    nt.start_time BETWEEN current_date() - INTERVAL 90 DAYS AND current_date() \n\n  group by 1,2\n\n  order by 3 desc;\n\n\n"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_08_cluster_utilization
+  is_coming_soon: false
+- name: 781ee68b
+  display_name: waf_CO-01-08_cluster_utilization_memory
+  sql: "with cluster_name as (\n\n  select cluster_id, cluster_name from system.compute.clusters \n\n  QUALIFY\n\n    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\n    and delete_time is null)\n\n  select nt.cluster_id\n\n  , cn.cluster_name\n\n  -- , avg(nt.cpu_user_percent + nt.cpu_system_percent) AS `Avg CPU Utilization`\n\n  , avg(nt.mem_used_percent) AS `Avg Memory Utilization`\n\n  from system.compute.node_timeline nt\n\n  join cluster_name cn on nt.cluster_id = cn.cluster_id\n\n  WHERE\n\n    nt.start_time BETWEEN current_date() - INTERVAL 90 DAYS AND current_date() \n\n  group by 1,2\n\n  order by 3 desc\n\n  limit 100;"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_08_cluster_utilization_memory
+  is_coming_soon: false
+- name: 951a00c5
+  display_name: waf_CO-01-09_AP_photon
+  sql: "select ju.usage_metadata.cluster_id,\n\nc.cluster_name,\n\nju.product_features.is_photon, \n\nsum(ju.usage_quantity) as dbu \n\nfrom system.billing.usage ju \n\njoin system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n\n-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n\nwhere ju.usage_date BETWEEN current_date() - interval 90 days AND current_date()\n\n--  AND array_contains(:workspace_id,ju.workspace_id)\n\nand ju.billing_origin_product in (\"ALL_PURPOSE\")\n\nand ju.product_features.is_serverless = false\n\ngroup by 1,2,3\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_01_09_ap_photon
+  is_coming_soon: false
+- name: b54341e5
+  display_name: waf_CO-02-01_auto_scaling
+  sql: 'with autoscaling_count as (select count(*) as autoscaling_count from system.compute.clusters where max_autoscale_workers is not null and delete_time is null),
+
+
+    total_clusters_count as (select count(*) as total_clusters_count from system.compute.clusters where delete_time is null)
+
+
+    select autoscaling_count.autoscaling_count * 100 / total_clusters_count.total_clusters_count as autoscaling_percent from total_clusters_count cross join autoscaling_count;'
+  parameters: []
+  pillar: null
+  table_name: waf_co_02_01_auto_scaling
+  is_coming_soon: false
+- name: d0192813
+  display_name: waf_CO-02-02_AP_auto_termination
+  sql: "select workspace_id,cluster_id,cluster_name\n\n, auto_termination_minutes\n\n,case when auto_termination_minutes is null then \"No\" else \"Yes\" end as autotermination_enabled\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\nand cluster_source in (\"API\", \"UI\")\n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_02_ap_auto_termination
+  is_coming_soon: false
+- name: cc24226f
+  display_name: waf_CO-02-03_job_cluster_policy
+  sql: "select workspace_id\n\n,cluster_id\n\n,cluster_name\n\n,policy_id\n\n,case when policy_id is null then \"No\" else \"Yes\" end as cluster_policy\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\nand cluster_source in (\"JOB\")\n\n--  AND array_contains(:workspace_id,workspace_id)"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_03_job_cluster_policy
+  is_coming_soon: false
+- name: e46a4a40
+  display_name: waf_CO-03-01_billing_tables
+  sql: "-- How often is system.billing.usage accessed L28d? Eg 19k in field-eng L30d\n\nselect\n\n  event_date,\n\n  count(*) as usage_read\n\nfrom\n\n  system.access.audit\n\nwhere\n\n  service_name = 'unityCatalog'\n\n  and action_name = 'getTable'\n\n  and request_params.full_name_arg = 'system.billing.usage'\n\n  and user_identity.email != 'System-User'\n\n  and (date_diff(day, event_date, current_date()) <= 90)\n\ngroup by event_date\n\norder by event_date;"
+  parameters: []
+  pillar: null
+  table_name: waf_co_03_01_billing_tables
+  is_coming_soon: false
+- name: bb77bb31
+  display_name: waf_CO-03-02_clusters_tagging
+  sql: "select workspace_id,cluster_id,cluster_name, cluster_source\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand array_size(map_entries(tags))  = 0\n\nand delete_time is null \n\nand cluster_source in (\"API\", \"UI\", \"JOB\")\n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_03_02_clusters_tagging
+  is_coming_soon: false
+- name: 7abec3c3
+  display_name: waf_CO-03-02_warehouses_tagging
+  sql: "select workspace_id,warehouse_id,warehouse_name\n\nfrom system.compute.warehouses\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n\nand array_size(map_entries(tags))  = 0\n\nand delete_time is null \n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_03_02_warehouses_tagging
+  is_coming_soon: false
+- name: e3cd19cf
+  display_name: waf_CO-03-04_share_cost
+  sql: select 'Coming Soon...'  as message;
+  parameters: []
+  pillar: null
+  table_name: waf_co_03_04_share_cost
+  is_coming_soon: true
+- name: d83ae5eb
+  display_name: waf_CO-03-05_data_transfer_cost
+  sql: select 'Coming Soon...'  as message;
+  parameters: []
+  pillar: null
+  table_name: waf_co_03_05_data_transfer_cost
+  is_coming_soon: true
+- name: d0a01e50
+  display_name: waf_CO-04-02_spot_AP
+  sql: "select workspace_id, cluster_id, cluster_name,\n\ncase when aws_attributes is not null then aws_attributes.availability else azure_attributes.availability end as spot_placement\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\nand cluster_source in (\"API\", \"UI\")\n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_04_02_spot_ap
+  is_coming_soon: false
+- name: '67073248'
+  display_name: waf_CO-04-02_spot_job
+  sql: "select workspace_id, cluster_id, cluster_name,\n\ncase when aws_attributes is not null then aws_attributes.availability else azure_attributes.availability end as spot_placement\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\n-- and cluster_source in (\"JOB\") AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_04_02_spot_job
+  is_coming_soon: false
+- name: 03babf4f
+  display_name: total_percentage_r
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\ndlt_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute_usage,\n\n    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nmodel_serving_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_ml_compute,\n\n    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n\n),\n\nserverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nautoscale_clusters AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN ifnull(max_autoscale_workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n\n  FROM (\n\n    SELECT max_autoscale_workers, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nautoscale_warehouses AS (\n\n  SELECT\n\n    COUNT(*) as total_warehouses,\n\n    SUM(CASE WHEN max_clusters > min_clusters THEN 1 ELSE 0 END) as autoscale_warehouses\n\n  FROM (\n\n    SELECT warehouse_id, min_clusters, max_clusters, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.warehouses\n\n    WHERE change_time >= current_timestamp() - INTERVAL 30 DAYS\n\n      AND warehouse_type IN ('CLASSIC', 'PRO')\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    CASE \n\n    -- R-01-01: >80% of tables use Delta/ICEBERG format\n\n    WHEN waf_id = 'R-01-01' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END\n\n      FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    -- R-01-03: >30% of compute usage is DLT\n\n    WHEN waf_id = 'R-01-03' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END\n\n      FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    -- R-01-05: Model Serving actively used (>20% of ML compute usage)\n\n    WHEN waf_id = 'R-01-05' AND (\n\n      SELECT CASE WHEN total_ml_compute > 0 THEN (serving_compute * 100.0 / total_ml_compute) ELSE 0 END\n\n      FROM model_serving_usage\n\n    ) >= 20 THEN 'Yes'\n\n    -- R-01-06: >50% of compute is serverless or managed\n\n    WHEN waf_id = 'R-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END\n\n      FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    -- R-02-04: >30% of compute usage is DLT (same as R-01-03)\n\n    WHEN waf_id = 'R-02-04' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END\n\n      FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    -- R-03-01: >80% of clusters have auto-scaling enabled\n\n    WHEN waf_id = 'R-03-01' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (autoscale_clusters * 100.0 / total_clusters) ELSE 0 END\n\n      FROM autoscale_clusters\n\n    ) >= 80 THEN 'Yes'\n\n    -- R-03-02: >80% of warehouses have auto-scaling enabled\n\n    WHEN waf_id = 'R-03-02' AND (\n\n      SELECT CASE WHEN total_warehouses > 0 THEN (autoscale_warehouses * 100.0 / total_warehouses) ELSE 0 END\n\n      FROM autoscale_warehouses\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n  END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('R-01-01'),\n\n    --('R-01-02'), -- Removed: Apache Spark always available in Databricks\n\n    ('R-01-03'),\n\n    --('R-01-04'),\n\n    ('R-01-05'),\n\n    ('R-01-06'),\n\n    ('R-02-04'),\n\n    ('R-03-01'),\n\n    ('R-03-02')\n\n    AS waf(waf_id)\n\n  )\n\n)\n\n\n\nSELECT\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status;\n"
+  parameters: []
+  pillar: reliability
+  table_name: waf_total_percentage_r
+  is_coming_soon: false
+- name: 011cf80a
+  display_name: waf_principal_percentage_r
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\ndlt_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute_usage,\n\n    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nmodel_serving_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_ml_compute,\n\n    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n\n),\n\nserverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nautoscale_clusters AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN ifnull(max_autoscale_workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n\n  FROM (\n\n    SELECT max_autoscale_workers, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nautoscale_warehouses AS (\n\n  SELECT\n\n    COUNT(*) as total_warehouses,\n\n    SUM(CASE WHEN max_clusters > min_clusters THEN 1 ELSE 0 END) as autoscale_warehouses\n\n  FROM (\n\n    SELECT warehouse_id, min_clusters, max_clusters, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.warehouses\n\n    WHERE change_time >= current_timestamp() - INTERVAL 30 DAYS\n\n      AND warehouse_type IN ('CLASSIC', 'PRO')\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    CASE \n\n    WHEN waf_id = 'R-01-01' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-03' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-05' AND (\n\n      SELECT CASE WHEN total_ml_compute > 0 THEN (serving_compute * 100.0 / total_ml_compute) ELSE 0 END FROM model_serving_usage\n\n    ) >= 20 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'R-02-04' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    WHEN waf_id = 'R-03-01' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (autoscale_clusters * 100.0 / total_clusters) ELSE 0 END FROM autoscale_clusters\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'R-03-02' AND (\n\n      SELECT CASE WHEN total_warehouses > 0 THEN (autoscale_warehouses * 100.0 / total_warehouses) ELSE 0 END FROM autoscale_warehouses\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('R-01-01', 'Design for failure'),\n\n    ('R-01-03', 'Design for failure'),\n\n    ('R-01-05', 'Design for failure'),\n\n    ('R-01-06', 'Design for failure'),\n\n    ('R-02-04', 'Manage data quality'),\n\n    ('R-03-01', 'Design for autoscaling'),\n\n    ('R-03-02', 'Design for autoscaling')\n\n    AS waf(waf_id, principle)\n\n  )\n\n)\n\nSELECT\n\n  principle,\n\n  COUNT(*) AS total_controls,\n\n  SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) AS implemented_controls,\n\n  ROUND(100 * SUM(CASE WHEN implemented = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n\nFROM waf_status\n\nGROUP BY principle\n\nORDER BY principle;\n"
+  parameters: []
+  pillar: reliability
+  table_name: waf_principal_percentage_r
+  is_coming_soon: false
+- name: 60cfe928
+  display_name: waf_controls_r
+  sql: "WITH delta_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_tables,\n\n    SUM(CASE WHEN data_source_format IN ('DELTA', 'ICEBERG', 'DELTASHARING') THEN 1 ELSE 0 END) as delta_tables\n\n  FROM system.information_schema.tables\n\n  WHERE table_catalog != 'hive_metastore'\n\n    AND table_type IN ('MANAGED', 'EXTERNAL')\n\n),\n\ndlt_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute_usage,\n\n    SUM(CASE WHEN billing_origin_product = 'DLT' THEN 1 ELSE 0 END) as dlt_compute_usage\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nmodel_serving_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_ml_compute,\n\n    SUM(CASE WHEN billing_origin_product = 'MODEL_SERVING' THEN 1 ELSE 0 END) as serving_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND (usage_type LIKE '%COMPUTE%' OR billing_origin_product = 'MODEL_SERVING')\n\n),\n\nserverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nautoscale_clusters AS (\n\n  SELECT\n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN ifnull(max_autoscale_workers, 0) > 0 THEN 1 ELSE 0 END) as autoscale_clusters\n\n  FROM (\n\n    SELECT max_autoscale_workers, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nautoscale_warehouses AS (\n\n  SELECT\n\n    COUNT(*) as total_warehouses,\n\n    SUM(CASE WHEN max_clusters > min_clusters THEN 1 ELSE 0 END) as autoscale_warehouses\n\n  FROM (\n\n    SELECT warehouse_id, min_clusters, max_clusters, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.warehouses\n\n    WHERE change_time >= current_timestamp() - INTERVAL 30 DAYS\n\n      AND warehouse_type IN ('CLASSIC', 'PRO')\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    best_practice,\n\n    CASE \n\n    -- R-01-01: >80% of tables use Delta/ICEBERG format\n\n    WHEN waf_id = 'R-01-01' THEN (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END\n\n      FROM delta_usage\n\n    )\n\n    -- R-01-03: >30% of compute usage is DLT\n\n    WHEN waf_id = 'R-01-03' THEN (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END\n\n      FROM dlt_usage\n\n    )\n\n    -- R-01-05: >20% of ML compute is Model Serving\n\n    WHEN waf_id = 'R-01-05' THEN (\n\n      SELECT CASE WHEN total_ml_compute > 0 THEN (serving_compute * 100.0 / total_ml_compute) ELSE 0 END\n\n      FROM model_serving_usage\n\n    )\n\n    -- R-01-06: >50% of compute is serverless or managed\n\n    WHEN waf_id = 'R-01-06' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END\n\n      FROM serverless_usage\n\n    )\n\n    -- R-02-04: >30% of compute usage is DLT\n\n    WHEN waf_id = 'R-02-04' THEN (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END\n\n      FROM dlt_usage\n\n    )\n\n    -- R-03-01: >80% of clusters have auto-scaling\n\n    WHEN waf_id = 'R-03-01' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (autoscale_clusters * 100.0 / total_clusters) ELSE 0 END\n\n      FROM autoscale_clusters\n\n    )\n\n    -- R-03-02: >80% of warehouses have auto-scaling\n\n    WHEN waf_id = 'R-03-02' THEN (\n\n      SELECT CASE WHEN total_warehouses > 0 THEN (autoscale_warehouses * 100.0 / total_warehouses) ELSE 0 END\n\n      FROM autoscale_warehouses\n\n    )\n\n    ELSE 0\n\n    END AS current_percentage,\n\n    CASE \n\n    WHEN waf_id = 'R-01-01' AND (\n\n      SELECT CASE WHEN total_tables > 0 THEN (delta_tables * 100.0 / total_tables) ELSE 0 END FROM delta_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-03' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-05' AND (\n\n      SELECT CASE WHEN total_ml_compute > 0 THEN (serving_compute * 100.0 / total_ml_compute) ELSE 0 END FROM model_serving_usage\n\n    ) >= 20 THEN 'Yes'\n\n    WHEN waf_id = 'R-01-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'R-02-04' AND (\n\n      SELECT CASE WHEN total_compute_usage > 0 THEN (dlt_compute_usage * 100.0 / total_compute_usage) ELSE 0 END FROM dlt_usage\n\n    ) >= 30 THEN 'Yes'\n\n    WHEN waf_id = 'R-03-01' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (autoscale_clusters * 100.0 / total_clusters) ELSE 0 END FROM autoscale_clusters\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'R-03-02' AND (\n\n      SELECT CASE WHEN total_warehouses > 0 THEN (autoscale_warehouses * 100.0 / total_warehouses) ELSE 0 END FROM autoscale_warehouses\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('R-01-01', 'Design for failure', 'Use a data format that supports ACID transactions'),\n\n    ('R-01-03', 'Design for failure', 'Automatically rescue invalid or nonconforming data'),\n\n    ('R-01-05', 'Design for failure', 'Use a scalable and production-grade model serving infrastructure'),\n\n    ('R-01-06', 'Design for failure', 'Use managed services for your workloads'),\n\n    ('R-02-04', 'Manage data quality', 'Use constraints and data expectations'),\n\n    ('R-03-01', 'Design for autoscaling', 'Enable autoscaling for ETL workloads'),\n\n    ('R-03-02', 'Design for autoscaling', 'Use autoscaling for SQL Warehouses')\n\n    AS waf(waf_id, principle, best_practice)\n\n  )\n\n)\n\nSELECT\n\n  waf_id,\n\n  principle,\n\n  best_practice,\n\n  ROUND(current_percentage, 1) as score_percentage,\n\n  CASE \n\n    WHEN waf_id = 'R-01-01' THEN 80\n\n    WHEN waf_id = 'R-01-03' THEN 30\n\n    WHEN waf_id = 'R-01-05' THEN 20\n\n    WHEN waf_id = 'R-01-06' THEN 50\n\n    WHEN waf_id = 'R-02-04' THEN 30\n\n    WHEN waf_id = 'R-03-01' THEN 80\n\n    WHEN waf_id = 'R-03-02' THEN 80\n\n  END as threshold_percentage,\n\n  CASE \n\n    WHEN implemented = 'Yes' THEN 'Met'\n\n    ELSE 'Not Met'\n\n  END as threshold_met,\n\n  implemented\n\nFROM waf_status\n\nORDER BY principle, waf_id;\n"
+  parameters: []
+  pillar: reliability
+  table_name: waf_controls_r
+  is_coming_soon: false
+  is_control_query: true
+- name: 8486d58c
+  display_name: Count of tables with lineage
+  sql: "WITH lineage_tables AS (\n\n  SELECT DISTINCT\n\n    source_table_catalog,\n\n    source_table_schema,\n\n    source_table_name\n\n  FROM\n\n    (\n\n      select distinct\n\n        source_table_catalog,\n\n        source_table_schema,\n\n        source_table_name\n\n      from\n\n        system.access.table_lineage\n\n      union\n\n      select distinct\n\n        target_table_catalog,\n\n        target_table_catalog,\n\n        target_table_name\n\n      from\n\n        system.access.table_lineage\n\n    )\n\n  WHERE\n\n    source_table_catalog IS NOT NULL\n\n),\n\ntable_list AS (\n\n  SELECT\n\n    table_catalog,\n\n    table_schema,\n\n    table_name,\n\n    table_type\n\n  from\n\n    system.information_schema.tables\n\n -- where\n\n   -- table_type not in ('FOREIGN')\n\n)\n\nSELECT\n\n  table_list.table_type,\n\n  COUNT(*) AS total_tables,\n\n  SUM(\n\n    CASE\n\n      WHEN lineage_tables.source_table_catalog IS NULL THEN 0\n\n      ELSE 1\n\n    END\n\n  ) AS lineage_tables\n\nFROM\n\n  table_list\n\n    LEFT JOIN lineage_tables\n\n      ON table_list.table_catalog = lineage_tables.source_table_catalog\n\n      AND table_list.table_schema = lineage_tables.source_table_schema\n\n      AND table_list.table_name = lineage_tables.source_table_name\n\nGROUP BY\n\n  table_list.table_type\n"
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_tables_with_lineage
+  is_coming_soon: false
+- name: 16facbed
+  display_name: Count of table formats with table types
+  sql: "SELECT\n\n  COUNT(*) AS count_of_tables,\n\n  table_type,\n\n  data_source_format\n\nFROM\n\n  system.information_schema.tables\n\nGROUP BY\n\n  table_type,\n\n  data_source_format"
+  parameters: []
+  pillar: governance
+  table_name: waf_count_of_table_formats_with_table_types
+  is_coming_soon: false
+- name: f7dd8a02
+  display_name: waf_DG-03-02_lakehouse_monitoring
+  sql: "SELECT COUNT(*) as count_tables FROM system.information_schema.tables \n\nWHERE table_name LIKE '%_drift_metrics' OR table_name LIKE '%_profile_metrics'"
+  parameters: []
+  pillar: governance
+  table_name: waf_dg_03_02_lakehouse_monitoring
+  is_coming_soon: false
+- name: 1ab4ec65
+  display_name: waf_DG-02-03_marketplace_listings
+  sql: "SELECT\n\n  \n\n  count(*) AS cnt\n\nFROM system.access.audit\n\nWHERE service_name = 'unityCatalog'\n\n  AND (\n\n    -- Provider-side access events\n\n    action_name IN ('deltaSharingQueriedTable','deltaSharingQueriedTableChanges',\n\n                    'generateTemporaryTableCredential','generateTemporaryVolumeCredential')\n\n    OR action_name LIKE 'deltaSharing%'  -- future provider events\n\n  )\n\n  AND event_date >= date_add(current_date(), -30)\n\n  AND coalesce(\n\n        request_params['metastore_id'],\n\n        get_json_object(response.result, '$.metastoreId')\n\n      ) = element_at(split(current_metastore(), ':'), 3)  -- current metastore UUID\n\nORDER BY cnt DESC;"
+  parameters: []
+  pillar: governance
+  table_name: waf_dg_02_03_marketplace_listings
+  is_coming_soon: false
+- name: 5b3944b6
+  display_name: waf_DG-02-02_audit_events
+  sql: "SELECT\n\n  count(*) as count_of_events,\n\n  audit_level,\n\n  workspace_id\n\nfrom\n\n  system.access.audit\n\nwhere\n\n  event_date between current_date() - 30 and current_date()\n\ngroup by\n\n  audit_level,\n\n  workspace_id"
+  parameters: []
+  pillar: governance
+  table_name: waf_dg_02_02_audit_events
+  is_coming_soon: false
+- name: 6b0c95c6
+  display_name: waf_DG-02-01_rbac_col_mask
+  sql: "SELECT\n\n  count(distinct table_catalog, table_schema, table_name) AS count,\n\n  'table_with_filters' AS object_type\n\nfrom\n\n  system.information_schema.row_filters\n\nUNION ALL\n\nSELECT\n\n  count(distinct table_catalog, table_schema, table_name),\n\n  'table_with_masks'\n\nfrom\n\n  system.information_schema.column_masks\n\nUNION ALL\n\nSELECT\n\n  count(*),\n\n  'column_masks'\n\nfrom\n\n  system.information_schema.column_masks\n\nUNION ALL\n\nSELECT\n\n  count(*),\n\n  'row_filters'\n\nfrom\n\n  system.information_schema.row_filters"
+  parameters: []
+  pillar: governance
+  table_name: waf_dg_02_01_rbac_col_mask
+  is_coming_soon: false
+- name: e097b5c1
+  display_name: waf_DG-01-04_comments
+  sql: "SELECT *, count_comment/overall_count AS perc_comment\n\nFROM (\n\nselect 'Tables' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END) AS count_comment, COUNT(*) AS overall_count FROM system.information_schema.tables \n\nUNION ALL\n\n--select 'Columns' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.columns \n\n--UNION ALL\n\nselect 'Volumes' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.volumes \n\nUNION ALL\n\nselect 'Catalogs' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.catalogs \n\nUNION ALL\n\nselect 'Connections' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.connections \n\nUNION ALL\n\nselect 'Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.credentials \n\nUNION ALL\n\nselect 'External Locations' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.external_locations \n\nUNION ALL\n\nselect 'Providers' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.providers \n\nUNION ALL\n\nselect 'Recipients' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.recipients \n\nUNION ALL\n\nselect 'Routines' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.routines \n\nUNION ALL\n\nselect 'Schemas' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.schemata \n\nUNION ALL\n\nselect 'Shares' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.shares \n\nUNION ALL\n\nselect 'Storage Credentials' AS  object_type, SUM(CASE WHEN comment is NOT NULL THEN 1 ELSE 0 END), count(*) FROM system.information_schema.storage_credentials \n\n)"
+  parameters: []
+  pillar: governance
+  table_name: waf_dg_01_04_comments
+  is_coming_soon: false
+- name: '27265888'
+  display_name: waf_R-03-02_auto_scaling_SQL
+  sql: "SELECT\n\n    warehouse_id,\n\n    warehouse_name,\n\n    warehouse_type,\n\n    warehouse_size,\n\n    min_clusters,\n\n    max_clusters,\n\n    auto_stop_minutes\n\nFROM\n\n    system.compute.warehouses\n\nQUALIFY\n\n    ROW_NUMBER() OVER (PARTITION BY warehouse_id ORDER BY change_time DESC) = 1\n\n    and delete_time is null\n\n    and min_clusters = max_clusters;"
+  parameters: []
+  pillar: reliability
+  table_name: waf_r_03_02_auto_scaling_sql
+  is_coming_soon: false
+- name: 6e7d4785
+  display_name: waf_PE-01-_serverless_compute
+  sql: "WITH CTE AS (\n\nSELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END AS billing_origin_product\n\n, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n\nFROM system.billing.usage \n\nWHERE usage_date BETWEEN current_date()-:rollback_days AND current_date()\n\nAND usage_unit = 'DBU'\n\nAND billing_origin_product IN ('JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n\nGROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' ELSE billing_origin_product END, CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END \n\n)\n\nSELECT \n\n    billing_origin_product\n\n  , SUM(runs) AS runs_total\n\n  , SUM(dbu_usage) AS dbu_usage_total\n\n  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END) AS sum_serverless_run\n\n  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END) AS sum_serverless_dbu\n\n  , SUM(CASE WHEN is_serverless = false THEN runs ELSE 0 END) AS sum_non_serverless_run\n\n  , SUM(CASE WHEN is_serverless = false THEN dbu_usage ELSE 0 END) AS sum_non_serverless_dbu\n\n  , SUM(CASE WHEN is_serverless = true THEN runs ELSE 0 END)/SUM(runs) AS pct_serverless_runs\n\n  , SUM(CASE WHEN is_serverless = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_serverless_dbu\n\nFROM CTE\n\nGROUP BY\n\nbilling_origin_product \n\nORDER BY runs_total DESC;"
+  parameters:
+  - rollback_days
+  pillar: null
+  table_name: waf_pe_01_serverless_compute
+  is_coming_soon: false
+- name: e8a98fa1
+  display_name: waf_PE-02-_cluster_metrics
+  sql: "--waf_PE-02-*_cluster_metrics\n\nWITH usage AS (    \n\n  SELECT usage_metadata.cluster_id AS cluster_id, account_id, workspace_id\n\n  , count(*) as runs, SUM(usage_quantity) AS dbu_usage FROM system.billing.usage \n\n    WHERE \n\n     usage_date BETWEEN current_date()-30 AND current_date()\n\n    AND usage_metadata.cluster_id IS NOT NULL\n\n    GROUP BY account_id, workspace_id, usage_metadata.cluster_id\n\n),\n\ncompute_met AS (\n\n  SELECT * FROM \n\n    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n\n        , account_id, workspace_id, c.cluster_id, c.cluster_name, c.worker_node_type, worker_count, max_autoscale_workers, min_autoscale_workers\n\n    from system.compute.clusters c)\n\n  WHERE rn = 1\n\n)\n\nSELECT *, row_number() over( order by dbu_usage desc) AS rank\n\nFROM(\n\nSELECT SUM(u.dbu_usage) AS dbu_usage, SUM(u.runs) AS runs, c.cluster_id, c.cluster_name, c.worker_node_type\n\n,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END AS is_multi_worker\n\n, ifnull(worker_count,ifnull(max_autoscale_workers,0)) AS max_worker_count\n\n, CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling\n\n FROM\n\nusage u\n\nINNER JOIN\n\ncompute_met c\n\nON u.cluster_id = c.cluster_id\n\nAND u.account_id = c.account_id\n\nAND u.workspace_id = c.workspace_id\n\nGROUP BY\n\nc.cluster_id, c.cluster_name, c.worker_node_type\n\n,CASE WHEN ifnull(worker_count,ifnull(max_autoscale_workers,0)) > 1 THEN 'Multi-Node' ELSE 'Single-Node' END\n\n, ifnull(worker_count,ifnull(max_autoscale_workers,0)) \n\n, CASE WHEN ifnull(c.min_autoscale_workers,0) = ifnull(c.max_autoscale_workers,0) THEN 0 ELSE 1 END \n\n)\n"
+  parameters: []
+  pillar: null
+  table_name: waf_pe_02_cluster_metrics
+  is_coming_soon: false
+- name: caef943a
+  display_name: waf_PE-02-05_python_udfs
+  sql: "--waf_PE-02-05_python_udfs\n\nSELECT COUNT(*) as count, routine_catalog as catalog_name, routine_schema AS schema_name, concat(routine_catalog,'.',routine_schema) AS full_schema\n\nFROM system.information_schema.routines WHERE external_language = 'Python' \n\nGROUP BY routine_catalog, routine_schema \n\nORDER BY count DESC;"
+  parameters: []
+  pillar: null
+  table_name: waf_pe_02_05_python_udfs
+  is_coming_soon: false
+- name: 3eb728b7
+  display_name: waf_PE-02-06_photon_workloads
+  sql: "--waf_PE-02-06_photon_workloads\n\nWITH CTE AS (\n\nSELECT COUNT(*) AS runs,SUM(usage_quantity) AS dbu_usage, billing_origin_product\n\n, CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n\nFROM system.billing.usage \n\nWHERE usage_date BETWEEN current_date()-30 AND current_date()\n\nAND billing_origin_product  IN ('JOBS','LAKEFLOW_CONNECT','VECTOR_SEARCH','DATABASE','DLT','ALL_PURPOSE','ONLINE_TABLES','INTERACTIVE')\n\nAND usage_unit = 'DBU'\n\nGROUP BY billing_origin_product, CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END \n\n)\n\nSELECT \n\n    billing_origin_product\n\n  , SUM(runs) AS runs_total\n\n  , SUM(dbu_usage) AS dbu_usage_total\n\n  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END) AS sum_photon_run\n\n  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END) AS sum_photon_dbu\n\n  , SUM(CASE WHEN is_photon = false THEN runs ELSE 0 END) AS sum_non_photon_run\n\n  , SUM(CASE WHEN is_photon = false THEN dbu_usage ELSE 0 END) AS sum_non_photon_dbu\n\n  , SUM(CASE WHEN is_photon = true THEN runs ELSE 0 END)/SUM(runs) AS pct_photon_runs\n\n  , SUM(CASE WHEN is_photon = true THEN dbu_usage ELSE 0 END)/SUM(dbu_usage) AS pct_photon_dbu\n\nFROM CTE\n\nGROUP BY\n\nbilling_origin_product \n\nORDER BY runs_total DESC;\n"
+  parameters: []
+  pillar: null
+  table_name: waf_pe_02_06_photon_workloads
+  is_coming_soon: false
+- name: 95b08392
+  display_name: waf_R-03-01_auto_scaling_ETL
+  sql: "select workspace_id, cluster_id, cluster_name, owned_by, worker_count, create_time  \n\nfrom system.compute.clusters \n\nwhere cluster_source = 'JOB'\n\nand create_time >= current_timestamp() - interval 7 days\n\nand max_autoscale_workers is null"
+  parameters: []
+  pillar: reliability
+  table_name: waf_r_03_01_auto_scaling_etl
+  is_coming_soon: false
+- name: db7bc0c3
+  display_name: waf_R-01-04_auto_termination
+  sql: "WITH all_purpose_cluster AS (\n\n  SELECT\n\n    *,\n\n    ROW_NUMBER() OVER(PARTITION BY workspace_id, cluster_id ORDER BY change_time DESC) as rn\n\n  FROM system.compute.clusters\n\n  WHERE cluster_source=\"UI\" OR cluster_source=\"API\"\n\n  QUALIFY rn=1 AND delete_time is null\n\n)\n\n\n\n\n\nSELECT   \n\n  workspace_id,\n\n  cluster_id,\n\n  cluster_name,\n\n  owned_by\n\nFROM all_purpose_cluster WHERE auto_termination_minutes IS NULL"
+  parameters: []
+  pillar: reliability
+  table_name: waf_r_01_04_auto_termination
+  is_coming_soon: false
+- name: ea93f04e
+  display_name: waf_R-01-05_model_serving
+  sql: 'select usage_metadata.endpoint_name endpoint_name, billing_origin_product, sum(usage_quantity) usage_dbus from system.billing.usage
+
+
+    WHERE sku_name LIKE ''%SERVERLESS_REAL_TIME_INFERENCE%''
+
+
+    AND usage_date >= current_timestamp() - interval 7 days
+
+
+    AND usage_metadata.endpoint_name is not null
+
+
+    group by endpoint_name, billing_origin_product
+
+
+    order by usage_dbus desc'
+  parameters: []
+  pillar: reliability
+  table_name: waf_r_01_05_model_serving
+  is_coming_soon: false
+- name: waf_co_01_02_ba132837
+  display_name: 'CO-01-02: Job vs All-Purpose Cluster Usage'
+  sql: "SELECT\n  CASE\n    WHEN sku_name LIKE '%JOBS%' OR sku_name LIKE '%JOB%' THEN 'Job Clusters (Cost Effective)'\n    WHEN sku_name LIKE '%ALL_PURPOSE%' OR sku_name LIKE '%ALL PURPOSE%' THEN 'All-Purpose (Expensive)'\n    ELSE 'Other'\n  END AS cluster_category,\n  COUNT(*) AS usage_count,\n  ROUND(SUM(usage_quantity), 2) AS total_dbus\nFROM system.billing.usage\nWHERE usage_date >= current_date() - INTERVAL 30 DAYS\n  AND usage_type LIKE '%COMPUTE%'\nGROUP BY cluster_category\nORDER BY total_dbus DESC"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_02_job_vs_all_purpose_cluster_usage
+  is_coming_soon: false
+- name: waf_co_01_06_f6a7b684
+  display_name: 'CO-01-06: Serverless Cost Efficiency'
+  sql: "SELECT\n  CASE\n    WHEN sku_name LIKE '%SERVERLESS%' THEN 'Serverless'\n    ELSE 'Traditional'\n  END AS compute_type,\n  ROUND(SUM(usage_quantity), 2) AS total_dbus,\n  ROUND(AVG(usage_quantity), 4) AS avg_dbus_per_workload\nFROM system.billing.usage\nWHERE usage_date >= current_date() - INTERVAL 30 DAYS\n  AND usage_type LIKE '%COMPUTE%'\nGROUP BY compute_type"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_06_serverless_cost_efficiency
+  is_coming_soon: false
+- name: waf_co_01_09_4d154e61
+  display_name: 'CO-01-09: Photon vs Standard Performance Cost'
+  sql: "SELECT\n  CASE\n    WHEN sku_name LIKE '%PHOTON%' THEN 'Photon (Accelerated)'\n    ELSE 'Standard Engine'\n  END AS engine_type,\n  COUNT(*) AS workload_count,\n  ROUND(SUM(usage_quantity), 2) AS total_dbus\nFROM system.billing.usage\nWHERE usage_date >= CURRENT_DATE - INTERVAL '7' DAY\n  AND usage_type LIKE '%COMPUTE%'\nGROUP BY engine_type"
+  parameters: []
+  pillar: null
+  table_name: waf_co_01_09_photon_vs_standard_performance_cost
+  is_coming_soon: false
+- name: waf_co_02_01_e3330123
+  display_name: 'CO-02-01: Auto-Termination Savings'
+  sql: "SELECT\n  CASE\n    WHEN auto_termination_minutes > 0 THEN 'Auto-Terminate Enabled'\n    ELSE 'No Auto-Terminate'\n  END AS termination_status,\n  COUNT(DISTINCT cluster_id) AS cluster_count,\n  AVG(DATEDIFF(MINUTE, create_time, COALESCE(delete_time, CURRENT_TIMESTAMP()))) AS avg_runtime_minutes,\n  ROUND(\n    SUM(CASE WHEN delete_time IS NULL AND DATEDIFF(MINUTE, create_time, CURRENT_TIMESTAMP()) > 60 THEN 1 ELSE 0 END)\n    * 100.0 / COUNT(*), 2\n  ) AS idle_cluster_percent\nFROM system.compute.clusters\nWHERE create_time >= CURRENT_TIMESTAMP - INTERVAL '7' DAY\nGROUP BY termination_status"
+  parameters: []
+  pillar: null
+  table_name: waf_co_02_01_auto_termination_savings
+  is_coming_soon: false
+- name: c3adf755
+  display_name: waf_controls_p
+  sql: "WITH serverless_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN usage_type LIKE '%SERVERLESS%' OR sku_name LIKE '%SERVERLESS%' THEN 1 ELSE 0 END) as serverless_count\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n),\n\nphoton_usage AS (\n\n  SELECT \n\n    COUNT(*) as total_compute,\n\n    SUM(CASE WHEN product_features.is_photon = true THEN 1 ELSE 0 END) as photon_compute\n\n  FROM system.billing.usage\n\n  WHERE usage_date >= current_date() - INTERVAL 30 DAYS\n\n    AND usage_type LIKE '%COMPUTE%'\n\n    AND billing_origin_product IN ('JOBS', 'INTERACTIVE', 'PIPELINES', 'ALL_PURPOSE')\n\n),\n\ncluster_workers AS (\n\n  SELECT \n\n    COUNT(*) as total_clusters,\n\n    SUM(CASE WHEN worker_count > 1 THEN 1 ELSE 0 END) as clusters_multi_worker,\n\n    SUM(CASE WHEN worker_count > 3 THEN 1 ELSE 0 END) as clusters_large\n\n  FROM (\n\n    SELECT worker_count, delete_time,\n\n           ROW_NUMBER() OVER (PARTITION BY cluster_id ORDER BY change_time DESC) AS rn\n\n    FROM system.compute.clusters\n\n    WHERE change_time >= current_date() - INTERVAL 30 DAYS\n\n  ) WHERE rn = 1 AND delete_time IS NULL\n\n),\n\nwaf_status AS (\n\n  SELECT\n\n    waf_id,\n\n    principle,\n\n    best_practice,\n\n    CASE \n\n    WHEN waf_id = 'PE-01-01' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    )\n\n    WHEN waf_id = 'PE-01-02' THEN (\n\n      CASE WHEN EXISTS (SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1) THEN 100 ELSE 0 END\n\n    )\n\n    WHEN waf_id = 'PE-02-02' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    )\n\n    WHEN waf_id = 'PE-02-04' THEN (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    )\n\n    WHEN waf_id = 'PE-02-06' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    )\n\n    WHEN waf_id = 'PE-02-07' THEN (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    )\n\n    ELSE 0\n\n    END AS current_percentage,\n\n    CASE \n\n    WHEN waf_id = 'PE-01-01' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-01-02' AND EXISTS (\n\n      SELECT 1 FROM system.billing.usage WHERE sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%' LIMIT 1\n\n    ) THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-02' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_multi_worker * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-04' AND (\n\n      SELECT CASE WHEN total_clusters > 0 THEN (clusters_large * 100.0 / total_clusters) ELSE 0 END FROM cluster_workers\n\n    ) >= 50 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-06' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (photon_compute * 100.0 / total_compute) ELSE 0 END FROM photon_usage\n\n    ) >= 80 THEN 'Yes'\n\n    WHEN waf_id = 'PE-02-07' AND (\n\n      SELECT CASE WHEN total_compute > 0 THEN (serverless_count * 100.0 / total_compute) ELSE 0 END FROM serverless_usage\n\n    ) >= 80 THEN 'Yes'\n\n    ELSE 'No'\n\n    END AS implemented\n\n  FROM (\n\n    SELECT * FROM VALUES\n\n    ('PE-01-01', 'Utilize serverless capabilities', 'Use serverless architecture'),\n\n    ('PE-01-02', 'Utilize serverless capabilities', 'Use an enterprise grade model serving service'),\n\n    ('PE-02-02', 'Design workloads for performance', 'Use parallel computation where it is beneficial'),\n\n    ('PE-02-04', 'Design workloads for performance', 'Prefer larger clusters'),\n\n    ('PE-02-06', 'Design workloads for performance', 'Use native platform engines'),\n\n    ('PE-02-07', 'Design workloads for performance', 'Use serverless compute for appropriate workloads')\n\n    AS waf(waf_id, principle, best_practice)\n\n  )\n\n)\n\nSELECT\n\n  waf_id,\n\n  principle,\n\n  best_practice,\n\n  ROUND(current_percentage, 1) as score_percentage,\n\n  CASE \n\n  WHEN waf_id = 'PE-01-01' THEN 50\n\n  WHEN waf_id = 'PE-01-02' THEN 100\n\n  WHEN waf_id = 'PE-02-02' THEN 80\n\n  WHEN waf_id = 'PE-02-04' THEN 50\n\n  WHEN waf_id = 'PE-02-06' THEN 80\n\n  WHEN waf_id = 'PE-02-07' THEN 80\n\n  END as threshold_percentage,\n\n  CASE \n\n  WHEN implemented = 'Yes' THEN 'Met'\n\n  ELSE 'Not Met'\n\n  END as threshold_met,\n\n  implemented\n\nFROM waf_status\n\nORDER BY principle, waf_id;\n"
+  parameters: []
+  pillar: performance_efficiency
+  table_name: waf_controls_p
+  is_coming_soon: false
+  is_control_query: true
+- name: 1327fa8d
+  display_name: PE-01_01_PE_02_dbu_usage
+  sql: "WITH PE_01 AS (\n\nSELECT \n\n    billing_origin_product\n\n  , SUM(runs) AS runs_total\n\n  , SUM(dbu_usage) AS dbu_usage_total\n\n  , CASE WHEN is_serverless = true THEN 'SERVERLESS' ELSE 'CLASSIC' END AS classic_or_serverless\n\n  , CASE WHEN is_photon = true THEN 'PHOTON' ELSE 'NON-PHOTON' END AS photon_or_non_photon\n\n  , CASE WHEN performance_target = 'COST_OPTIMIZED' THEN 'STANDARD' ELSE performance_target END AS performance_target\n\n  , CASE WHEN product_tier is null and classic_or_serverless = 'SERVERLESS' THEN 'SERVERLESS' ELSE product_tier END AS product_tier\n\n  , unique_id\n\n  , compute_id\n\n  , instance_pool_id\n\n  , workspace_id\n\n  , CASE WHEN instance_pool_id is null THEN 'NO' ELSE 'YES' END AS instance_pool_present\n\n  , 'PE_01' AS waf_id\n\n  , 'Detailed' AS dataset_type\n\n  \n\nFROM \n\n(SELECT \n\n   COUNT(*) AS runs\n\n  ,SUM(usage_quantity) AS dbu_usage, \n\n   CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n\n        WHEN billing_origin_product = 'DATABASE' THEN 'LAKEBASE' \n\n        WHEN billing_origin_product = 'DLT' THEN 'SDP'\n\n        ELSE billing_origin_product END AS billing_origin_product\n\n  ,CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END AS is_serverless\n\n  ,CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END AS is_photon\n\n  ,CASE WHEN product_features.performance_target IS NULL THEN 'UNDEFINED' ELSE product_features.performance_target END AS performance_target\n\n  ,coalesce(product_features.jobs_tier,product_features.sql_tier,product_features.dlt_tier) AS product_tier\n\n  ,coalesce(usage_metadata.job_id,usage_metadata.dlt_pipeline_id) AS unique_id\n\n  ,coalesce(usage_metadata.cluster_id,usage_metadata.warehouse_id) AS compute_id\n\n  ,usage_metadata.instance_pool_id AS instance_pool_id\n\n  ,workspace_id\n\n FROM system.billing.usage \n\n WHERE usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n\n AND --array_contains(:workspace_id,workspace_id) AND \n\n usage_unit = 'DBU'\n\n AND billing_origin_product IN ('LAKEFLOW_CONNECT','DATA_QUALITY_MONITORING','PREDICTIVE_OPTIMIZATION','DATABASE','APPS','VECTOR_SEARCH','JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n\n GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n\n               WHEN billing_origin_product = 'DATABASE' THEN 'LAKEBASE'  \n\n              WHEN billing_origin_product = 'DLT' THEN 'SDP'\n\n          ELSE billing_origin_product END\n\n          , workspace_id\n\n          , CASE WHEN sku_name LIKE '%SERVERLESS%' OR product_features.is_serverless = true THEN true ELSE false END\n\n          ,CASE WHEN sku_name LIKE '%PHOTON%' OR product_features.is_photon = true THEN true ELSE false END\n\n          ,CASE WHEN product_features.performance_target IS NULL THEN 'UNDEFINED' ELSE product_features.performance_target END\n\n          ,coalesce(product_features.jobs_tier,product_features.sql_tier,product_features.dlt_tier)\n\n          ,coalesce(usage_metadata.job_id,usage_metadata.dlt_pipeline_id)\n\n          ,coalesce(usage_metadata.cluster_id,usage_metadata.warehouse_id)\n\n          ,usage_metadata.instance_pool_id \n\n)CTE\n\nGROUP BY\n\nbilling_origin_product,workspace_id,is_serverless,is_photon,performance_target,product_tier,unique_id,compute_id,instance_pool_id\n\n),\n\ncompute_met AS (\n\n  SELECT * FROM \n\n    (select  row_number() over(partition by account_id, workspace_id, cluster_id order by change_time desc) AS rn\n\n        , account_id\n\n        , workspace_id\n\n        , c.cluster_id\n\n        , c.cluster_name\n\n        , c.worker_node_type\n\n        , worker_count\n\n        , max_autoscale_workers\n\n        , min_autoscale_workers\n\n        , CASE WHEN auto_termination_minutes IS NULL THEN 0 ELSE 1 END AS is_auto_terminated\n\n        , cluster_source\n\n        \n\n    from system.compute.clusters c \n\n    WHERE --array_contains(:workspace_id,workspace_id)\n\n     change_date <= current_date()) --TBD to check this filter\n\n    WHERE rn = 1\n\n)\n\nSELECT\n\n  waf_id,\n\n  dataset_type,\n\n  billing_origin_product,\n\n  CASE WHEN ifnull(CM.min_autoscale_workers,0) = ifnull(CM.max_autoscale_workers,0) THEN 0 ELSE 1 END AS is_autoscaling,\n\n  worker_count,\n\n  usage.workspace_id,\n\n  runs_total,\n\n  dbu_usage_total, \n\n  classic_or_serverless,\n\n  photon_or_non_photon,\n\n  performance_target,\n\n  product_tier,\n\n  unique_id,\n\n  compute_id,\n\n  cluster_source,\n\n  instance_pool_id,\n\n  instance_pool_present\n\nFROM PE_01 usage\n\nLEFT JOIN\n\ncompute_met CM\n\nON CM.cluster_id = usage.compute_id\n\nAND CM.workspace_id = usage.workspace_id\n\nORDER BY dbu_usage_total DESC\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_pe_01_01_pe_02_dbu_usage
+  is_coming_soon: false
+- name: 6576f362
+  display_name: PE-01-02_R-01-05_serving_usage
+  sql: "SELECT \n\n    AVG(input_token_count) AS avg_input_token\n\n  , AVG(output_token_count) AS avg_output_token\n\n  , COUNT(1) AS number_requests\n\n  , eu.workspace_id\n\n  , se.entity_type\n\n  , se.entity_name\n\n  , se.custom_model_config.min_concurrency AS custom_model_min_concurrency\n\n  , se.custom_model_config.max_concurrency AS custom_model_max_concurrency\n\n  , se.custom_model_config.compute_type AS custom_model_compute_type\n\n  , CASE WHEN se.entity_type = 'CUSTOM_MODEL' THEN se.endpoint_name ELSE '' END AS endpoint_name \n\n  , SUM(bu.dbu) AS dbu\n\n FROM system.serving.endpoint_usage eu\n\nINNER JOIN system.serving.served_entities se\n\nON eu.served_entity_id = se.served_entity_id\n\nLEFT JOIN \n\n(SELECT \n\n    SUM(usage_quantity) AS dbu\n\n  ,  workspace_id\n\n  , usage_metadata.endpoint_id As endpoint_id\n\nFROM system.billing.usage\n\nWHERE billing_origin_product = 'MODEL_SERVING'\n\nAND usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n\n--AND array_contains(:workspace_id,workspace_id)\n\nAND usage_metadata.endpoint_id IS NOT NULL \n\nAND usage_unit = 'DBU'\n\nGROUP BY\n\n    workspace_id\n\n  , usage_metadata.endpoint_id\n\n)bu\n\nON    eu.workspace_id = bu.workspace_id \n\n  AND se.endpoint_id = bu.endpoint_id\n\nWHERE request_time BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n\n--AND array_contains(:workspace_id,eu.workspace_id)\n\nAND eu.status_code = 200\n\nAND entity_type IN ('FOUNDATION_MODEL','CUSTOM_MODEL')\n\nGROUP BY \n\n    eu.workspace_id\n\n  , se.entity_type\n\n  , se.entity_name\n\n  , se.custom_model_config.min_concurrency\n\n  , se.custom_model_config.max_concurrency\n\n  , se.custom_model_config.compute_type\n\n  , CASE WHEN se.entity_type = 'CUSTOM_MODEL' THEN se.endpoint_name ELSE '' END\n\n\n\nORDER BY dbu DESC\n\n\n"
+  parameters:
+  - workspace_id
+  pillar: performance_efficiency
+  table_name: waf_pe_01_02_r_01_05_serving_usage
+  is_coming_soon: false
+- name: c3a6d1af
+  display_name: PE_02_04_query_history
+  sql: "SELECT\n\n  compute.warehouse_id AS warehouse_id,\n\n  workspace_id,\n\n  account_id,\n\n  COUNT(*) AS total_queries,\n\n  MAX(COALESCE(waiting_at_capacity_duration_ms, 0) ) / 1000 AS max_queue_time_seconds,\n\n  AVG(COALESCE(waiting_at_capacity_duration_ms, 0) ) / 1000 AS avg_queue_time_seconds\n\nFROM system.query.history\n\nWHERE compute.type = 'WAREHOUSE'\n\nAND end_time BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n\n--AND array_contains(:workspace_id,workspace_id)\n\n\n\nGROUP BY \n\n   compute.warehouse_id\n\n  ,workspace_id\n\n  ,account_id\n\nORDER BY avg_queue_time_seconds DESC"
+  parameters:
+  - workspace_id
+  pillar: performance_efficiency
+  table_name: waf_pe_02_04_query_history
+  is_coming_soon: false
+- name: c4255501
+  display_name: Count of table formats with table types
+  sql: "SELECT\n\n  COUNT(*) AS count_of_tables,\n\n  table_type,\n\n  data_source_format,\n\n  CASE WHEN data_source_format NOT IN ('DELTA','ICEBERG') THEN 'OTHERS' ELSE data_source_format END AS data_lake_format\n\n\n\nFROM\n\n  system.information_schema.tables\n\nGROUP BY\n\n  table_type,\n\n  data_source_format"
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_count_of_table_formats_with_table_types
+  is_coming_soon: false
+- name: d33a3398
+  display_name: Count of table formats with table types
+  sql: "SELECT\n\n  COUNT(*) AS count_of_tables,\n\n  table_type,\n\n  data_source_format,\n\n  CASE WHEN data_source_format NOT IN ('DELTA','ICEBERG') THEN 'OTHERS' ELSE data_source_format END AS data_lake_format\n\n\n\nFROM\n\n  system.information_schema.tables\n\nGROUP BY\n\n  table_type,\n\n  data_source_format"
+  parameters: []
+  pillar: null
+  table_name: waf_count_of_table_formats_with_table_types
+  is_coming_soon: false
+- name: 1954cef2
+  display_name: waf_CO-01-09_jobs_photon
+  sql: "select ju.usage_metadata.cluster_id,\n\nc.cluster_name,\n\nju.product_features.is_photon, \n\nsum(ju.usage_quantity) as dbu \n\nfrom system.billing.usage ju \n\njoin system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n\n-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n\nwhere ju.usage_date BETWEEN current_date() - interval 90 days AND current_date()\n\n--  AND array_contains(:workspace_id,ju.workspace_id)\n\nand ju.billing_origin_product in (\"JOBS\")\n\nand ju.product_features.is_serverless = false\n\ngroup by 1,2,3\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_01_09_jobs_photon
+  is_coming_soon: false
+- name: cd07a984
+  display_name: waf_CO-01-09_jobs_serverless_performance
+  sql: select 'Coming soon...' as message
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_01_09_jobs_serverless_performance
+  is_coming_soon: true
+- name: fbc6ed5e
+  display_name: waf_CO-02-01_AP_auto_scaling
+  sql: "select workspace_id,cluster_id,cluster_name\n\n, max_autoscale_workers\n\n,case when max_autoscale_workers is null then \"Autoscaling Disabled\" else \"Autoscaling Enabled\" end as autoscaling_enabled\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\n--  AND array_contains(:workspace_id,workspace_id)\n\nand cluster_source in (\"API\", \"UI\")"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_01_ap_auto_scaling
+  is_coming_soon: false
+- name: 4858cc4e
+  display_name: waf_CO-02-01_warehouse_auto_scaling
+  sql: "SELECT\n\n    warehouse_id,\n\n    warehouse_name,\n\n    warehouse_type,\n\n    warehouse_size,\n\n    min_clusters,\n\n    max_clusters,\n\n    case when max_clusters > min_clusters then 'Yes' else 'No' end as autoscaling_enabled\n\nFROM\n\n    system.compute.warehouses\n\nQUALIFY\n\n    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n\n    and delete_time is null\n\n    -- AND array_contains(:workspace_id,workspace_id)"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_01_warehouse_auto_scaling
+  is_coming_soon: false
+- name: 809dc7c9
+  display_name: waf_CO-02-01_jobs_auto_scaling
+  sql: "select workspace_id,cluster_id,cluster_name\n\n, max_autoscale_workers\n\n,case when max_autoscale_workers is null then \"No\" else \"Yes\" end as autoscaling_enabled\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\nand cluster_source in (\"JOB\")\n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_01_jobs_auto_scaling
+  is_coming_soon: false
+- name: fd056256
+  display_name: waf_CO-02-01_model_serving_auto_scaling
+  sql: select 'Coming soon...' as message
+  parameters: []
+  pillar: cost_optimisation
+  table_name: waf_co_02_01_model_serving_auto_scaling
+  is_coming_soon: true
+- name: 07c3451a
+  display_name: waf_CO-02-02_warehouse_auto_termination 1
+  sql: "SELECT\n\n    warehouse_id,\n\n    warehouse_name,\n\n    warehouse_type,\n\n    warehouse_size,\n\n    case when auto_stop_minutes is not null then 'Yes' else 'No' end as autotermination_enabled\n\nFROM\n\n    system.compute.warehouses\n\nQUALIFY\n\n    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n\n    and delete_time is null\n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_02_warehouse_auto_termination_1
+  is_coming_soon: false
+- name: 98c1b821
+  display_name: waf_CO-02-03_AP_policy
+  sql: "select workspace_id,cluster_id,cluster_name\n\n,policy_id\n\n,case when policy_id is null then \"No\" else \"Yes\" end as cluster_policy\n\nfrom system.compute.clusters\n\nqualify\n\nROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n\nand delete_time is null \n\nand cluster_source in (\"API\", \"UI\")\n\n--  AND array_contains(:workspace_id,workspace_id)\n"
+  parameters:
+  - workspace_id
+  pillar: cost_optimisation
+  table_name: waf_co_02_03_ap_policy
+  is_coming_soon: false
