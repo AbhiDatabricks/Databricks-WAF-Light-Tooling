@@ -75,36 +75,37 @@ The WAF Assessment Tool can be installed in your Databricks workspace with a sin
 4. **Deploys the Streamlit App** - Creates a Databricks App with interactive WAF Guide sidebar
 5. **Updates Configuration** - Automatically configures dashboard IDs and workspace settings
 
+#### Permissions Required by the Installer
+
+Before running `install.ipynb`, ensure the person running it has:
+
+| Permission | Why |
+|---|---|
+| **Workspace Admin** or **Apps Admin** | Required to deploy Databricks Apps |
+| **CREATE CATALOG** on the metastore | Only needed if the target catalog does not exist yet |
+| **CREATE SCHEMA** on the target catalog | To create the `waf_cache` schema |
+| **SELECT on `system.*`** | WAF queries read `system.billing`, `system.compute`, `system.access`, etc. |
+| **An existing SQL Warehouse** | Installer attaches it to publish the dashboard |
+| **Workspace files access** | To upload app source files via Workspace API |
+
 #### Quick Start
 
-1. **Clone the GitHub Repository**
-   ```bash
-   git clone https://github.com/AbhiDatabricks/Databricks-WAF-Light-Tooling.git
-   ```
+1. **Add the Repo to Databricks**
+   - Go to **Workspace → Repos → Add Repo**
+   - URL: `https://github.com/AbhiDatabricks/Databricks-WAF-Light-Tooling.git`
+   - Branch: `main`
 
-2. **Open in Databricks Workspace**
-   - Navigate to your Databricks workspace
-   - Go to **Workspace → Repos**
-   - Click **Add Repo** and enter: `https://github.com/AbhiDatabricks/Databricks-WAF-Light-Tooling.git`
-   - Select the branch you want (default: `main`)
+2. **Run `install.ipynb`**
+   - Open `install.ipynb` from the repo
+   - **Edit Cell 1**: set `catalog = "<your_catalog_name>"` (e.g. `"main"` or `"platform_shared"`)
+   - **Run All Cells**
+   - At the end you will see a full summary with ✅/❌ per step and direct links to the app, dashboard, Genie Space, and reload job
 
-3. **Run `install.ipynb`**
-   - Open the `install.ipynb` notebook from the repo
-   - Run all cells
-   - The notebook will automatically:
-     - Deploy the dashboard
-     - Publish with warehouse
-     - Configure embedding domains
-     - Upload and deploy the Streamlit app
-     - Provide you with dashboard and app URLs
-
-4. **Access Your Tools**
-   - **Dashboard**: Open the dashboard URL provided in the notebook output
-   - **Streamlit App**: Open the app URL provided (includes interactive WAF Guide sidebar)
+3. **Share Access** — see [Grant Access to Other Users](#-grant-access-to-other-users) below
 
 #### Installation Options
 
-- **Full Installation** (`install.ipynb`): Complete setup including dashboard and app deployment
+- **Full Installation** (`install.ipynb`): Complete setup including dashboard, app, Genie Space, and reload job
 
 #### Telemetry
   
@@ -345,6 +346,71 @@ The dashboard analyzes data from Databricks System Tables:
 - `system.query.history` - Query performance
 - `system.mlflow.experiments_latest` - ML experiment tracking
 - And more (see `DEVELOPER_DOC.md` for complete list)
+
+---
+
+## 👥 Grant Access to Other Users
+
+After installation, the installer must share access with the rest of the team. Complete **all five steps** — missing any one will result in a broken experience for end-users.
+
+### Step A — Add users to the Workspace
+If users are not yet in the Databricks workspace:
+- Go to **Admin Console → Users & Groups**
+- Click **Add user** (individual) or **Add group** (SCIM/IdP-synced group)
+
+### Step B — Grant access to the App
+
+1. Go to the Databricks Apps page in your workspace
+2. Find **waf-automation-tool** (or the app name shown in install output)
+3. Click **Permissions**
+4. Add the user/group with **CAN USE**
+
+> The App URL is printed at the end of `install.ipynb`.
+
+### Step C — Grant access to the Dashboard
+
+1. Open the WAF Assessment Dashboard (URL from install output)
+2. Click **Share** (top right)
+3. Add the user/group
+   - **CAN VIEW** — read-only access
+   - **CAN EDIT** — co-author access
+
+> The Dashboard URL is printed at the end of `install.ipynb`.
+
+### Step D — Grant access to the Genie Space
+
+1. Open the Genie Space (URL from install output)
+2. Click **Share** (top right)
+3. Add the user/group with **CAN USE**
+
+> Without this step, users will get a permission error when clicking "Ask Genie" in the app.
+
+### Step E — Grant read access to WAF cache tables
+
+Run the following SQL in a SQL Editor or notebook (replace `<catalog>` and `<user_or_group>`):
+
+```sql
+-- Replace <catalog> with your WAF catalog (e.g. "main" or "useast1")
+-- Replace <user_or_group> with the user email or group name exactly as in Admin Console
+
+GRANT USE CATALOG ON CATALOG `<catalog>` TO `<user_or_group>`;
+GRANT USE SCHEMA  ON SCHEMA  `<catalog>`.`waf_cache` TO `<user_or_group>`;
+GRANT SELECT      ON ALL TABLES IN SCHEMA `<catalog>`.`waf_cache` TO `<user_or_group>`;
+```
+
+> This is required for the app to query WAF scores and recommendations on behalf of each user.
+
+---
+
+### Summary Checklist
+
+| Step | Action | Where |
+|---|---|---|
+| A | Add to workspace | Admin Console → Users & Groups |
+| B | App: CAN USE | Apps → waf-automation-tool → Permissions |
+| C | Dashboard: CAN VIEW | Dashboard → Share |
+| D | Genie Space: CAN USE | Genie Space → Share |
+| E | SQL: GRANT SELECT on `waf_cache` | SQL Editor |
 
 ---
 

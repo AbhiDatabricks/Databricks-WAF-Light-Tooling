@@ -13,15 +13,16 @@ st.set_page_config(
 
 if "waf_page" not in st.session_state:
     st.session_state.waf_page = "dashboard"
-# Open recommendations or progress in new tab when URL has ?page=...
-try:
-    _qp = st.query_params.get("page")
-    if _qp == "recommendations":
-        st.session_state.waf_page = "recommendations"
-    elif _qp == "progress":
-        st.session_state.waf_page = "progress"
-except Exception:
-    pass
+# Only read query params on first load, not after user-driven navigation
+if not st.session_state.get("_nav_by_user"):
+    try:
+        _qp = st.query_params.get("page")
+        if _qp == "recommendations":
+            st.session_state.waf_page = "recommendations"
+        elif _qp == "progress":
+            st.session_state.waf_page = "progress"
+    except Exception:
+        pass
 
 # Dashboard configuration — values replaced at install time by install.ipynb
 INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
@@ -1364,6 +1365,11 @@ if st.session_state.waf_page == "progress":
     st.markdown("---")
     if st.button("← Back to Dashboard", type="secondary", key="back_progress"):
         st.session_state.waf_page = "dashboard"
+        st.session_state._nav_by_user = True
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
         st.rerun()
     if not WAREHOUSE_ID:
         st.warning("No warehouse configured (WAF_WAREHOUSE_ID). Run install and set app env vars.")
@@ -1434,6 +1440,11 @@ if st.session_state.waf_page == "recommendations":
     st.markdown("---")
     if st.button("← Back to Dashboard", type="secondary"):
         st.session_state.waf_page = "dashboard"
+        st.session_state._nav_by_user = True
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
         st.rerun()
     if not WAREHOUSE_ID:
         st.warning("No warehouse configured (WAF_WAREHOUSE_ID). Run install and set app env vars.")
