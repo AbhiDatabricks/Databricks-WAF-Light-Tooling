@@ -1,63 +1,88 @@
-# Project State Snapshot
-
-**→ Canonical copy: `DONOTCHECKIN/tasks/state.md`** — read and update that file first.
-
-*Root copy last synced: 2025-02-19 (reconstructed from DONOTCHECKIN/tasks/ and conversation)*
+# Project State — Databricks WAF Light Tooling
+_Last updated: 2026-02-25_
 
 ---
 
-## Current goal
-
-- Keep the **WAF Assessment Tool** installable, runnable, and accurate.
-- Recent focus: **recommendations** (CSV ingest, `waf_recommendations_not_met` view, app page + PDF export, Genie tables). That work is **done and committed** on `persistdata`.
+## Current Goal
+Ship a polished, greenfield-safe single-notebook install for the WAF Assessment Tool on `persistdata`, then merge to `main`.
 
 ---
 
-## Active constraints
-
-- **Custom/dev code** lives under `DONOTCHECKIN` until tested and moved to root (per Claude.md).
-- **Catalog/schema**: All WAF cache lives in `{CATALOG}.waf_cache` (e.g. `useast1.waf_cache`). Install uses `CATALOG`; reload job uses widget `catalog`; app uses `WAF_CATALOG` env.
-- **Genie**: Space has 15 tables (13 original + `waf_controls_with_recommendations`, `waf_recommendations_not_met`). Sending `instructions` in the Genie API can cause 500 — instructions are documented in `DONOTCHECKIN/waf_genie_instructions.md` for manual UI use.
-- **Install** must run **inside Databricks** (notebook uses Spark, dbutils). Workspace may be **serverless-only** — job submit with `new_cluster` can fail; run install from the UI (open repo notebook, Run all).
-- **Databricks CLI** and creds: `DONOTCHECKIN/.creds` (if present). Repo in workspace: e.g. `/Users/abhishekpratap.singh@databricks.com/Databricks-WAF-Light-Tooling-root`.
+## Branch: `persistdata`
+Not yet merged to `main`. All recent work is here.
 
 ---
 
-## Assumptions
+## Architecture
 
-- Source of truth for **dashboard queries** is `streamlit-waf-automation/dashboard_queries.yaml`; install builds the reload job from it.
-- **Four pillars**: Governance (g), Cost (c), Performance (p), Reliability (r). Control views: `waf_controls_g/c/p/r`; Governance uses `description`, others use `best_practice`.
-- **Recommendations**: Table `waf_controls_with_recommendations` is ingested from `streamlit-waf-automation/waf_controls_with_recommendations.csv` at install (Step 1b). View `waf_recommendations_not_met` is created in the reload job after the four control views.
+```
+install.ipynb (15 cells, run-all in Databricks workspace)
+  Cell 1:  User sets catalog name
+  Cell 2:  Setup (api_url, token, ctx, notebook_dir) + greenfield UC/system-table checks
+  Cell 3:  Ingest waf_controls_with_recommendations.csv → Delta
+  Cell 4:  Create Genie Space (15 tables, instructions, 6 SQL examples)
+  Cell 5:  Deploy Lakeview dashboard (embeds genie_space_id via uiSettings.overrideId)
+  Cell 6:  Publish dashboard with SQL warehouse
+  Cell 7:  Configure embedding domains (*.databricksapps.com)
+  Cell 8:  Patch app.py in-memory (DASHBOARD_ID, INSTANCE_URL, WORKSPACE_ID)
+  Cell 9:  Upload app files + create WAF Reload job + deploy Databricks App
+  Cell 10: Grant SP permissions (waf_cache + system.*) + trigger initial reload
+  Cell 11: Installation summary (per-step ✅/❌ + direct links)
+  Cell 14: Finalize Genie (SP permission, app.yaml WAF_GENIE_URL, redeploy)
+
+streamlit-waf-automation/app.py
+  - Embedded Lakeview dashboard (iframe)
+  - Reload Data → triggers WAF Reload job
+  - View Recommendations (Not Met) → waf_recommendations_not_met view
+  - View Progress → score trend chart
+  - Ask Genie → deep-link to Genie Space
+  - WAF Guide sidebar
+
+waf_cache tables in {CATALOG}.waf_cache:
+  waf_controls_c/p/g/r, waf_principal_percentage_*, waf_total_percentage_*,
+  waf_total_percentage_across_pillars, waf_controls_with_recommendations,
+  waf_recommendations_not_met (VIEW)
+```
 
 ---
 
-## Decisions made
+## Key Technical Decisions
 
-- **Recommendations view**: UNION the four control views (with `description AS best_practice` for g), JOIN to `waf_controls_with_recommendations` on `waf_id`, filter `threshold_met = 'Not Met'`.
-- **App**: Second page via `st.session_state.waf_page`; recommendations page queries the view via SDK statement execution; PDF with fpdf2, bytes stored in session state then download button.
-- **Genie**: Added two tables to `genie_tables` in install; full table list and column notes in `DONOTCHECKIN/waf_genie_instructions.md`.
-- **Commits**: Do not mention "co-authored by Claude" (per Claude.md).
-
----
-
-## Open risks
-
-- **Install from CLI**: One-off job submit failed with "Only serverless compute is supported" when using `new_cluster`. Install is intended to be run manually from the notebook in the workspace.
-- **DONOTCHECKIN** is gitignored — `waf_genie_instructions.md` and other dev artifacts are not in the repo; keep a copy or sync instructions elsewhere if needed for others.
+| Decision | Reason |
+|---|---|
+| `uiSettings.overrideId` to link Genie to dashboard | Reverse-engineered from manually-linked dashboard JSON; `spaceId` and `PAGE_TYPE_GENIE` both fail silently |
+| `notebook_dir` from `ctx.notebookPath()` in Cell 2 | `os.getcwd()` = `/databricks/driver/` when not in a Repo; context path always correct |
+| `nbformat_minor: 5` + cell `id` fields | Databricks notebook loader requires this; older format causes "Notebook failed to load" |
+| Genie Space created before dashboard (Cell 4 before Cell 5) | `genie_space_id` must exist to embed in dashboard template at creation time |
+| Initial reload triggered at end of install | Data loads in background so it's ready when user opens app |
+| `deploy_api.ipynb` moved to `DONOTCHECKIN/` | Not needed for standard install |
 
 ---
 
-## Next actions
+## Completed This Session (2026-02-25)
 
-1. **Run install** in Databricks UI (open `install.ipynb` from repo, set `catalog` in cell 2, Run all) if a full install/refresh is needed.
-2. **Run Reload Data** from the app after install so control views and `waf_recommendations_not_met` are populated.
-3. Optionally add **serverless job** definition for install if the workspace requires it for automation.
-4. When making changes: update this state at checkpoints; log non-trivial decisions in `tasks/decisions.md`; capture lessons in `tasks/lessons.md`.
+- [x] Fixed notebook format (nbformat_minor, cell ids, stream output names)
+- [x] Fixed path resolution: `os.getcwd()` → `notebook_dir` in Cells 4, 8, 9
+- [x] Fixed Genie linking: `spaceId` → `overrideId` + `enablementMode: ENABLED`
+- [x] Added greenfield checks (UC availability + system table accessibility)
+- [x] Rewrote Cell 11 summary with per-step status and all links
+- [x] Updated README with 4 screenshots and full feature docs
+- [x] Moved `deploy_api.ipynb` to `DONOTCHECKIN/`
 
 ---
 
-## Architecture (short)
+## Active Constraints
 
-- **install.ipynb**: Creates catalog/schema; ingests CSV to `waf_controls_with_recommendations`; deploys Lakeview dashboard, publishes it, deploys Streamlit app, creates reload job, grants SP permissions, creates Genie space with 15 tables.
-- **Reload job** (notebook from `streamlit-waf-automation/waf_reload.py`): Runs queries from `dashboard_queries.yaml`, writes to `{catalog}.waf_cache.{table}_hist`, creates views for latest run; creates view `waf_recommendations_not_met`.
-- **App** (`streamlit-waf-automation/app.py`): Dashboard page (metrics, Reload button, Open Dashboard, Ask Genie, iframe) + Recommendations page (query view, dataframe, Export to PDF, Back to Dashboard). Uses `WAF_CATALOG`, `WAF_WAREHOUSE_ID`, `WAF_JOB_ID`, `WAF_GENIE_URL` from env.
+- Install must run inside Databricks (uses Spark, dbutils, workspace APIs)
+- Unity Catalog required; system tables must be enabled by workspace admin
+- SQL Warehouse required — install raises if none found
+- Databricks Apps feature must be enabled in the workspace
+- Custom/dev code stays in `DONOTCHECKIN/` until tested and promoted to root
+
+---
+
+## Next Actions
+
+1. Merge `persistdata` → `main` (open PR)
+2. Test full greenfield install on a new/clean workspace
+3. Validate `waf_recommendations_not_met` view populates after first reload
