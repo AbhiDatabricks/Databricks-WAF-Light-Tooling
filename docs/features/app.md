@@ -1,6 +1,6 @@
 # Databricks App
 
-The WAF Automation Tool is a **Databricks App** — the central hub that brings the entire WAF Assessment experience together in one place. The dashboard, Genie AI Space, Reload Job, and Recommendations are all accessible from here; users never need to navigate directly to individual Databricks resources.
+The WAF Automation Tool is a **Databricks App** — the single URL your team needs. From here you get instant visibility across all 4 WAF pillars, the full history of how scores have changed over time, targeted recommendations for every failing control, and direct access to Genie for AI-powered follow-up questions. No need for users to navigate to the dashboard, Genie Space, or job separately.
 
 ![WAF App Dashboard View](../assets/images/waf-app-dashboard.png){ .screenshot }
 
@@ -70,7 +70,27 @@ Every failing WAF control — in one table. No need to open the dashboard or que
 
 ![WAF Progress](../assets/images/waf-progress.png){ .screenshot }
 
-Score trend across all reload runs, broken out by pillar. Use this to demonstrate improvement to stakeholders or track the impact of remediation work — all without leaving the app.
+**View Progress** shows how your overall WAF score has evolved across every reload run — broken out by pillar — so you can visualise whether your remediations are actually moving the needle.
+
+**How it works:** Each time the WAF Reload Job runs (whether triggered manually or on schedule), a new data point is written to `waf_cache`. View Progress reads all those historical data points and plots them on a timeline — one line per pillar (Reliability, Governance, Cost, Performance) plus an overall score.
+
+**What to look for:**
+
+| Pattern | What it means |
+|---|---|
+| Score rising after a reload | A remediation worked — the control now passes |
+| Score flat across runs | No remediations applied, or system tables not yet populated |
+| One pillar improving, others flat | Good — focused effort is visible |
+| Score dropping | A new control was added or a previously passing control regressed |
+
+**Use cases:**
+
+- **Prove ROI** — show stakeholders a before/after chart after a sprint of remediation work
+- **Track trends** — see whether governance or cost scores are improving faster than others
+- **Catch regressions** — a sudden dip in a pillar signals something changed in the environment
+
+!!! tip
+    Run the reload job before and after a batch of remediations to capture clear before/after data points in the Progress chart.
 
 ---
 
