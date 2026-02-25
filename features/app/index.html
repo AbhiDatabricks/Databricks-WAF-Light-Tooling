@@ -1017,7 +1017,7 @@
 
 
 <h1 id="databricks-app">Databricks App<a class="headerlink" href="#databricks-app" title="Permanent link">&para;</a></h1>
-<p>The WAF Automation Tool is a <strong>Databricks App</strong> — the central hub that brings the entire WAF Assessment experience together in one place. The dashboard, Genie AI Space, Reload Job, and Recommendations are all accessible from here; users never need to navigate directly to individual Databricks resources.</p>
+<p>The WAF Automation Tool is a <strong>Databricks App</strong> — the single URL your team needs. From here you get instant visibility across all 4 WAF pillars, the full history of how scores have changed over time, targeted recommendations for every failing control, and direct access to Genie for AI-powered follow-up questions. No need for users to navigate to the dashboard, Genie Space, or job separately.</p>
 <p><img alt="WAF App Dashboard View" class="screenshot" src="../../assets/images/waf-app-dashboard.png" /></p>
 <hr />
 <h2 id="the-app-as-central-hub">The App as central hub<a class="headerlink" href="#the-app-as-central-hub" title="Permanent link">&para;</a></h2>
@@ -1114,7 +1114,45 @@
 <hr />
 <h3 id="progress">Progress<a class="headerlink" href="#progress" title="Permanent link">&para;</a></h3>
 <p><img alt="WAF Progress" class="screenshot" src="../../assets/images/waf-progress.png" /></p>
-<p>Score trend across all reload runs, broken out by pillar. Use this to demonstrate improvement to stakeholders or track the impact of remediation work — all without leaving the app.</p>
+<p><strong>View Progress</strong> shows how your overall WAF score has evolved across every reload run — broken out by pillar — so you can visualise whether your remediations are actually moving the needle.</p>
+<p><strong>How it works:</strong> Each time the WAF Reload Job runs (whether triggered manually or on schedule), a new data point is written to <code>waf_cache</code>. View Progress reads all those historical data points and plots them on a timeline — one line per pillar (Reliability, Governance, Cost, Performance) plus an overall score.</p>
+<p><strong>What to look for:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Score rising after a reload</td>
+<td>A remediation worked — the control now passes</td>
+</tr>
+<tr>
+<td>Score flat across runs</td>
+<td>No remediations applied, or system tables not yet populated</td>
+</tr>
+<tr>
+<td>One pillar improving, others flat</td>
+<td>Good — focused effort is visible</td>
+</tr>
+<tr>
+<td>Score dropping</td>
+<td>A new control was added or a previously passing control regressed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li><strong>Prove ROI</strong> — show stakeholders a before/after chart after a sprint of remediation work</li>
+<li><strong>Track trends</strong> — see whether governance or cost scores are improving faster than others</li>
+<li><strong>Catch regressions</strong> — a sudden dip in a pillar signals something changed in the environment</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Run the reload job before and after a batch of remediations to capture clear before/after data points in the Progress chart.</p>
+</div>
 <hr />
 <h2 id="waf-guide-sidebar">WAF Guide sidebar<a class="headerlink" href="#waf-guide-sidebar" title="Permanent link">&para;</a></h2>
 <p>Built-in reference documentation:</p>
