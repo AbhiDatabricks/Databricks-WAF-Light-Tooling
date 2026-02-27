@@ -21,6 +21,14 @@ hide:
 
 ---
 
+## 🎬 Demo
+
+<video width="100%" controls style="border-radius: 8px; margin: 0.5rem 0 1.5rem;">
+  <source src="WAF2.0Demo.mp4" type="video/mp4">
+</video>
+
+---
+
 ## Run one notebook. Get all of this.
 
 <div class="grid cards" markdown>
