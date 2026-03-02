@@ -9,975 +9,562 @@
         body { font-family: Arial, sans-serif; max-width: 1600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
         .diagram-container { background: white; margin: 30px 0; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); page-break-after: always; }
         .diagram-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #1976d2; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+        .planned-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #888; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
         .mermaid { text-align: center; background: white; }
         h1 { color: #1976d2; text-align: center; }
+        h2 { color: #555; border-bottom: 3px solid #ccc; padding-bottom: 10px; margin-top: 50px; }
         .instructions { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .note { background: #f5f5f5; padding: 15px; border-left: 4px solid #1976d2; border-radius: 4px; margin: 15px 0; line-height: 1.6; }
+        .planned-note { background: #fff8e1; padding: 15px; border-left: 4px solid #ff9800; border-radius: 4px; margin: 15px 0; }
     </style>
 </head>
 <body>
-    <h1>🎨 WAF Architecture Diagrams</h1>
-    
+    <h1>WAF Architecture Diagrams</h1>
+    <p style="text-align:center; color:#666;">Last updated: 2026-02-28 — WAF 2.0 (install.ipynb, waf_cache, Genie)</p>
+
     <div class="instructions">
-        <h3>📝 How to Export as Images:</h3>
+        <h3>How to Export as Images:</h3>
         <ol>
             <li><strong>Right-click</strong> on any diagram → <strong>"Inspect"</strong></li>
             <li>Find the <code>&lt;svg&gt;</code> element in DevTools</li>
             <li>Right-click SVG → <strong>"Copy"</strong> or <strong>"Save Image As"</strong></li>
             <li>Or use browser screenshot: <strong>Cmd+Shift+4</strong> (Mac) / <strong>Windows+Shift+S</strong> (Windows)</li>
         </ol>
-        <p><strong>💡 Tip:</strong> Use <a href="https://mermaid.live/" target="_blank">Mermaid Live Editor</a> for high-quality PNG exports</p>
+        <p><strong>Tip:</strong> Use <a href="https://mermaid.live/" target="_blank">Mermaid Live Editor</a> for high-quality PNG exports</p>
     </div>
 
-    <div class="diagram-container">
-        <div class="diagram-title">Detailed Component Architecture</div>
-        <p style="margin: 15px 0; color: #666; font-size: 14px;">
-            <strong>Overview:</strong> This diagram shows how the frontend (Streamlit App + Dashboard) connects to backend datasets and data sources. 
-            Each dashboard page queries 3 datasets per pillar (overall score, individual metrics, per-principle breakdown), plus 1 summary dataset.
-        </p>
-        <div class="mermaid">
-graph TB
-    subgraph "🎨 Frontend Layer"
-        APP[Databricks App<br/>━━━━━━━━━━━━<br/>Streamlit UI<br/>WAF Guide Sidebar]
-        DASH[Lakeview Dashboard<br/>━━━━━━━━━━━━<br/>WAF_ASSESSMENTv1.6]
-    end
-    
-    subgraph "📊 Dashboard Pages"
-        PAGE1[📈 Summary]
-        PAGE2[🛡️ Reliability]
-        PAGE3[⚖️ Governance]
-        PAGE4[💰 Cost Optimization]
-        PAGE5[⚡ Performance Efficiency]
-    end
-    
-    subgraph "💾 Dataset Layer (13 Datasets)"
-        subgraph "Reliability Datasets"
-            DS1[total_percentage_r<br/>Overall Score]
-            DS2[waf_controls_r<br/>Individual Metrics]
-            DS3[waf_principal_percentage_r<br/>Per-Principle]
-        end
-        subgraph "Governance Datasets"
-            DS4[total_percentage_g<br/>Overall Score]
-            DS5[waf_controls_g<br/>Individual Metrics]
-            DS6[waf_principal_percentage_g<br/>Per-Principle]
-        end
-        subgraph "Cost Datasets"
-            DS7[total_percentage_c<br/>Overall Score]
-            DS8[waf_controls_c<br/>Individual Metrics]
-            DS9[waf_principal_percentage_c<br/>Per-Principle]
-        end
-        subgraph "Performance Datasets"
-            DS10[total_percentage_p<br/>Overall Score]
-            DS11[waf_controls_p<br/>Individual Metrics]
-            DS12[waf_principal_percentage_p<br/>Per-Principle]
-        end
-        DS13[total_percentage_across_pillars<br/>Summary Aggregation]
-    end
-    
-    subgraph "💻 Compute Layer"
-        SQLW[SQL Warehouse<br/>Serverless Starter<br/>━━━━━━━━━━━━<br/>Executes Queries<br/>Returns Results]
-    end
-    
-    subgraph "📦 Data Sources"
-        ST[System Tables<br/>━━━━━━━━━━━━<br/>13+ System Tables<br/>Real-time & Historical Data]
-    end
-    
-    APP --> DASH
-    DASH --> PAGE1
-    DASH --> PAGE2
-    DASH --> PAGE3
-    DASH --> PAGE4
-    DASH --> PAGE5
-    
-    PAGE1 --> DS13
-    PAGE2 --> DS1
-    PAGE2 --> DS2
-    PAGE2 --> DS3
-    PAGE3 --> DS4
-    PAGE3 --> DS5
-    PAGE3 --> DS6
-    PAGE4 --> DS7
-    PAGE4 --> DS8
-    PAGE4 --> DS9
-    PAGE5 --> DS10
-    PAGE5 --> DS11
-    PAGE5 --> DS12
-    
-    DS1 --> SQLW
-    DS2 --> SQLW
-    DS3 --> SQLW
-    DS4 --> SQLW
-    DS5 --> SQLW
-    DS6 --> SQLW
-    DS7 --> SQLW
-    DS8 --> SQLW
-    DS9 --> SQLW
-    DS10 --> SQLW
-    DS11 --> SQLW
-    DS12 --> SQLW
-    DS13 --> SQLW
-    
-    SQLW --> ST
-    
-    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style SQLW fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
-    style ST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-        </div>
-        <p style="margin: 15px 0; color: #666; font-size: 14px;">
-            <strong>Key Points:</strong> Each pillar follows a consistent 3-dataset pattern (overall, controls, principles). 
-            The SQL Warehouse executes all queries against System Tables, which provide real-time metrics about the Databricks workspace.
-        </p>
-    </div>
+    <h2>Current Architecture (WAF 2.0)</h2>
 
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 1. SYSTEM ARCHITECTURE OVERVIEW                            -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="diagram-container">
-        <div class="diagram-title">Data Flow Architecture</div>
-        <div class="mermaid">
-graph LR
-    subgraph "Data Sources"
-        SYS[System Tables<br/>13+ Tables]
-    end
-    
-    subgraph "Data Processing"
-        CTE[Shared CTEs<br/>Common Calculations]
-        METRIC[Individual Metrics<br/>Percentage-Based Logic]
-        THRESH[Threshold Comparison<br/>Pass/Fail Determination]
-    end
-    
-    subgraph "Dataset Layer"
-        TOTAL[total_percentage_[pillar]<br/>Overall Score<br/>1 row]
-        CONTROLS[waf_controls_[pillar]<br/>Individual Metrics<br/>N rows]
-        PRINCIPLE[waf_principal_percentage_[pillar]<br/>Per-Principle<br/>M rows]
-        SUMMARY[total_percentage_across_pillars<br/>All Pillars<br/>4 rows]
-    end
-    
-    subgraph "Visualization Layer"
-        WIDGET1[Completion % Gauge]
-        WIDGET2[Principle Breakdown Chart]
-        WIDGET3[WAF Controls Table]
-        WIDGET4[Summary Bar Chart]
-    end
-    
-    SYS --> CTE
-    CTE --> METRIC
-    METRIC --> THRESH
-    THRESH --> TOTAL
-    THRESH --> CONTROLS
-    THRESH --> PRINCIPLE
-    TOTAL --> SUMMARY
-    TOTAL --> WIDGET1
-    PRINCIPLE --> WIDGET2
-    CONTROLS --> WIDGET3
-    SUMMARY --> WIDGET4
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">Data Processing Pipeline</div>
-        <div class="mermaid">
-graph TB
-    subgraph "Data Collection"
-        COLLECT[System Tables<br/>Continuous Data Collection]
-    end
-    
-    subgraph "Query Processing"
-        Q1[Query 1: total_percentage_r<br/>Overall Reliability]
-        Q2[Query 2: waf_controls_r<br/>Individual Metrics]
-        Q3[Query 3: waf_principal_percentage_r<br/>Per-Principle]
-        Q4[Query 4: total_percentage_g<br/>Overall Governance]
-        Q5[Query 5: waf_controls_g<br/>Individual Metrics]
-        Q6[Query 6: waf_principal_percentage_g<br/>Per-Principle]
-        Q7[Query 7: total_percentage_c<br/>Overall Cost]
-        Q8[Query 8: waf_controls_c<br/>Individual Metrics]
-        Q9[Query 9: waf_principal_percentage_c<br/>Per-Principle]
-        Q10[Query 10: total_percentage_p<br/>Overall Performance]
-        Q11[Query 11: waf_controls_p<br/>Individual Metrics]
-        Q12[Query 12: waf_principal_percentage_p<br/>Per-Principle]
-        Q13[Query 13: total_percentage_across_pillars<br/>Summary]
-    end
-    
-    subgraph "Result Aggregation"
-        AGG[Combine Results<br/>Calculate Scores<br/>Apply Thresholds]
-    end
-    
-    subgraph "Visualization"
-        VIZ[Render Charts<br/>Display Tables<br/>Update UI]
-    end
-    
-    COLLECT --> Q1
-    COLLECT --> Q2
-    COLLECT --> Q3
-    COLLECT --> Q4
-    COLLECT --> Q5
-    COLLECT --> Q6
-    COLLECT --> Q7
-    COLLECT --> Q8
-    COLLECT --> Q9
-    COLLECT --> Q10
-    COLLECT --> Q11
-    COLLECT --> Q12
-    COLLECT --> Q13
-    
-    Q1 --> AGG
-    Q2 --> AGG
-    Q3 --> AGG
-    Q4 --> AGG
-    Q5 --> AGG
-    Q6 --> AGG
-    Q7 --> AGG
-    Q8 --> AGG
-    Q9 --> AGG
-    Q10 --> AGG
-    Q11 --> AGG
-    Q12 --> AGG
-    Q13 --> AGG
-    
-    AGG --> VIZ
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">Dataset Relationship Architecture</div>
-        <div class="mermaid">
-graph TB
-    subgraph "Reliability Pillar"
-        R_TOTAL[total_percentage_r<br/>1 row<br/>Overall: 38%]
-        R_CONTROLS[waf_controls_r<br/>8 rows<br/>Individual Metrics]
-        R_PRINCIPLE[waf_principal_percentage_r<br/>3 rows<br/>Per-Principle]
-    end
-    
-    subgraph "Governance Pillar"
-        G_TOTAL[total_percentage_g<br/>1 row<br/>Overall: 65%]
-        G_CONTROLS[waf_controls_g<br/>N rows<br/>Individual Metrics]
-        G_PRINCIPLE[waf_principal_percentage_g<br/>M rows<br/>Per-Principle]
-    end
-    
-    subgraph "Cost Pillar"
-        C_TOTAL[total_percentage_c<br/>1 row<br/>Overall: 45%]
-        C_CONTROLS[waf_controls_c<br/>9 rows<br/>Individual Metrics]
-        C_PRINCIPLE[waf_principal_percentage_c<br/>3 rows<br/>Per-Principle]
-    end
-    
-    subgraph "Performance Pillar"
-        P_TOTAL[total_percentage_p<br/>1 row<br/>Overall: 72%]
-        P_CONTROLS[waf_controls_p<br/>7 rows<br/>Individual Metrics]
-        P_PRINCIPLE[waf_principal_percentage_p<br/>2 rows<br/>Per-Principle]
-    end
-    
-    subgraph "Summary"
-        SUMMARY[total_percentage_across_pillars<br/>4 rows<br/>All Pillars Aggregated]
-    end
-    
-    R_TOTAL --> SUMMARY
-    G_TOTAL --> SUMMARY
-    C_TOTAL --> SUMMARY
-    P_TOTAL --> SUMMARY
-    
-    R_CONTROLS -.->|Rolls up to| R_PRINCIPLE
-    R_PRINCIPLE -.->|Rolls up to| R_TOTAL
-    
-    G_CONTROLS -.->|Rolls up to| G_PRINCIPLE
-    G_PRINCIPLE -.->|Rolls up to| G_TOTAL
-    
-    C_CONTROLS -.->|Rolls up to| C_PRINCIPLE
-    C_PRINCIPLE -.->|Rolls up to| C_TOTAL
-    
-    P_CONTROLS -.->|Rolls up to| P_PRINCIPLE
-    P_PRINCIPLE -.->|Rolls up to| P_TOTAL
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">Deployment Architecture</div>
-        <div class="mermaid">
-graph TB
-    subgraph "Development Environment"
-        DEV[Developer Machine<br/>- Local Code<br/>- Git Repository]
-        SCRIPT[deploy_complete.py<br/>Deployment Script]
-    end
-    
-    subgraph "Deployment Process"
-        STEP1[Step 1: Deploy Dashboard<br/>- Read .lvdash.json<br/>- Create Dashboard<br/>- Get Dashboard ID]
-        STEP2[Step 2: Publish Dashboard<br/>- Configure Warehouse<br/>- Enable Embedding<br/>- Verify Dashboard ID]
-        STEP3[Step 3: Configure Embedding<br/>- Add *.databricksapps.com<br/>- Set Embed Credentials]
-        STEP4[Step 4: Update App<br/>- Update app.py<br/>- Set Dashboard ID<br/>- Preserve WAF Guide]
-        STEP5[Step 5: Deploy App<br/>- Upload to Workspace<br/>- Deploy to Apps<br/>- Activate Deployment]
-    end
-    
-    subgraph "Databricks Workspace"
-        WS_PATH[/Users/username/waf-app-source<br/>Source Code Path]
-        APP_DEPLOY[Databricks App<br/>Active Deployment]
-        DASH_DEPLOY[Published Dashboard<br/>With Warehouse]
-    end
-    
-    DEV --> SCRIPT
-    SCRIPT --> STEP1
-    STEP1 --> STEP2
-    STEP2 --> STEP3
-    STEP3 --> STEP4
-    STEP4 --> STEP5
-    
-    STEP1 --> DASH_DEPLOY
-    STEP2 --> DASH_DEPLOY
-    STEP3 --> DASH_DEPLOY
-    STEP4 --> WS_PATH
-    STEP5 --> WS_PATH
-    STEP5 --> APP_DEPLOY
-    
-    WS_PATH --> APP_DEPLOY
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">Score Calculation Flow</div>
-        <div class="mermaid">
-graph TD
-    START[System Tables Data] --> CTE[Shared CTEs]
-    
-    CTE --> DELTA[delta_usage<br/>Delta Tables %]
-    CTE --> DLT[dlt_usage<br/>DLT Compute %]
-    CTE --> SERVERLESS[serverless_usage<br/>Serverless %]
-    CTE --> PHOTON[photon_usage<br/>Photon Queries %]
-    CTE --> CLUSTER[cluster_metrics<br/>Cluster Configs]
-    CTE --> WAREHOUSE[warehouse_metrics<br/>Warehouse Configs]
-    CTE --> TABLES[table_metrics<br/>Table Stats]
-    
-    DELTA --> METRIC1[R-01-01: Delta Format<br/>Score: 85.5%<br/>Threshold: 80%<br/>Status: Pass]
-    DLT --> METRIC2[R-01-03: DLT Usage<br/>Score: 25.0%<br/>Threshold: 30%<br/>Status: Fail]
-    SERVERLESS --> METRIC3[R-01-06: Serverless<br/>Score: 60.0%<br/>Threshold: 50%<br/>Status: Pass]
-    CLUSTER --> METRIC4[R-03-01: Auto-Scale Clusters<br/>Score: 75.0%<br/>Threshold: 80%<br/>Status: Fail]
-    WAREHOUSE --> METRIC5[R-03-02: Auto-Scale Warehouses<br/>Score: 90.0%<br/>Threshold: 80%<br/>Status: Pass]
-    
-    METRIC1 --> AGG1[Principle: Design for failure<br/>4 metrics, 2 Pass = 50%]
-    METRIC2 --> AGG1
-    METRIC3 --> AGG1
-    
-    METRIC4 --> AGG2[Principle: Autoscaling<br/>2 metrics, 1 Pass = 50%]
-    METRIC5 --> AGG2
-    
-    AGG1 --> TOTAL[Reliability Overall<br/>8 metrics, 3 Pass = 37.5%]
-    AGG2 --> TOTAL
-    
-    TOTAL --> DISPLAY[Dashboard Display<br/>Completion Percentage]
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">Security & Access Flow</div>
-        <div class="mermaid">
-graph LR
-    USER[User] --> AUTH[Databricks Authentication]
-    AUTH --> PERM[Permission Check]
-    
-    PERM -->|Has Access| APP[App Access]
-    PERM -->|No Access| DENY[Access Denied]
-    
-    APP --> DASH[Dashboard Access]
-    DASH --> SQL[SQL Warehouse Access]
-    SQL --> ST[System Tables Access]
-    
-    ST -->|Read Only| DATA[Data Returned]
-    DATA --> DASH
-    DASH --> USER
-    
-    subgraph "Security Layers"
-        CSP[Content Security Policy<br/>frame-ancestors<br/>*.databricksapps.com]
-        EMBED[Embed Credentials<br/>Embedded in Dashboard]
-        UC[Unity Catalog<br/>Table Permissions]
-    end
-    
-    APP --> CSP
-    DASH --> EMBED
-    ST --> UC
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">System Architecture Overview</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">Architecture Overview</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The WAF Assessment Tool follows a layered architecture deployed entirely within a Databricks Workspace. 
-                <strong>User Layer</strong> consists of three types of users: End Users who consume the assessment results, 
-                Admin/DevOps teams who manage the deployment, and Data Analysts who interpret the metrics.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The <strong>Application Layer</strong> contains two main components: the Databricks App (Streamlit-based UI with WAF Guide sidebar) 
-                and the Lakeview Dashboard (WAF_ASSESSMENTv1.6) which displays the assessment results. The dashboard is organized into 
-                5 pages: Summary, Reliability, Governance, Cost Optimization, and Performance Efficiency.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The <strong>Compute Layer</strong> uses a SQL Warehouse (Serverless Starter) to execute all queries. The <strong>Data Layer</strong> 
-                consists of 13+ System Tables that provide real-time and historical data about the Databricks workspace, including compute usage, 
-                table metadata, access patterns, and billing information. These tables are managed by Unity Catalog in the <strong>Storage Layer</strong>.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The <strong>Deployment Layer</strong> includes the <code>deploy_complete.py</code> script that automates the deployment of both 
-                the dashboard and the app, and a GitHub Repository for version control. The deployment script handles dashboard creation, 
-                publishing, embedding configuration, and app deployment in a single automated workflow.
-            </p>
+        <div class="diagram-title">1. System Architecture Overview</div>
+        <div class="note">
+            <strong>What this shows:</strong> The full WAF 2.0 system as deployed by <code>install.ipynb</code>.
+            A user runs one notebook in their Databricks workspace. It deploys four components:
+            a Lakeview Dashboard, a Genie AI Space, a WAF Reload Job, and a Databricks App that ties them all together.
+            Data flows from System Tables → WAF Reload Job → waf_cache Delta tables → Dashboard / Genie / App.
         </div>
         <div class="mermaid">
 graph TB
-    subgraph "👥 User Layer"
-        U1[👤 End User]
-        U2[👨‍💼 Admin/DevOps]
-        U3[📊 Data Analyst]
+    subgraph "👤 User"
+        U[Databricks User<br/>Opens App URL]
     end
-    
+
     subgraph "🏢 Databricks Workspace"
         subgraph "🚀 Application Layer"
-            APP[Databricks App<br/>━━━━━━━━━━━━<br/>Streamlit UI<br/>WAF Guide Sidebar]
-            DASH[Lakeview Dashboard<br/>━━━━━━━━━━━━<br/>WAF_ASSESSMENTv1.6]
+            APP["Databricks App<br/>━━━━━━━━━━━━<br/>Central Hub<br/>Embed Dashboard · Reload Data<br/>Recommendations · Progress<br/>Ask Genie button"]
+            DASH["Lakeview Dashboard<br/>━━━━━━━━━━━━<br/>WAF_ASSESSMENTv1.7.1<br/>4 Pillar pages + Summary<br/>+ Genie AI Assistant tab"]
+            GENIE["Genie AI Space<br/>━━━━━━━━━━━━<br/>Databricks-native AI<br/>Pre-loaded: 15 waf_cache tables<br/>+ instructions + 6 SQL examples<br/>Natural-language Q&A"]
         end
-        
-        subgraph "📊 Dashboard Pages"
-            PAGE1[📈 Summary]
-            PAGE2[🛡️ Reliability]
-            PAGE3[⚖️ Governance]
-            PAGE4[💰 Cost Optimization]
-            PAGE5[⚡ Performance Efficiency]
+
+        subgraph "⚙️ Job Layer"
+            JOB["WAF Reload Job<br/>━━━━━━━━━━━━<br/>waf_reload.py<br/>Runs on-demand<br/>Refreshes all waf_cache tables"]
         end
-        
-        subgraph "💻 Compute Layer"
-            SQLW[SQL Warehouse<br/>Serverless Starter]
+
+        subgraph "💾 Cache Layer"
+            CACHE["{catalog}.waf_cache<br/>━━━━━━━━━━━━<br/>145 Delta tables<br/>waf_controls_c/p/g/r<br/>waf_total_percentage_*<br/>waf_principal_percentage_*<br/>_hist tables · views<br/>_run_log (run history)"]
         end
-        
-        subgraph "📦 Data Layer"
-            ST[System Tables<br/>━━━━━━━━━━━━<br/>13+ System Tables<br/>Real-time & Historical Data]
-        end
-        
-        subgraph "🗄️ Storage Layer"
-            UC[Unity Catalog<br/>Metastore]
+
+        subgraph "📦 Data Sources"
+            ST["System Tables<br/>━━━━━━━━━━━━<br/>system.billing.*<br/>system.compute.*<br/>system.access.*<br/>system.storage.*<br/>+ Unity Catalog metadata"]
         end
     end
-    
-    subgraph "🔧 Deployment Layer"
-        DEPLOY[deploy_complete.py<br/>Deployment Script]
-        GIT[GitHub Repository<br/>Version Control]
-    end
-    
-    U1 --> APP
-    U2 --> APP
-    U3 --> APP
-    APP --> DASH
-    DASH --> PAGE1
-    DASH --> PAGE2
-    DASH --> PAGE3
-    DASH --> PAGE4
-    DASH --> PAGE5
-    PAGE1 --> SQLW
-    PAGE2 --> SQLW
-    PAGE3 --> SQLW
-    PAGE4 --> SQLW
-    PAGE5 --> SQLW
-    SQLW --> ST
-    ST --> UC
-    DEPLOY --> APP
-    DEPLOY --> DASH
-    DEPLOY --> GIT
-    GIT --> DEPLOY
-    
+
+    U --> APP
+    APP -->|embeds| DASH
+    APP -->|triggers run-now| JOB
+    APP -->|deep-link| GENIE
+    DASH -->|reads| CACHE
+    GENIE -->|queries| CACHE
+    JOB -->|writes| CACHE
+    CACHE --> ST
+
     style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
     style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style ST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style SQLW fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
-    style UC fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+    style GENIE fill:#7b1fa2,stroke:#6a1b9a,stroke-width:3px,color:#fff
+    style JOB fill:#e65100,stroke:#bf360c,stroke-width:2px,color:#fff
+    style CACHE fill:#388e3c,stroke:#2e7d32,stroke-width:2px,color:#fff
+    style ST fill:#757575,stroke:#616161,stroke-width:2px,color:#fff
         </div>
     </div>
 
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 2. INSTALLATION FLOW                                        -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="diagram-container">
-        <div class="diagram-title">User Flow - Complete Journey</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">User Journey Explanation</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                This sequence diagram illustrates the complete user journey from initial access to implementing improvements. 
-                The flow begins when a user opens the Databricks App URL, which displays the Streamlit UI with the WAF Guide sidebar automatically loaded.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Discovery Phase (Steps 1-7):</strong> Users first interact with the WAF Guide sidebar to understand the assessment framework. 
-                They can select a pillar (e.g., Reliability) to see an overview of how scores are calculated, then drill down into specific metrics 
-                (e.g., R-01-01) to view detailed information including calculation formulas, thresholds, and recommended actions if the score is low.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Assessment Phase (Steps 8-13):</strong> Users view the embedded dashboard, which triggers query execution. The SQL Warehouse 
-                queries System Tables to gather real-time metrics, processes the data, and returns results that are displayed as charts and tables 
-                in the dashboard. This provides users with their current WAF assessment scores.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Action Phase (Steps 14-19):</strong> When users identify low scores, they return to the WAF Guide for actionable recommendations. 
-                The guide provides SQL examples, best practices, and step-by-step instructions. After implementing the recommendations in their workspace, 
-                users refresh the dashboard to see improved scores, completing the continuous improvement cycle.
-            </p>
+        <div class="diagram-title">2. Installation Flow (install.ipynb)</div>
+        <div class="note">
+            <strong>What this shows:</strong> The 15-cell installer runs in the user's Databricks workspace.
+            The user only edits one line (catalog name in Cell 1). Everything else is automated.
+            Total install time: ~10 minutes on a fresh workspace.
+        </div>
+        <div class="mermaid">
+flowchart TD
+    START([User clones repo into Databricks workspace<br/>Sets catalog = &quot;my_catalog&quot; in Cell 1<br/>Runs All Cells]) --> C2
+
+    C2["Cell 2: Setup<br/>Reads API URL + token from context<br/>Checks Unity Catalog available<br/>Checks system tables accessible<br/>Checks SQL Warehouse exists"]
+
+    C3["Cell 3: Ingest CSV<br/>waf_controls_with_recommendations.csv<br/>→ Delta table in waf_cache"]
+
+    C4["Cell 4: Create Genie Space<br/>POST /api/2.0/genie/spaces<br/>15 waf_cache tables + instructions<br/>+ 6 SQL examples via serialized_space"]
+
+    C5["Cell 5: Deploy Dashboard<br/>Read WAF_ASSESSMENTv1.7.1.lvdash.json<br/>Inject genie_space_id → uiSettings.overrideId<br/>POST → get dashboard_id"]
+
+    C6["Cell 6: Publish Dashboard<br/>Attach SQL Warehouse<br/>Accept 200/201/204"]
+
+    C7["Cell 7: Configure Embedding<br/>Add *.databricksapps.com<br/>to workspace allow-list"]
+
+    C8["Cell 8: Patch app.py in-memory<br/>Replace DASHBOARD_ID placeholder<br/>Set INSTANCE_URL + WORKSPACE_ID"]
+
+    C9["Cell 9: Deploy App<br/>Upload all app files to workspace<br/>Create WAF Reload Job<br/>Deploy Databricks App<br/>Poll compute ACTIVE then /deployments"]
+
+    C10["Cell 10: Grant Permissions<br/>Service principal: waf_cache + system.*<br/>Trigger initial WAF Reload"]
+
+    C11["Cell 11: Summary<br/>Per-step ✅ / ❌ status<br/>Direct links to App + Dashboard + Genie"]
+
+    C14["Cell 14: Finalize Genie<br/>Grant SP access to Genie Space<br/>Set WAF_GENIE_URL in app.yaml<br/>Redeploy App"]
+
+    DONE([Install complete<br/>~10 minutes])
+
+    C2 --> C3 --> C4 --> C5 --> C6 --> C7 --> C8 --> C9 --> C10 --> C11 --> C14 --> DONE
+
+    style START fill:#1976d2,stroke:#1565c0,color:#fff
+    style DONE fill:#388e3c,stroke:#2e7d32,color:#fff
+    style C4 fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+    style C5 fill:#1976d2,stroke:#1565c0,color:#fff
+    style C9 fill:#e65100,stroke:#bf360c,color:#fff
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 3. DATA FLOW                                                 -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="diagram-container">
+        <div class="diagram-title">3. Data Flow — System Tables → waf_cache → Consumers</div>
+        <div class="note">
+            <strong>What this shows:</strong> Data does NOT flow directly from System Tables to the dashboard.
+            The WAF Reload Job reads System Tables, evaluates WAF controls, and writes results into
+            pre-built waf_cache Delta tables. Consumers (Dashboard, Genie, App) read only from waf_cache.
+            The _hist tables preserve every run. Views always show the latest run.
+        </div>
+        <div class="mermaid">
+graph LR
+    subgraph "📦 Data Sources"
+        ST["System Tables<br/>system.billing.*<br/>system.compute.*<br/>system.access.*<br/>system.storage.*"]
+        CSV["waf_controls_with_<br/>recommendations.csv<br/>WAF control definitions<br/>+ recommended actions"]
+    end
+
+    subgraph "⚙️ WAF Reload Job (waf_reload.py)"
+        EVAL["Evaluate WAF Controls<br/>60+ SQL queries per pillar<br/>Score each control 0–100<br/>Compare to threshold<br/>Pass / Not Met"]
+    end
+
+    subgraph "💾 waf_cache (Delta)"
+        CURRENT["Current-run tables<br/>waf_controls_c/p/g/r<br/>waf_total_percentage_c/p/g/r<br/>waf_principal_percentage_c/p/g/r<br/>waf_total_percentage_across_pillars<br/>waf_recommendations_not_met (VIEW)"]
+        HIST["History tables<br/>waf_controls_c_hist (+ 3 pillars)<br/>waf_total_percentage_*_hist<br/>waf_principal_percentage_*_hist<br/>_run_log (run_id, run_time)"]
+    end
+
+    subgraph "👁️ Consumers"
+        DASH["Lakeview Dashboard<br/>Reads views<br/>Pillar scores + controls"]
+        GENIE["Genie AI Space<br/>Queries 15 tables<br/>Natural-language Q&A"]
+        APP_REC["App: Recommendations<br/>waf_recommendations_not_met"]
+        APP_PROG["App: View Progress<br/>_hist tables + _run_log<br/>Score trend chart"]
+    end
+
+    ST --> EVAL
+    CSV --> EVAL
+    EVAL -->|OVERWRITE current| CURRENT
+    EVAL -->|APPEND to history| HIST
+    CURRENT --> DASH
+    CURRENT --> GENIE
+    CURRENT --> APP_REC
+    HIST --> APP_PROG
+
+    style EVAL fill:#e65100,stroke:#bf360c,color:#fff
+    style CURRENT fill:#388e3c,stroke:#2e7d32,color:#fff
+    style HIST fill:#388e3c,stroke:#2e7d32,color:#fff
+    style GENIE fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 4. GENIE AI SPACE                                           -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="diagram-container">
+        <div class="diagram-title">4. Genie AI Space — How It Works</div>
+        <div class="note">
+            <strong>What this shows:</strong> Genie is a <strong>native Databricks AI assistant</strong> — no custom training,
+            no embeddings, no vector search. It works by being pre-configured with table access + natural-language instructions
+            at creation time via the <code>serialized_space</code> payload. Genie translates user questions into SQL,
+            runs them against waf_cache, and returns results in plain English.
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "Install time (Cell 4)"
+        CREATE["POST /api/2.0/genie/spaces<br/>serialized_space JSON payload:<br/>━━━━━━━━━━━━━━━━<br/>15 waf_cache table references<br/>Pillar-specific instructions<br/>6 example Q&amp;A SQL pairs<br/>Space title + description"]
+        LINK["Link to Dashboard<br/>uiSettings.genieSpace.overrideId<br/>+ enablementMode: ENABLED<br/>Genie tab appears in dashboard"]
+    end
+
+    subgraph "Runtime — User asks a question"
+        USER["User types question<br/>e.g. 'Which controls are failing<br/>and what should I prioritise?'"]
+        GENIE_ENGINE["Databricks Genie Engine<br/>━━━━━━━━━━━━━━━━<br/>Reads pre-loaded table context<br/>Understands WAF schema + instructions<br/>Generates SQL automatically<br/>(no code needed from user)"]
+        SQL_EXEC["SQL Warehouse<br/>Executes generated SQL<br/>against waf_cache tables"]
+        CACHE["waf_cache Delta tables<br/>waf_controls_* · waf_total_percentage_*<br/>waf_principal_percentage_*<br/>waf_recommendations_not_met"]
+        ANSWER["Genie returns answer<br/>in plain English<br/>with data table / chart"]
+    end
+
+    CREATE --> LINK
+    USER --> GENIE_ENGINE
+    GENIE_ENGINE --> SQL_EXEC
+    SQL_EXEC --> CACHE
+    CACHE --> SQL_EXEC
+    SQL_EXEC --> GENIE_ENGINE
+    GENIE_ENGINE --> ANSWER
+
+    style CREATE fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+    style LINK fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+    style GENIE_ENGINE fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+    style CACHE fill:#388e3c,stroke:#2e7d32,color:#fff
+        </div>
+        <div class="note">
+            <strong>Key technical detail:</strong> Genie's table awareness comes entirely from the
+            <code>serialized_space</code> JSON sent on <code>POST /api/2.0/genie/spaces</code>.
+            A <code>GET</code> on the space does NOT return <code>serialized_space</code> — this is expected API behaviour.
+            The tables and instructions are stored internally by Databricks.
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 5. DATABRICKS APP — COMPONENT MAP                           -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="diagram-container">
+        <div class="diagram-title">5. Databricks App — Feature Map</div>
+        <div class="note">
+            <strong>What this shows:</strong> The Streamlit app is the single URL users bookmark.
+            It surfaces all five capabilities: embedded dashboard, reload trigger, recommendations,
+            progress tracking, and a deep-link to Genie. Navigation is managed via
+            <code>_nav_by_user</code> session flag to prevent page re-overrides on rerun.
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "Databricks App (Streamlit)"
+        URL["Single App URL<br/>waf-automation-tool-&lt;workspace-id&gt;.aws.databricksapps.com"]
+
+        subgraph "Main Page — Dashboard"
+            EMBED["Embedded Lakeview Dashboard<br/>st.components.v1.html() with raw iframe<br/>frameborder=0 · full height"]
+        end
+
+        subgraph "Reload Data"
+            RELOAD["Triggers WAF Reload Job<br/>via jobs/run-now API<br/>Polls for completion"]
+        end
+
+        subgraph "Recommendations (Not Met)"
+            RECS["Reads waf_recommendations_not_met VIEW<br/>WAF ID · Pillar · Control Name<br/>Score vs Threshold · Recommended Action"]
+        end
+
+        subgraph "View Progress"
+            PROG["Reads *_hist tables + _run_log<br/>Line chart: score per pillar per run_id<br/>Shows improvement over time"]
+        end
+
+        subgraph "Ask Genie"
+            GLINK["Deep-link button → Genie Space URL<br/>WAF_GENIE_URL env var<br/>Opens in new tab"]
+        end
+
+        subgraph "App Config (app.yaml)"
+            ENV["WAF_CATALOG · WAF_JOB_ID<br/>WAF_WAREHOUSE_ID · WAF_GENIE_URL<br/>DASHBOARD_ID (patched at install)"]
+        end
+    end
+
+    URL --> EMBED
+    URL --> RELOAD
+    URL --> RECS
+    URL --> PROG
+    URL --> GLINK
+    ENV -.->|env vars| EMBED
+    ENV -.->|env vars| RELOAD
+    ENV -.->|env vars| RECS
+    ENV -.->|env vars| PROG
+    ENV -.->|env vars| GLINK
+
+    style URL fill:#1976d2,stroke:#1565c0,color:#fff
+    style EMBED fill:#1565c0,stroke:#0d47a1,color:#fff
+    style RELOAD fill:#e65100,stroke:#bf360c,color:#fff
+    style RECS fill:#388e3c,stroke:#2e7d32,color:#fff
+    style PROG fill:#388e3c,stroke:#2e7d32,color:#fff
+    style GLINK fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 6. WAF CACHE SCHEMA                                         -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="diagram-container">
+        <div class="diagram-title">6. waf_cache Schema (145 Delta Tables)</div>
+        <div class="note">
+            <strong>What this shows:</strong> All 145 tables written to <code>{catalog}.waf_cache</code>.
+            Each pillar has the same 3-table pattern: controls, principal percentages, total percentage.
+            Every table has a <code>_hist</code> counterpart for history. The <code>_run_log</code> table
+            auto-increments <code>run_id</code> on each reload.
+        </div>
+        <div class="mermaid">
+graph TB
+    subgraph "{catalog}.waf_cache"
+        subgraph "Per-pillar tables (x4 pillars: c/p/g/r)"
+            CTRL["waf_controls_{pillar}<br/>One row per WAF control<br/>waf_id · score · threshold · status"]
+            PRIN["waf_principal_percentage_{pillar}<br/>One row per principal<br/>principal · percentage"]
+            TOT["waf_total_percentage_{pillar}<br/>One row — overall pillar score<br/>total_percentage"]
+        end
+
+        subgraph "Cross-pillar"
+            ACROSS["waf_total_percentage_across_pillars<br/>4 rows — one per pillar<br/>pillar · total_percentage"]
+        end
+
+        subgraph "Recommendations"
+            CSV_TBL["waf_controls_with_recommendations<br/>Delta from CSV<br/>waf_id · pillar · name · threshold<br/>best_practice · recommended_action"]
+            VIEW["waf_recommendations_not_met (VIEW)<br/>JOIN controls + recommendations<br/>WHERE status = 'Not Met'"]
+        end
+
+        subgraph "History (auto-appended on each reload)"
+            HIST["waf_controls_{pillar}_hist<br/>waf_principal_percentage_{pillar}_hist<br/>waf_total_percentage_{pillar}_hist<br/>waf_total_percentage_across_pillars_hist<br/>(+ run_id column)"]
+        end
+
+        subgraph "Run tracking"
+            RUNLOG["_run_log<br/>run_id (INT, auto-increment)<br/>run_time (TIMESTAMP)"]
+        end
+
+        subgraph "~60 individual metric tables"
+            METRICS["metric_{name} per pillar<br/>e.g. delta_usage, serverless_usage<br/>warehouse_configs, …<br/>(+ _hist each)"]
+        end
+    end
+
+    CTRL -.->|appended to| HIST
+    PRIN -.->|appended to| HIST
+    TOT -.->|appended to| HIST
+    RUNLOG -.->|run_id joins| HIST
+    CTRL --> VIEW
+    CSV_TBL --> VIEW
+
+    style VIEW fill:#388e3c,stroke:#2e7d32,color:#fff
+    style RUNLOG fill:#e65100,stroke:#bf360c,color:#fff
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 7. USER JOURNEY (SEQUENCE DIAGRAM)                          -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="diagram-container">
+        <div class="diagram-title">7. User Journey — End-to-End</div>
+        <div class="note">
+            <strong>What this shows:</strong> The typical user journey after install completes.
+            All five App capabilities are shown: view scores on embedded dashboard, reload data,
+            check recommendations, track progress over time, and ask Genie follow-up questions.
         </div>
         <div class="mermaid">
 sequenceDiagram
-    participant U as 👤 User
-    participant APP as 🚀 Databricks App
-    participant DASH as 📊 Dashboard
-    participant SQL as SQL Warehouse
-    participant ST as System Tables
-    participant GUIDE as WAF Guide Sidebar
-    
-    U->>APP: 1. Opens App URL
-    APP->>U: 2. Displays Streamlit UI
-    APP->>GUIDE: 3. Loads WAF Guide Sidebar
-    
-    U->>GUIDE: 4. Selects Pillar (e.g., Reliability)
-    GUIDE->>U: 5. Shows Pillar Overview<br/>(Score Calculation Method)
-    
-    U->>GUIDE: 6. Selects Metric (e.g., R-01-01)
-    GUIDE->>U: 7. Shows Detailed Info:<br/>- Calculation Formula<br/>- Threshold<br/>- Actions if Low
-    
-    U->>DASH: 8. Views Dashboard
-    DASH->>SQL: 9. Executes Queries
-    SQL->>ST: 10. Queries System Tables
-    ST->>SQL: 11. Returns Data
-    SQL->>DASH: 12. Returns Results
-    DASH->>U: 13. Displays Charts & Tables
-    
-    U->>DASH: 14. Sees Low Score
-    U->>GUIDE: 15. Checks WAF Guide
-    GUIDE->>U: 16. Shows Action Steps<br/>(SQL Examples, Best Practices)
-    
-    U->>U: 17. Implements Recommendations
-    U->>DASH: 18. Refreshes Dashboard
-    DASH->>U: 19. Sees Improved Score
+    participant U as User
+    participant APP as Databricks App
+    participant DASH as Lakeview Dashboard
+    participant JOB as WAF Reload Job
+    participant CACHE as waf_cache
+    participant GENIE as Genie AI Space
+
+    U->>APP: Opens App URL
+    APP->>DASH: Loads embedded dashboard (iframe)
+    DASH->>CACHE: Queries waf_total_percentage_*<br/>waf_controls_* · waf_principal_percentage_*
+    CACHE-->>DASH: Returns current WAF scores
+    DASH-->>U: Displays pillar scores + control breakdown
+
+    Note over U,APP: User wants to refresh data
+
+    U->>APP: Clicks "Reload Data"
+    APP->>JOB: POST jobs/run-now (WAF_JOB_ID)
+    JOB->>CACHE: Re-evaluates all controls<br/>Overwrites current tables<br/>Appends to _hist tables
+    JOB-->>APP: Job complete
+    APP-->>U: "Data refreshed successfully"
+
+    Note over U,APP: User reviews what needs fixing
+
+    U->>APP: Clicks "Recommendations (Not Met)"
+    APP->>CACHE: SELECT * FROM waf_recommendations_not_met
+    CACHE-->>APP: WAF ID · score gap · recommended action
+    APP-->>U: Table of failing controls + actions
+
+    Note over U,APP: User tracks improvement over runs
+
+    U->>APP: Clicks "View Progress"
+    APP->>CACHE: SELECT from *_hist + _run_log
+    CACHE-->>APP: Score per pillar per run_id
+    APP-->>U: Line chart showing score trend
+
+    Note over U,GENIE: User asks a follow-up question
+
+    U->>APP: Clicks "Ask Genie"
+    APP-->>U: Opens Genie Space URL in new tab
+    U->>GENIE: "Which cost controls am I failing<br/>and what's the easiest to fix?"
+    GENIE->>CACHE: Auto-generates + executes SQL
+    CACHE-->>GENIE: Query results
+    GENIE-->>U: Plain-English answer with data
         </div>
     </div>
 
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 8. SCORE CALCULATION LOGIC                                  -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="diagram-container">
-        <div class="diagram-title">User Interaction Flow</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">State-Based User Interaction</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                This state diagram shows the different states a user can be in and the transitions between them based on their actions and the assessment results. 
-                The flow is designed to guide users through a self-service improvement process.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Initial States:</strong> Users start by opening the app, which loads and displays the dashboard. The system then checks the current 
-                WAF scores and routes users to different paths based on their scores: High Score (≥80%), Medium Score (60-79%), or Low Score (<60%).
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Score-Based Routing:</strong> Users with high scores can view details and are typically satisfied. Users with medium or low scores 
-                are directed to the WAF Guide, where they can select a pillar, view specific metrics, understand how scores are calculated, and see 
-                recommended actions.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Improvement Cycle:</strong> After reviewing calculations and action items, users implement the recommendations in their Databricks 
-                workspace. They then refresh the dashboard, which returns them to the score-checking state. This creates a continuous improvement loop 
-                where users can iteratively improve their WAF scores until they reach their target thresholds.
-            </p>
+        <div class="diagram-title">8. Score Calculation Logic (per pillar)</div>
+        <div class="note">
+            <strong>What this shows:</strong> How WAF scores are computed inside waf_reload.py.
+            Each WAF control is a SQL query against System Tables. The result is compared to a threshold.
+            Individual pass/fail rolls up to principal percentage, which rolls up to total pillar score.
         </div>
         <div class="mermaid">
-stateDiagram-v2
-    [*] --> OpenApp: User opens App URL
-    OpenApp --> ViewDashboard: App loads
-    ViewDashboard --> CheckScore: Dashboard displays
-    
-    CheckScore --> HighScore: Score ≥ 80%
-    CheckScore --> MediumScore: Score 60-79%
-    CheckScore --> LowScore: Score < 60%
-    
-    HighScore --> ViewDetails: User satisfied
-    MediumScore --> OpenGuide: User wants improvement
-    LowScore --> OpenGuide: User needs help
-    
-    OpenGuide --> SelectPillar: Opens WAF Guide
-    SelectPillar --> SelectMetric: Chooses pillar
-    SelectMetric --> ViewCalculation: Sees metric details
-    
-    ViewCalculation --> ViewActions: Reviews calculation
-    ViewActions --> ImplementActions: Sees action items
-    ImplementActions --> ApplyChanges: Implements recommendations
-    
-    ApplyChanges --> RefreshDashboard: Changes applied
-    RefreshDashboard --> CheckScore: Dashboard refreshed
-    
-    ViewDetails --> [*]: User done
-    HighScore --> [*]: User done
+graph TD
+    ST["System Tables<br/>system.billing.* · system.compute.*<br/>system.access.* · system.storage.*"]
+
+    ST --> Q1["WAF Control Query<br/>(e.g. R-01-01 Delta format usage)<br/>Returns: metric_value %"]
+    ST --> Q2["WAF Control Query<br/>(e.g. R-01-03 DLT usage)<br/>Returns: metric_value %"]
+    ST --> QN["… (60+ controls total across 4 pillars)"]
+
+    Q1 --> EVAL1["Compare to threshold (e.g. 80%)<br/>metric_value ≥ threshold → Met<br/>metric_value < threshold → Not Met"]
+    Q2 --> EVAL2["Compare to threshold (e.g. 30%)"]
+    QN --> EVALN["…"]
+
+    EVAL1 --> PRIN["waf_principal_percentage_{pillar}<br/>count(Met) / count(all) per principal"]
+    EVAL2 --> PRIN
+    EVALN --> PRIN
+
+    PRIN --> TOTAL["waf_total_percentage_{pillar}<br/>count(Met) / count(all) across pillar<br/>e.g. 12 Met out of 18 = 66.7%"]
+
+    TOTAL --> ACROSS["waf_total_percentage_across_pillars<br/>4 rows — one summary per pillar"]
+
+    style ST fill:#757575,stroke:#616161,color:#fff
+    style TOTAL fill:#388e3c,stroke:#2e7d32,color:#fff
+    style ACROSS fill:#388e3c,stroke:#2e7d32,color:#fff
         </div>
     </div>
 
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- SECTION BREAK: PLANNED EXTENSIONS                           -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <h2>Planned Extensions (not yet built)</h2>
+
+    <div class="planned-note">
+        <strong>Note:</strong> The diagrams below describe potential future extensions.
+        None of these are deployed today. They use the same waf_cache data layer
+        and do not require changes to the existing App, Dashboard, or installer.
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- E1. EXTENSION OVERVIEW                                      -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="diagram-container">
-        <div class="diagram-title">Extended Architecture with Integration Options</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">Extension Architecture Overview</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The WAF Assessment Tool can be extended with additional services without modifying existing code. The <strong>Query Library</strong> 
-                extracts SQL queries from the dashboard into reusable Python functions, enabling multiple integration points.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>REST API Service</strong> provides programmatic access to WAF scores and metrics for CI/CD integration, monitoring tools, 
-                and custom dashboards. The <strong>MCP Service</strong> enables AI assistants (Claude, ChatGPT) to query WAF data using natural language.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The <strong>WAF Recommendation Agent</strong> is a conversational AI agent that understands WAF scores, retrieves Databricks documentation 
-                context, and provides intelligent recommendations. The <strong>Context Provider</strong> generates structured JSON context for external 
-                external AI applications to consume.
-            </p>
-        </div>
+        <div class="planned-title">E1. Extension Architecture Overview</div>
         <div class="mermaid">
 graph TB
-    subgraph "🏢 Existing Components (No Changes)"
-        APP[Databricks App<br/>Streamlit UI + WAF Guide]
-        DASH[Lakeview Dashboard<br/>WAF_ASSESSMENTv1.6]
+    subgraph "Existing (no changes needed)"
+        APP[Databricks App]
+        DASH[Lakeview Dashboard]
+        GENIE[Genie AI Space]
+        CACHE[waf_cache Delta tables]
     end
-    
-    subgraph "🔧 Extension Layer (Planned)"
-        subgraph "Query Library"
-            QLIB[waf_core/<br/>━━━━━━━━━━━━<br/>Extracts SQL from Dashboard<br/>Reusable Query Functions]
-        end
-        
-        subgraph "Integration Services"
-            REST[REST API Service<br/>━━━━━━━━━━━━<br/>FastAPI Endpoints<br/>/api/v1/scores<br/>/api/v1/metrics<br/>/api/v1/context]
-            MCP[MCP Service<br/>━━━━━━━━━━━━<br/>Model Context Protocol<br/>AI Assistant Integration]
-            AGENT[WAF Recommendation Agent<br/>━━━━━━━━━━━━<br/>Conversational AI<br/>Databricks Docs Context<br/>Intelligent Recommendations]
-            CTX[Context Provider<br/>━━━━━━━━━━━━<br/>Structured JSON<br/>For External Agents]
-        end
+
+    subgraph "Planned Extensions"
+        REST["REST API Service<br/>Programmatic access<br/>to WAF scores + metrics"]
+        MCP["MCP Service<br/>AI assistant integration<br/>Claude Desktop / Copilot"]
+        SCHED["Scheduled Reload<br/>Auto-refresh on cron<br/>no manual trigger needed"]
+        ALERTS["Score Alerts<br/>Email / Slack when<br/>score drops below threshold"]
+        MULTI["Multi-workspace<br/>Aggregate WAF scores<br/>across workspaces"]
     end
-    
-    subgraph "📦 Data Sources"
-        ST[Databricks System Tables<br/>13+ Tables<br/>Real-time Metrics]
-        VS[Vector Search<br/>Databricks Docs Index]
-        LLM[Foundation Model APIs<br/>Anthropic Claude<br/>No API Keys Required]
-    end
-    
-    subgraph "🌐 External Integrations"
-        EXT1[CI/CD Pipelines]
-        EXT2[Monitoring Tools]
-        EXT3[AI Assistants]
-        EXT4[External AI Application]
-    end
-    
-    APP --> DASH
-    DASH --> QLIB
-    QLIB --> REST
-    QLIB --> MCP
-    QLIB --> AGENT
-    QLIB --> CTX
-    
-    REST --> ST
-    MCP --> ST
-    AGENT --> ST
-    AGENT --> VS
-    AGENT --> LLM
-    CTX --> ST
-    
-    REST --> EXT1
-    REST --> EXT2
-    MCP --> EXT3
-    CTX --> EXT4
-    
-    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style REST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style MCP fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style AGENT fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style CTX fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style ST fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
-    style VS fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
-    style LLM fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+
+    CACHE --> REST
+    CACHE --> MCP
+    JOB[WAF Reload Job] --> SCHED
+    CACHE --> ALERTS
+    REST --> MULTI
+
+    style APP fill:#1976d2,stroke:#1565c0,color:#fff
+    style DASH fill:#1976d2,stroke:#1565c0,color:#fff
+    style GENIE fill:#7b1fa2,stroke:#6a1b9a,color:#fff
+    style CACHE fill:#388e3c,stroke:#2e7d32,color:#fff
+    style REST fill:#bbb,stroke:#999,color:#333
+    style MCP fill:#bbb,stroke:#999,color:#333
+    style SCHED fill:#bbb,stroke:#999,color:#333
+    style ALERTS fill:#bbb,stroke:#999,color:#333
+    style MULTI fill:#bbb,stroke:#999,color:#333
         </div>
     </div>
 
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- E2. REST API (PLANNED)                                       -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="diagram-container">
-        <div class="diagram-title">REST API Service Architecture</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">REST API Integration</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The REST API Service provides programmatic access to WAF assessment data through standard HTTP endpoints. 
-                It uses the Query Library to execute the same SQL queries as the dashboard, ensuring data consistency.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Key Endpoints:</strong> Health check, overall scores, pillar-specific scores, individual metrics, recommendations, 
-                and context for AI agents. All endpoints support Databricks token authentication and return JSON responses.
-            </p>
-        </div>
+        <div class="planned-title">E2. REST API Service (Planned)</div>
         <div class="mermaid">
 graph LR
-    subgraph "🌐 API Clients"
+    subgraph "API Clients"
         CLIENT1[CI/CD Pipeline]
         CLIENT2[Monitoring Tool]
-        CLIENT3[Custom Dashboard]
-        CLIENT4[External Agent]
+        CLIENT3[External Dashboard]
     end
-    
-    subgraph "🔌 REST API Service"
-        API[FastAPI Application<br/>━━━━━━━━━━━━<br/>/api/v1/health<br/>/api/v1/scores<br/>/api/v1/scores/{pillar}<br/>/api/v1/metrics<br/>/api/v1/metrics/{waf_id}<br/>/api/v1/recommendations<br/>/api/v1/context]
-        AUTH[Authentication<br/>Databricks Tokens<br/>OAuth 2.0]
+
+    subgraph "REST API Service (FastAPI)"
+        API["GET /api/v1/scores<br/>GET /api/v1/scores/{pillar}<br/>GET /api/v1/recommendations<br/>GET /api/v1/history"]
+        AUTH[Databricks Token Auth]
     end
-    
-    subgraph "📚 Query Library"
-        QLIB[waf_core/queries.py<br/>━━━━━━━━━━━━<br/>get_reliability_scores()<br/>get_governance_scores()<br/>get_cost_scores()<br/>get_performance_scores()<br/>get_all_scores()]
+
+    subgraph "Data"
+        CACHE[waf_cache Delta tables]
     end
-    
-    subgraph "💾 Data Layer"
-        SQL[SQL Warehouse]
-        ST[System Tables]
-    end
-    
-    CLIENT1 -->|HTTP GET/POST| API
-    CLIENT2 -->|HTTP GET/POST| API
-    CLIENT3 -->|HTTP GET/POST| API
-    CLIENT4 -->|HTTP GET/POST| API
-    
+
+    CLIENT1 -->|HTTP GET| API
+    CLIENT2 -->|HTTP GET| API
+    CLIENT3 -->|HTTP GET| API
     API --> AUTH
-    AUTH --> QLIB
-    QLIB --> SQL
-    SQL --> ST
-    
-    API -->|JSON Response| CLIENT1
-    API -->|JSON Response| CLIENT2
-    API -->|JSON Response| CLIENT3
-    API -->|JSON Response| CLIENT4
-    
-    style API fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
-    style AUTH fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
-    style QLIB fill:#1976d2,stroke:#1565c0,stroke-width:2px,color:#fff
+    AUTH --> CACHE
+    CACHE -->|JSON response| API
+
+    style API fill:#bbb,stroke:#999,color:#333
         </div>
     </div>
 
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- E3. MCP SERVICE (PLANNED)                                   -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="diagram-container">
-        <div class="diagram-title">MCP Service Architecture</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">Model Context Protocol Integration</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The MCP Service enables AI assistants (Claude Desktop, Cursor, GitHub Copilot) to query WAF assessment data using natural language. 
-                It exposes tools that AI assistants can call to get scores, metrics, and recommendations.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Available Tools:</strong> get_waf_scores, get_pillar_score, get_failing_metrics, get_metric_details, and get_recommendations. 
-                Users can ask questions like "What's my WAF score?" or "Why is my reliability score low?" and get intelligent responses.
-            </p>
+        <div class="planned-title">E3. MCP Service (Planned)</div>
+        <div class="note" style="background:#fff8e1; border-color:#ff9800;">
+            Would expose waf_cache data as MCP tools so AI assistants (Claude Desktop, Copilot) can answer
+            WAF questions without users having to open the Databricks UI. Different from Genie — MCP works
+            outside the Databricks workspace.
         </div>
         <div class="mermaid">
 graph TB
-    subgraph "🤖 AI Assistants"
+    subgraph "AI Assistants (outside Databricks)"
         AI1[Claude Desktop]
-        AI2[Cursor IDE]
-        AI3[GitHub Copilot]
-        AI4[Other MCP Clients]
+        AI2[GitHub Copilot]
+        AI3[Other MCP clients]
     end
-    
-    subgraph "🔌 MCP Service"
-        MCPSERVER[MCP Server<br/>━━━━━━━━━━━━<br/>Model Context Protocol<br/>Tool Definitions]
-        TOOLS[MCP Tools<br/>━━━━━━━━━━━━<br/>get_waf_scores<br/>get_pillar_score<br/>get_failing_metrics<br/>get_metric_details<br/>get_recommendations]
+
+    subgraph "MCP Service (Planned)"
+        MCPSERVER["MCP Server<br/>get_waf_scores<br/>get_pillar_score<br/>get_failing_controls<br/>get_recommendations"]
     end
-    
-    subgraph "📚 Query Library"
-        QLIB[waf_core/queries.py<br/>Execute Queries]
+
+    subgraph "Data"
+        CACHE[waf_cache Delta tables]
     end
-    
-    subgraph "💾 Data Layer"
-        SQL[SQL Warehouse]
-        ST[System Tables]
-    end
-    
+
     AI1 -->|MCP Protocol| MCPSERVER
     AI2 -->|MCP Protocol| MCPSERVER
     AI3 -->|MCP Protocol| MCPSERVER
-    AI4 -->|MCP Protocol| MCPSERVER
-    
-    MCPSERVER --> TOOLS
-    TOOLS --> QLIB
-    QLIB --> SQL
-    SQL --> ST
-    
-    TOOLS -->|Structured Response| MCPSERVER
-    MCPSERVER -->|Natural Language| AI1
-    MCPSERVER -->|Natural Language| AI2
-    MCPSERVER -->|Natural Language| AI3
-    MCPSERVER -->|Natural Language| AI4
-    
-    style MCPSERVER fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
-    style TOOLS fill:#1976d2,stroke:#1565c0,stroke-width:2px,color:#fff
-        </div>
-    </div>
+    MCPSERVER --> CACHE
 
-    <div class="diagram-container">
-        <div class="diagram-title">WAF Recommendation Agent Architecture</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">Conversational AI Agent</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The WAF Recommendation Agent is a conversational AI agent that understands WAF scores, retrieves context from Databricks documentation, 
-                and provides intelligent recommendations. It uses <strong>Databricks Foundation Model APIs</strong> (Anthropic Claude) - no external API keys required!
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Key Features:</strong> The agent uses Databricks Vector Search to retrieve relevant documentation, combines it with current WAF scores, 
-                and generates actionable recommendations with code examples. Users can ask follow-up questions and get detailed guidance.
-            </p>
-        </div>
-        <div class="mermaid">
-graph TB
-    subgraph "👤 User Interface"
-        CHAT[Chat Interface<br/>Streamlit App<br/>or REST API]
-    end
-    
-    subgraph "🤖 WAF Recommendation Agent"
-        AGENT[LangChain Agent<br/>━━━━━━━━━━━━<br/>Conversational AI<br/>Tool Orchestration]
-        TOOLS[Agent Tools<br/>━━━━━━━━━━━━<br/>get_waf_scores<br/>get_databricks_docs<br/>generate_recommendations]
-    end
-    
-    subgraph "📚 Context Retrieval"
-        VS[Vector Search<br/>Databricks Docs Index<br/>━━━━━━━━━━━━<br/>Semantic Search<br/>Relevant Documentation]
-        DOCS[Databricks Documentation<br/>Delta Lake, DLT, Unity Catalog<br/>Best Practices, Code Examples]
-    end
-    
-    subgraph "🧠 LLM Layer"
-        LLM[Foundation Model APIs<br/>━━━━━━━━━━━━<br/>databricks-anthropic-claude-3-5-sonnet<br/>No API Keys Required<br/>Workspace Authentication]
-    end
-    
-    subgraph "📊 WAF Data"
-        QLIB[Query Library<br/>WAF Scores & Metrics]
-        ST[System Tables]
-    end
-    
-    CHAT -->|User Question| AGENT
-    AGENT --> TOOLS
-    TOOLS --> QLIB
-    TOOLS --> VS
-    TOOLS --> LLM
-    
-    QLIB --> ST
-    VS --> DOCS
-    LLM -->|Context + Scores| AGENT
-    AGENT -->|Intelligent Response| CHAT
-    
-    style AGENT fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
-    style LLM fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
-    style VS fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">AI Agent Context Provider - External Application Integration</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">Context Provider for External Agents</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                The Context Provider generates structured JSON context optimized for LLM consumption. This enables external AI applications 
-                to understand workspace WAF compliance state and build WAF-compliant solutions from the start.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                <strong>Use Case:</strong> External AI applications (such as ETL development tools, code generation agents, or architecture design tools) 
-                can consume WAF context to understand workspace compliance, generate WAF-compliant solutions, and apply best practices automatically.
-            </p>
-        </div>
-        <div class="mermaid">
-graph TB
-    subgraph "🔍 WAF Assessment Tool"
-        WAF[WAF Assessment Engine<br/>━━━━━━━━━━━━<br/>Workspace Assessment<br/>Pillar Scores<br/>Individual Metrics<br/>Detailed Recommendations<br/>Action Items with Code Examples]
-        CTXPROV[Context Provider<br/>━━━━━━━━━━━━<br/>/api/v1/context<br/>Structured JSON Output]
-    end
-    
-    subgraph "🌐 External AI Applications"
-        EXTAPP1[External AI Application<br/>━━━━━━━━━━━━<br/>ETL Development Tool<br/>Pipeline Generation<br/>Code Generation]
-        EXTAPP2[Custom AI Application<br/>━━━━━━━━━━━━<br/>Customer-Deployed<br/>Uses WAF Context]
-    end
-    
-    subgraph "📊 Context Data"
-        JSON[Structured JSON<br/>━━━━━━━━━━━━<br/>workspace_id<br/>overall_score<br/>pillars: {<br/>  reliability: {<br/>    score, status,<br/>    failing_metrics,<br/>    recommendations,<br/>    action_items,<br/>    code_examples<br/>  }<br/>}<br/>priority_actions<br/>compliance_summary]
-    end
-    
-    subgraph "✅ Result"
-        RESULT[WAF-Compliant Solutions<br/>━━━━━━━━━━━━<br/>Pipelines built with<br/>full context understanding<br/>Best practices applied<br/>Reduced rework]
-    end
-    
-    WAF --> CTXPROV
-    CTXPROV --> JSON
-    JSON --> EXTAPP1
-    JSON --> EXTAPP2
-    
-    EXTAPP1 -->|Uses Context| RESULT
-    EXTAPP2 -->|Uses Context| RESULT
-    
-    style WAF fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style CTXPROV fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style JSON fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
-    style EXTAPP1 fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
-    style EXTAPP2 fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
-    style RESULT fill:#4caf50,stroke:#388e3c,stroke-width:3px,color:#fff
-        </div>
-    </div>
-
-    <div class="diagram-container">
-        <div class="diagram-title">Complete Integration Architecture</div>
-        <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-left: 4px solid #1976d2; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #1976d2;">Full Extension Ecosystem</h4>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                This diagram shows the complete integration architecture with all extension options. The Query Library serves as the shared data access layer, 
-                enabling multiple integration points while maintaining data consistency.
-            </p>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                All extensions query the same System Tables through the Query Library, ensuring that REST API, MCP Service, Agent, and Context Provider 
-                all return consistent data. The architecture supports independent deployment of each extension without modifying existing dashboard or app code.
-            </p>
-        </div>
-        <div class="mermaid">
-graph TB
-    subgraph "🏢 Existing (No Changes)"
-        APP[Databricks App]
-        DASH[Lakeview Dashboard]
-    end
-    
-    subgraph "🔧 Query Library (Shared Layer)"
-        QLIB[waf_core/<br/>━━━━━━━━━━━━<br/>queries.py<br/>Extracted SQL Logic<br/>Reusable Functions]
-    end
-    
-    subgraph "🔌 Extension Services"
-        REST[REST API<br/>FastAPI]
-        MCP[MCP Service<br/>Protocol Server]
-        AGENT[WAF Agent<br/>Conversational AI]
-        CTX[Context Provider<br/>JSON Generator]
-    end
-    
-    subgraph "💾 Native Databricks Services"
-        ST[System Tables<br/>13+ Tables]
-        VS[Vector Search<br/>Docs Index]
-        LLM[Foundation Model APIs<br/>Anthropic Claude]
-    end
-    
-    subgraph "🌐 External Integrations"
-        EXT1[CI/CD Pipelines]
-        EXT2[Monitoring Tools]
-        EXT3[AI Assistants]
-        EXT4[External AI Application]
-        EXT5[Custom Agents]
-    end
-    
-    APP --> DASH
-    DASH --> QLIB
-    
-    QLIB --> REST
-    QLIB --> MCP
-    QLIB --> AGENT
-    QLIB --> CTX
-    
-    REST --> ST
-    MCP --> ST
-    AGENT --> ST
-    AGENT --> VS
-    AGENT --> LLM
-    CTX --> ST
-    
-    REST --> EXT1
-    REST --> EXT2
-    MCP --> EXT3
-    AGENT --> EXT3
-    CTX --> EXT4
-    CTX --> EXT5
-    
-    style APP fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style DASH fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
-    style QLIB fill:#ff9800,stroke:#f57c00,stroke-width:3px,color:#fff
-    style REST fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style MCP fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style AGENT fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
-    style CTX fill:#4caf50,stroke:#388e3c,stroke-width:2px,color:#fff
+    style MCPSERVER fill:#bbb,stroke:#999,color:#333
         </div>
     </div>
 
     <script>
-        mermaid.initialize({ 
+        mermaid.initialize({
             startOnLoad: true,
             theme: 'default',
             themeVariables: {
