@@ -71,11 +71,9 @@ Develop a **lightweight WAF assessment tool** that:
 
 ## 🎬 Demo
 
-▶️ **[Watch the full demo video on the docs site](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)**
-
-[![Watch Demo](https://img.shields.io/badge/▶%20Watch%20Demo-WAF%202.0-red?style=for-the-badge)](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)
-
-> *GitHub does not support inline video. Click the link above to watch the WAF 2.0 demo video on the docs site.*
+<video width="100%" controls>
+  <source src="https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/WAF2.0Demo.mp4" type="video/mp4">
+</video>
 
 ---
 
