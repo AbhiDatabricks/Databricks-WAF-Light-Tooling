@@ -1,5 +1,11 @@
 # 🔍 Databricks WAF Light Tooling
 
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue?style=flat-square)](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)
+
+> 📖 **Full documentation & live demo video:** [abhidatabricks.github.io/Databricks-WAF-Light-Tooling](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)
+
+---
+
 ## 🚀 Overview
 
 **Databricks WAF Light Tooling** is a lightweight, automated assessment tool built to evaluate Databricks Lakehouse implementations against the **Well-Architected Framework (WAF)** principles. It analyzes system tables, logs, and metadata to generate real-time scores and actionable recommendations that drive better governance, security, performance, and cost-efficiency.
@@ -65,9 +71,11 @@ Develop a **lightweight WAF assessment tool** that:
 
 ## 🎬 Demo
 
-<video width="100%" controls>
-  <source src="https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/WAF2.0Demo.mp4" type="video/mp4">
-</video>
+▶️ **[Watch the full demo video on the docs site](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)**
+
+[![Watch Demo](https://img.shields.io/badge/▶%20Watch%20Demo-WAF%202.0-red?style=for-the-badge)](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)
+
+> *GitHub does not support inline video. Click the link above to watch the WAF 2.0 demo video on the docs site.*
 
 ---
 
@@ -161,6 +169,8 @@ After installation, you'll have access to:
 ---
 
 ## 📚 Documentation
+
+📖 **[Full Documentation Site](https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/)** — includes demo video, feature overview, and getting started guide.
 
 ### For Users
 
