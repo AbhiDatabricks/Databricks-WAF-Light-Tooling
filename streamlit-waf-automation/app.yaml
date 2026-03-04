@@ -1,5 +1,14 @@
 command: [
-  "streamlit", 
+  "streamlit",
   "run",
   "app.py"
 ]
+env:
+  - name: WAF_CATALOG
+    value: "<<your_catalog>>"
+  - name: WAF_JOB_ID
+    value: "<<set_by_installer>>"
+  - name: WAF_WAREHOUSE_ID
+    value: "<<set_by_installer>>"
+  - name: WAF_GENIE_URL
+    value: "<<set_by_installer>>"
