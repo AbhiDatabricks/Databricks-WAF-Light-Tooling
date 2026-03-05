@@ -53,13 +53,11 @@ spark.sql(f"""
 try:
     spark.sql(f"""
         CREATE OR REPLACE VIEW `{catalog}`.`waf_cache`.`waf_workspaces` AS
-        SELECT DISTINCT
-            CAST(workspace_id AS STRING) AS workspace_id,
-            FIRST(workspace_name) AS workspace_name
+        SELECT DISTINCT CAST(workspace_id AS STRING) AS workspace_id
         FROM system.billing.usage
         WHERE usage_date >= current_date() - INTERVAL 90 DAYS
-        GROUP BY workspace_id
-        ORDER BY workspace_name
+          AND workspace_id IS NOT NULL
+        ORDER BY workspace_id
     """)
     print("  ✅ waf_workspaces view created")
 except Exception as _we:

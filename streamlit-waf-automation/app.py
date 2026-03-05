@@ -95,13 +95,13 @@ def _load_workspaces():
     try:
         from databricks.sdk.service.sql import StatementState
         _r = _wc.statement_execution.execute_statement(
-            statement=f"SELECT workspace_id, workspace_name FROM `{_cat}`.`waf_cache`.`waf_workspaces` ORDER BY workspace_name",
+            statement=f"SELECT workspace_id FROM `{_cat}`.`waf_cache`.`waf_workspaces` ORDER BY workspace_id",
             warehouse_id=WAREHOUSE_ID,
             wait_timeout="10s",
         )
         if (_r.status and _r.status.state == StatementState.SUCCEEDED
                 and _r.result and _r.result.data_array):
-            return [(str(row[0]), str(row[1]) if row[1] else str(row[0])) for row in _r.result.data_array]
+            return [(str(row[0]), str(row[0])) for row in _r.result.data_array if row[0]]
     except Exception:
         pass
     return []
