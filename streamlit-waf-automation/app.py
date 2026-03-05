@@ -83,10 +83,61 @@ def _load_run_info():
         return {}
 
 
+@st.cache_data(ttl=300)
+def _load_workspaces():
+    """Return list of (workspace_id, workspace_name) from waf_workspaces, or [] if unavailable."""
+    _cat = os.environ.get("WAF_CATALOG", "useast1")
+    if not WAREHOUSE_ID:
+        return []
+    _wc = _get_ws_client()
+    if not _wc:
+        return []
+    try:
+        from databricks.sdk.service.sql import StatementState
+        _r = _wc.statement_execution.execute_statement(
+            statement=f"SELECT workspace_id, workspace_name FROM `{_cat}`.`waf_cache`.`waf_workspaces` ORDER BY workspace_name",
+            warehouse_id=WAREHOUSE_ID,
+            wait_timeout="10s",
+        )
+        if (_r.status and _r.status.state == StatementState.SUCCEEDED
+                and _r.result and _r.result.data_array):
+            return [(str(row[0]), str(row[1]) if row[1] else str(row[0])) for row in _r.result.data_array]
+    except Exception:
+        pass
+    return []
+
+
+def _ws_in_clause(ws_ids: list) -> str:
+    """Return SQL IN clause fragment for workspace_id, or empty string if all/none selected."""
+    if not ws_ids:
+        return ""
+    return "AND workspace_id IN (" + ", ".join(f"'{w}'" for w in ws_ids) + ")"
+
+
+# Load workspaces for filter — done once, cached 5 min
+_all_workspaces = _load_workspaces()
+_all_ws_ids = [ws[0] for ws in _all_workspaces]
+
 # Sidebar with explanations
 with st.sidebar:
+    # --- Workspace Filter ---
+    if _all_workspaces:
+        st.markdown("### Workspace Filter")
+        _ws_display = {f"{name} ({wid})": wid for wid, name in _all_workspaces}
+        _ws_keys = list(_ws_display.keys())
+        _selected_keys = st.multiselect(
+            "Filter by workspace:",
+            options=_ws_keys,
+            default=_ws_keys,
+            key="ws_filter",
+        )
+        _selected_ws_ids = [_ws_display[k] for k in _selected_keys] if _selected_keys else _all_ws_ids
+        st.markdown("---")
+    else:
+        _selected_ws_ids = []
+
     st.title("📖 WAF Guide")
-    
+
     category = st.selectbox(
         "Select category:",
         [
@@ -1380,12 +1431,18 @@ if st.session_state.waf_page == "progress":
         else:
             try:
                 from databricks.sdk.service.sql import StatementState
+                # Build workspace filter for progress — if workspaces selected, filter scores
+                _prog_ws_clause = ""
+                if _selected_ws_ids and _all_ws_ids and len(_selected_ws_ids) < len(_all_ws_ids):
+                    _ws_q = ", ".join(f"'{w}'" for w in _selected_ws_ids)
+                    _prog_ws_clause = f"WHERE workspace_id IN ({_ws_q})"
                 _stmt = (
                     f"SELECT r.run_id, r.triggered_at, ROUND(avg_score.overall_score, 2) AS overall_score "
                     f"FROM `{_catalog}`.`{_schema}`.`_run_log` r "
                     f"INNER JOIN ("
                     f"  SELECT _run_id, AVG(completion_percent) AS overall_score "
                     f"  FROM `{_catalog}`.`{_schema}`.waf_total_percentage_across_pillars_hist "
+                    f"  {_prog_ws_clause} "
                     f"  GROUP BY _run_id"
                     f") avg_score ON avg_score._run_id = r.run_id "
                     f"WHERE r.status IN ('success', 'partial') "
@@ -1455,7 +1512,18 @@ if st.session_state.waf_page == "recommendations":
         else:
             try:
                 from databricks.sdk.service.sql import StatementState
-                _stmt = f"SELECT waf_id, pillar_name, principle, best_practice, score_percentage, control_threshold_pct, recommendation_if_not_met FROM `{_catalog}`.`{_schema}`.waf_recommendations_not_met ORDER BY pillar_name, waf_id"
+                # Build workspace filter — exclude governance (always account-wide)
+                _rec_ws_clause = ""
+                if _selected_ws_ids and _all_ws_ids and len(_selected_ws_ids) < len(_all_ws_ids):
+                    _ws_quoted = ", ".join(f"'{w}'" for w in _selected_ws_ids)
+                    _rec_ws_clause = f"WHERE (workspace_id IN ({_ws_quoted}) OR workspace_id = 'account-wide')"
+                _stmt = (
+                    f"SELECT waf_id, pillar_name, principle, best_practice, workspace_id, "
+                    f"score_percentage, control_threshold_pct, recommendation_if_not_met "
+                    f"FROM `{_catalog}`.`{_schema}`.waf_recommendations_not_met "
+                    f"{_rec_ws_clause} "
+                    f"ORDER BY pillar_name, workspace_id, waf_id"
+                )
                 _r = _wc.statement_execution.execute_statement(
                     statement=_stmt,
                     warehouse_id=WAREHOUSE_ID,
@@ -1471,7 +1539,7 @@ if st.session_state.waf_page == "recommendations":
                             break
                     if not cols and rows:
                         _n = len(rows[0]) if rows else 0
-                        _known = ["waf_id", "pillar_name", "principle", "best_practice", "score_percentage", "control_threshold_pct", "recommendation_if_not_met"]
+                        _known = ["waf_id", "pillar_name", "principle", "best_practice", "workspace_id", "score_percentage", "control_threshold_pct", "recommendation_if_not_met"]
                         cols = _known if _n == len(_known) else [f"col{i}" for i in range(_n)]
                     import pandas as pd
                     _df = pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame(rows)
@@ -1499,6 +1567,7 @@ if st.session_state.waf_page == "recommendations":
                     for _, row in _df.iterrows():
                         waf_id = _html_esc((str(row.get("waf_id", "")).strip() or "—"))
                         pillar = _html_esc(_strip_platform(row.get("pillar_name")) or "—")
+                        ws_id = _html_esc(str(row.get("workspace_id") or "").strip() or "")
                         principle = _html_esc(_strip_platform(row.get("principle")) or "—")
                         best_practice = _html_esc(_strip_platform(row.get("best_practice")) or "—")
                         rec = _html_esc(_strip_platform(row.get("recommendation_if_not_met")) or "(No recommendation)")
@@ -1510,7 +1579,7 @@ if st.session_state.waf_page == "recommendations":
                         _html_parts.append(
                             f'<div class="waf-rec-card">'
                             f'<div class="waf-id">{waf_id}{score_str}</div>'
-                            f'<div class="waf-meta"><strong>Pillar:</strong> {pillar} &nbsp;|&nbsp; <strong>Principle:</strong> {principle}</div>'
+                            f'<div class="waf-meta"><strong>Pillar:</strong> {pillar} &nbsp;|&nbsp; <strong>Workspace:</strong> {ws_id if ws_id else "account-wide"} &nbsp;|&nbsp; <strong>Principle:</strong> {principle}</div>'
                             f'<div class="waf-meta"><strong>Best practice:</strong> {best_practice}</div>'
                             f'<div class="waf-rec-label">Recommendations</div>'
                             f'<div class="waf-rec-text">{rec}</div>'
@@ -1613,6 +1682,66 @@ with _info_col4:
         st.metric("Run", "—")
 
 st.markdown("---")
+
+# --- Workspace filter banner + score cards ---
+_filter_active = bool(_selected_ws_ids and _all_ws_ids and len(_selected_ws_ids) < len(_all_ws_ids))
+if _filter_active:
+    _ws_names = [name for wid, name in _all_workspaces if wid in _selected_ws_ids]
+    st.info(
+        f"Workspace filter active: **{', '.join(_ws_names)}**. "
+        "Governance scores are account-wide and unaffected by this filter.",
+        icon="ℹ️",
+    )
+
+# Native score cards — query waf_total_percentage_across_pillars filtered by workspace
+if WAREHOUSE_ID:
+    _sc_wc = _get_ws_client()
+    if _sc_wc:
+        try:
+            from databricks.sdk.service.sql import StatementState as _SS
+            _ws_filter_sql = ""
+            if _filter_active:
+                _ws_q = ", ".join(f"'{w}'" for w in _selected_ws_ids)
+                _ws_filter_sql = f"WHERE workspace_id IN ({_ws_q})"
+            _sc_stmt = (
+                f"SELECT pillar, ROUND(AVG(completion_percent), 0) AS score "
+                f"FROM `{_catalog}`.`{_schema}`.`waf_total_percentage_across_pillars` "
+                f"{_ws_filter_sql} "
+                f"GROUP BY pillar ORDER BY pillar"
+            )
+            _sc_r = _sc_wc.statement_execution.execute_statement(
+                statement=_sc_stmt,
+                warehouse_id=WAREHOUSE_ID,
+                wait_timeout="15s",
+            )
+            if (_sc_r.status and _sc_r.status.state == _SS.SUCCEEDED
+                    and _sc_r.result and _sc_r.result.data_array):
+                _pillar_scores = {row[0]: int(row[1]) if row[1] is not None else 0
+                                  for row in _sc_r.result.data_array}
+                _sc1, _sc2, _sc3, _sc4, _sc5 = st.columns(5)
+                def _score_delta(s):
+                    if s >= 80: return "Excellent"
+                    if s >= 60: return "Good"
+                    if s >= 40: return "Needs work"
+                    return "Critical"
+                with _sc1:
+                    _s = _pillar_scores.get("Data & AI Governance", 0)
+                    st.metric("Governance", f"{_s}%", _score_delta(_s), delta_color="off", help="Account-wide")
+                with _sc2:
+                    _s = _pillar_scores.get("Cost Optimization", 0)
+                    st.metric("Cost", f"{_s}%", _score_delta(_s), delta_color="off")
+                with _sc3:
+                    _s = _pillar_scores.get("Performance Efficiency", 0)
+                    st.metric("Performance", f"{_s}%", _score_delta(_s), delta_color="off")
+                with _sc4:
+                    _s = _pillar_scores.get("Reliability", 0)
+                    st.metric("Reliability", f"{_s}%", _score_delta(_s), delta_color="off")
+                with _sc5:
+                    _overall = int(sum(_pillar_scores.values()) / max(len(_pillar_scores), 1))
+                    st.metric("Overall WAF", f"{_overall}%", _score_delta(_overall), delta_color="off")
+                st.markdown("---")
+        except Exception:
+            pass
 
 # Reload Data button — triggers a Databricks Job via SDK (handles Apps OAuth M2M)
 col1, col2, col3 = st.columns([1, 2, 1])

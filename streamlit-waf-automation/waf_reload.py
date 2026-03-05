@@ -49,6 +49,22 @@ spark.sql(f"""
     ) USING DELTA
 """)
 
+# Build workspace lookup view — populated from billing.usage
+try:
+    spark.sql(f"""
+        CREATE OR REPLACE VIEW `{catalog}`.`waf_cache`.`waf_workspaces` AS
+        SELECT DISTINCT
+            CAST(workspace_id AS STRING) AS workspace_id,
+            FIRST(workspace_name) AS workspace_name
+        FROM system.billing.usage
+        WHERE usage_date >= current_date() - INTERVAL 90 DAYS
+        GROUP BY workspace_id
+        ORDER BY workspace_name
+    """)
+    print("  ✅ waf_workspaces view created")
+except Exception as _we:
+    print(f"  ⚠️  waf_workspaces: {_we}")
+
 _run_id_row = spark.sql(
     f"SELECT COALESCE(MAX(run_id), 0) + 1 FROM `{catalog}`.`waf_cache`.`_run_log`"
 ).collect()[0]
@@ -154,24 +170,29 @@ try:
             r.threshold_percentage AS rec_threshold_pct,
             r.metric_definition,
             r.recommendation_if_not_met,
+            c.workspace_id,
             c.score_percentage,
             c.threshold_percentage AS control_threshold_pct,
             c.threshold_met
         FROM (
             SELECT waf_id, 'Data & AI Governance' AS pillar, principle,
                    description AS best_practice,
+                   'account-wide' AS workspace_id,
                    score_percentage, threshold_percentage, threshold_met
             FROM `{catalog}`.`waf_cache`.`waf_controls_g`
             UNION ALL
             SELECT waf_id, 'Cost Optimization', principle, best_practice,
+                   workspace_id,
                    score_percentage, threshold_percentage, threshold_met
             FROM `{catalog}`.`waf_cache`.`waf_controls_c`
             UNION ALL
             SELECT waf_id, 'Performance Efficiency', principle, best_practice,
+                   workspace_id,
                    score_percentage, threshold_percentage, threshold_met
             FROM `{catalog}`.`waf_cache`.`waf_controls_p`
             UNION ALL
             SELECT waf_id, 'Reliability', principle, best_practice,
+                   workspace_id,
                    score_percentage, threshold_percentage, threshold_met
             FROM `{catalog}`.`waf_cache`.`waf_controls_r`
         ) c
