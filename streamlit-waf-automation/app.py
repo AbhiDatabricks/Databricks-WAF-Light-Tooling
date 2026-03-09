@@ -1880,8 +1880,21 @@ st.info(
 )
 
 # Embed the dashboard using raw iframe (Databricks recommended format)
+# When exactly one workspace is selected, pass it as a dashboard URL parameter so
+# the Lakeview charts also filter to that workspace.
+_embed_url = EMBED_URL
+if _filter_active and len(_selected_ws_ids) == 1:
+    _embed_url = f"{EMBED_URL}&p_workspace_id={_selected_ws_ids[0]}"
+elif _filter_active and len(_selected_ws_ids) > 1:
+    # Multi-workspace: dashboard shows all (single-value param can't accept multiple).
+    # Score cards above still reflect the filtered selection.
+    st.caption(
+        "ℹ️ The embedded dashboard shows all workspaces (dashboard filter supports one workspace at a time). "
+        "Use the score cards above for a filtered view."
+    )
+
 st.components.v1.html(
-    f'<iframe src="{EMBED_URL}" width="100%" height="800" frameborder="0"></iframe>',
+    f'<iframe src="{_embed_url}" width="100%" height="800" frameborder="0"></iframe>',
     height=810,
     scrolling=True,
 )

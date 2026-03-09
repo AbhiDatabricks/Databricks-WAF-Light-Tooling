@@ -1743,10 +1743,27 @@
         "join system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n",
         "-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
         "where ju.usage_date BETWEEN current_date() - interval 90 days AND current_date()\n",
-        "--  AND array_contains(:workspace_id,ju.workspace_id)\n",
+        "AND (:workspace_id = '' OR CAST(ju.workspace_id AS STRING) = :workspace_id)\n",
         "and ju.billing_origin_product in (\"ALL_PURPOSE\")\n",
         "and ju.product_features.is_serverless = false\n",
         "group by 1,2,3\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1770,7 +1787,24 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1787,7 +1821,24 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"JOB\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1821,7 +1872,24 @@
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\", \"JOB\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1834,7 +1902,24 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "and array_size(map_entries(tags))  = 0\n",
         "and delete_time is null \n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1869,7 +1954,24 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -1882,7 +1984,24 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "-- and cluster_source in (\"JOB\") AND array_contains(:workspace_id,workspace_id)\n"
+        "and cluster_source in (\"JOB\") AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2872,7 +2991,7 @@
         "  ,workspace_id\n",
         " FROM system.billing.usage \n",
         " WHERE usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        " AND --array_contains(:workspace_id,workspace_id) AND \n",
+        " AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id) AND \n",
         " usage_unit = 'DBU'\n",
         " AND billing_origin_product IN ('LAKEFLOW_CONNECT','DATA_QUALITY_MONITORING','PREDICTIVE_OPTIMIZATION','DATABASE','APPS','VECTOR_SEARCH','JOBS','MODEL_SERVING','LAKEFLOW_CONNECT','SQL','INTERACTIVE','DLT','ALL_PURPOSE')\n",
         " GROUP BY CASE WHEN billing_origin_product = 'ALL_PURPOSE' THEN 'INTERACTIVE' \n",
@@ -2906,7 +3025,7 @@
         "        , cluster_source\n",
         "        \n",
         "    from system.compute.clusters c \n",
-        "    WHERE --array_contains(:workspace_id,workspace_id)\n",
+        "    WHERE (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id) AND\n",
         "     change_date <= current_date()) --TBD to check this filter\n",
         "    WHERE rn = 1\n",
         ")\n",
@@ -2934,6 +3053,23 @@
         "ON CM.cluster_id = usage.compute_id\n",
         "AND CM.workspace_id = usage.workspace_id\n",
         "ORDER BY dbu_usage_total DESC\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -2963,7 +3099,7 @@
         "FROM system.billing.usage\n",
         "WHERE billing_origin_product = 'MODEL_SERVING'\n",
         "AND usage_date BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n",
         "AND usage_metadata.endpoint_id IS NOT NULL \n",
         "AND usage_unit = 'DBU'\n",
         "GROUP BY\n",
@@ -2973,7 +3109,7 @@
         "ON    eu.workspace_id = bu.workspace_id \n",
         "  AND se.endpoint_id = bu.endpoint_id\n",
         "WHERE request_time BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,eu.workspace_id)\n",
+        "AND (:workspace_id = '' OR CAST(eu.workspace_id AS STRING) = :workspace_id)\n",
         "AND eu.status_code = 200\n",
         "AND entity_type IN ('FOUNDATION_MODEL','CUSTOM_MODEL')\n",
         "GROUP BY \n",
@@ -2987,6 +3123,23 @@
         "\n",
         "ORDER BY dbu DESC\n",
         "\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3003,13 +3156,30 @@
         "FROM system.query.history\n",
         "WHERE compute.type = 'WAREHOUSE'\n",
         "AND end_time BETWEEN current_date() - INTERVAL 90 DAY  AND current_date()\n",
-        "--AND array_contains(:workspace_id,workspace_id)\n",
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n",
         "\n",
         "GROUP BY \n",
         "   compute.warehouse_id\n",
         "  ,workspace_id\n",
         "  ,account_id\n",
         "ORDER BY avg_queue_time_seconds DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3058,10 +3228,27 @@
         "join system.compute.clusters c on c.cluster_id = ju.usage_metadata.cluster_id\n",
         "-- join system.lakeflow.jobs j on j.job_id = ju.usage_metadata.job_id\n",
         "where ju.usage_date BETWEEN current_date() - interval 90 days AND current_date()\n",
-        "--  AND array_contains(:workspace_id,ju.workspace_id)\n",
+        "AND (:workspace_id = '' OR CAST(ju.workspace_id AS STRING) = :workspace_id)\n",
         "and ju.billing_origin_product in (\"JOBS\")\n",
         "and ju.product_features.is_serverless = false\n",
         "group by 1,2,3\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3082,8 +3269,25 @@
         "qualify\n",
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n",
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n",
         "and cluster_source in (\"API\", \"UI\")"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3103,7 +3307,24 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        "    -- AND array_contains(:workspace_id,workspace_id)"
+        "    AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3118,7 +3339,24 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"JOB\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3143,7 +3381,24 @@
         "QUALIFY\n",
         "    ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, warehouse_id ORDER BY change_time DESC) = 1\n",
         "    and delete_time is null\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     {
@@ -3158,7 +3413,24 @@
         "ROW_NUMBER() OVER (PARTITION BY account_id, workspace_id, cluster_id ORDER BY change_time DESC) = 1\n",
         "and delete_time is null \n",
         "and cluster_source in (\"API\", \"UI\")\n",
-        "--  AND array_contains(:workspace_id,workspace_id)\n"
+        "AND (:workspace_id = '' OR CAST(workspace_id AS STRING) = :workspace_id)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "Workspace ID",
+          "keyword": "workspace_id",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
       ]
     }
   ],
