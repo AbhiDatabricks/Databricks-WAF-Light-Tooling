@@ -85,23 +85,48 @@ def _load_run_info():
 
 @st.cache_data(ttl=300)
 def _load_workspaces():
-    """Return list of (workspace_id, workspace_name) from waf_workspaces, or [] if unavailable."""
+    """Return list of workspace_id strings from waf_controls_c, or [] if unavailable.
+
+    Queries the materialized Delta table (not system.billing directly) for reliability.
+    Uses REST API with polling to handle cold warehouse start-up time.
+    """
     _cat = os.environ.get("WAF_CATALOG", "useast1")
     if not WAREHOUSE_ID:
         return []
-    _wc = _get_ws_client()
-    if not _wc:
+    _host = os.environ.get("DATABRICKS_HOST", "").rstrip("/")
+    _token = os.environ.get("DATABRICKS_TOKEN", "")
+    if not _host or not _token:
         return []
+
+    _sql = (
+        f"SELECT DISTINCT workspace_id FROM `{_cat}`.`waf_cache`.`waf_controls_c` "
+        f"WHERE workspace_id IS NOT NULL ORDER BY workspace_id"
+    )
     try:
-        from databricks.sdk.service.sql import StatementState
-        _r = _wc.statement_execution.execute_statement(
-            statement=f"SELECT workspace_id FROM `{_cat}`.`waf_cache`.`waf_workspaces` ORDER BY workspace_id",
-            warehouse_id=WAREHOUSE_ID,
-            wait_timeout="10s",
-        )
-        if (_r.status and _r.status.state == StatementState.SUCCEEDED
-                and _r.result and _r.result.data_array):
-            return [(str(row[0]), str(row[0])) for row in _r.result.data_array if row[0]]
+        import urllib.request as _ur, json as _js
+        _hdrs = {"Authorization": f"Bearer {_token}", "Content-Type": "application/json"}
+        _body = _js.dumps({
+            "statement": _sql, "warehouse_id": WAREHOUSE_ID,
+            "wait_timeout": "50s", "on_wait_timeout": "CONTINUE",
+        }).encode()
+        _req = _ur.Request(f"{_host}/api/2.0/sql/statements", data=_body,
+                           headers=_hdrs, method="POST")
+        with _ur.urlopen(_req) as _r:
+            _resp = _js.loads(_r.read())
+        _sid = _resp.get("statement_id")
+        _state = _resp.get("status", {}).get("state")
+        # Poll up to ~3 min for warehouse cold start
+        for _ in range(36):
+            if _state in ("SUCCEEDED", "FAILED", "CANCELED", "CLOSED"):
+                break
+            import time as _t; _t.sleep(5)
+            _req2 = _ur.Request(f"{_host}/api/2.0/sql/statements/{_sid}", headers=_hdrs)
+            with _ur.urlopen(_req2) as _r2:
+                _resp = _js.loads(_r2.read())
+            _state = _resp.get("status", {}).get("state")
+        if _state == "SUCCEEDED":
+            _rows = _resp.get("result", {}).get("data_array") or []
+            return [str(r[0]) for r in _rows if r and r[0]]
     except Exception:
         pass
     return []
@@ -115,23 +140,24 @@ def _ws_in_clause(ws_ids: list) -> str:
 
 
 # Load workspaces for filter — done once, cached 5 min
-_all_workspaces = _load_workspaces()
-_all_ws_ids = [ws[0] for ws in _all_workspaces]
+_all_workspaces = _load_workspaces()   # list of workspace_id strings
+_all_ws_ids = _all_workspaces
 
 # Sidebar with explanations
 with st.sidebar:
     # --- Workspace Filter ---
     if _all_workspaces:
         st.markdown("### Workspace Filter")
-        _ws_display = {f"{name} ({wid})": wid for wid, name in _all_workspaces}
-        _ws_keys = list(_ws_display.keys())
-        _selected_keys = st.multiselect(
+        _selected_ws_ids = st.multiselect(
             "Filter by workspace:",
-            options=_ws_keys,
-            default=_ws_keys,
+            options=_all_workspaces,
+            default=[],          # default = all workspaces (no filter)
+            placeholder="All workspaces",
             key="ws_filter",
         )
-        _selected_ws_ids = [_ws_display[k] for k in _selected_keys] if _selected_keys else _all_ws_ids
+        # Empty selection = all workspaces (no restriction)
+        if not _selected_ws_ids:
+            _selected_ws_ids = _all_ws_ids
         st.markdown("---")
     else:
         _selected_ws_ids = []
@@ -1686,9 +1712,8 @@ st.markdown("---")
 # --- Workspace filter banner + score cards ---
 _filter_active = bool(_selected_ws_ids and _all_ws_ids and len(_selected_ws_ids) < len(_all_ws_ids))
 if _filter_active:
-    _ws_names = [name for wid, name in _all_workspaces if wid in _selected_ws_ids]
     st.info(
-        f"Workspace filter active: **{', '.join(_ws_names)}**. "
+        f"Workspace filter active: **{', '.join(_selected_ws_ids[:5])}{'...' if len(_selected_ws_ids) > 5 else ''}**. "
         "Governance scores are account-wide and unaffected by this filter.",
         icon="ℹ️",
     )
@@ -1837,10 +1862,11 @@ if not GENIE_URL:
     st.caption("💡 **Ask Genie**: Re-run install to link the WAF Genie room; the button above opens Genie.")
 
 st.info(
-    "**First time?** The dashboard below may show a Databricks login screen inside the iframe. "
-    "Just click **Continue** — it will use your existing Databricks SSO session and sign you in "
-    "automatically (no password needed). This is a one-time step per browser session. "
-    "If you prefer, use the button above to open the dashboard directly in Databricks.",
+    "**First time?** The dashboard below may show a Databricks login prompt — click **Continue** "
+    "to use your existing SSO session (one-time per browser). "
+    "If you see an **embedding error**, a workspace admin needs to: "
+    "Admin Console → Security → External Access → Embed dashboards → Manage → "
+    "add **\\*.databricksapps.com** to the allowed domains list.",
     icon="ℹ️",
 )
 
