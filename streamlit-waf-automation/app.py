@@ -85,48 +85,42 @@ def _load_run_info():
 
 @st.cache_data(ttl=300)
 def _load_workspaces():
-    """Return list of workspace_id strings from waf_controls_c, or [] if unavailable.
+    """Return list of workspace_id strings, or [] if unavailable.
 
-    Queries the materialized Delta table (not system.billing directly) for reliability.
-    Uses REST API with polling to handle cold warehouse start-up time.
+    Uses same SDK pattern as _load_run_info (known to work in Databricks Apps).
+    Polls up to 3 min to handle cold warehouse start-up.
     """
     _cat = os.environ.get("WAF_CATALOG", "useast1")
     if not WAREHOUSE_ID:
         return []
-    _host = os.environ.get("DATABRICKS_HOST", "").rstrip("/")
-    _token = os.environ.get("DATABRICKS_TOKEN", "")
-    if not _host or not _token:
+    _wc = _get_ws_client()
+    if not _wc:
         return []
-
-    _sql = (
-        f"SELECT DISTINCT workspace_id FROM `{_cat}`.`waf_cache`.`waf_controls_c` "
-        f"WHERE workspace_id IS NOT NULL ORDER BY workspace_id"
-    )
     try:
-        import urllib.request as _ur, json as _js
-        _hdrs = {"Authorization": f"Bearer {_token}", "Content-Type": "application/json"}
-        _body = _js.dumps({
-            "statement": _sql, "warehouse_id": WAREHOUSE_ID,
-            "wait_timeout": "50s", "on_wait_timeout": "CONTINUE",
-        }).encode()
-        _req = _ur.Request(f"{_host}/api/2.0/sql/statements", data=_body,
-                           headers=_hdrs, method="POST")
-        with _ur.urlopen(_req) as _r:
-            _resp = _js.loads(_r.read())
-        _sid = _resp.get("statement_id")
-        _state = _resp.get("status", {}).get("state")
-        # Poll up to ~3 min for warehouse cold start
+        import time as _t
+        from databricks.sdk.service.sql import StatementState
+        _sql = (
+            f"SELECT DISTINCT workspace_id FROM `{_cat}`.`waf_cache`.`waf_controls_c` "
+            f"WHERE workspace_id IS NOT NULL ORDER BY workspace_id"
+        )
+        _r = _wc.statement_execution.execute_statement(
+            statement=_sql,
+            warehouse_id=WAREHOUSE_ID,
+            wait_timeout="50s",
+        )
+        # Poll if still pending (cold warehouse start can take > 50s)
+        _stmt_id = _r.statement_id
+        _state = _r.status.state if _r.status else None
         for _ in range(36):
-            if _state in ("SUCCEEDED", "FAILED", "CANCELED", "CLOSED"):
+            if _state in (StatementState.SUCCEEDED, StatementState.FAILED,
+                          StatementState.CANCELED, StatementState.CLOSED):
                 break
-            import time as _t; _t.sleep(5)
-            _req2 = _ur.Request(f"{_host}/api/2.0/sql/statements/{_sid}", headers=_hdrs)
-            with _ur.urlopen(_req2) as _r2:
-                _resp = _js.loads(_r2.read())
-            _state = _resp.get("status", {}).get("state")
-        if _state == "SUCCEEDED":
-            _rows = _resp.get("result", {}).get("data_array") or []
-            return [str(r[0]) for r in _rows if r and r[0]]
+            _t.sleep(5)
+            _r = _wc.statement_execution.get_statement(_stmt_id)
+            _state = _r.status.state if _r.status else None
+        if (_state == StatementState.SUCCEEDED
+                and _r.result and _r.result.data_array):
+            return [str(row[0]) for row in _r.result.data_array if row and row[0]]
     except Exception:
         pass
     return []
