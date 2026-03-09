@@ -367,7 +367,7 @@
       "queryLines": [
         "SELECT waf_id, principle, description AS best_practice,\n",
         "  score_percentage, threshold_percentage, threshold_met\n",
-        "FROM main.waf_cache.waf_controls_g\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_g\n",
         "ORDER BY principle, waf_id"
       ],
       "parameters": []
@@ -381,7 +381,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_g\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_g\n",
         "GROUP BY principle\n",
         "ORDER BY principle"
       ],
@@ -395,7 +395,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_g"
+        "FROM {{catalog}}.waf_cache.waf_controls_g"
       ],
       "parameters": []
     },
@@ -408,7 +408,7 @@
         "  ROUND(AVG(completion_percent), 0) AS completion_percent,\n",
         "  SUM(total_controls) AS total_controls,\n",
         "  SUM(implemented_controls) AS implemented_controls\n",
-        "FROM main.waf_cache.waf_total_percentage_across_pillars\n",
+        "FROM {{catalog}}.waf_cache.waf_total_percentage_across_pillars\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "GROUP BY pillar\n",
         "ORDER BY pillar"
@@ -437,7 +437,7 @@
       "queryLines": [
         "SELECT workspace_id, waf_id, principle, best_practice,\n",
         "  score_percentage, threshold_percentage, threshold_met, implemented\n",
-        "FROM main.waf_cache.waf_controls_c\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_c\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "ORDER BY workspace_id, principle, waf_id"
       ],
@@ -468,7 +468,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_c\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_c\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "GROUP BY principle\n",
         "ORDER BY principle"
@@ -499,7 +499,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_c\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_c\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)"
       ],
       "parameters": [
@@ -526,7 +526,7 @@
       "queryLines": [
         "SELECT workspace_id, waf_id, principle, best_practice,\n",
         "  score_percentage, threshold_percentage, threshold_met, implemented\n",
-        "FROM main.waf_cache.waf_controls_p\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_p\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "ORDER BY workspace_id, principle, waf_id"
       ],
@@ -557,7 +557,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_p\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_p\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "GROUP BY principle\n",
         "ORDER BY principle"
@@ -588,7 +588,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_p\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_p\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)"
       ],
       "parameters": [
@@ -1095,7 +1095,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_r\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_r\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)"
       ],
       "parameters": [
@@ -1125,7 +1125,7 @@
         "  COUNT(*) AS total_controls,\n",
         "  SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) AS implemented_controls,\n",
         "  ROUND(100.0 * SUM(CASE WHEN threshold_met = 'Met' THEN 1 ELSE 0 END) / COUNT(*), 0) AS completion_percent\n",
-        "FROM main.waf_cache.waf_controls_r\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_r\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "GROUP BY principle\n",
         "ORDER BY principle"
@@ -1154,7 +1154,7 @@
       "queryLines": [
         "SELECT workspace_id, waf_id, principle, best_practice,\n",
         "  score_percentage, threshold_percentage, threshold_met, implemented\n",
-        "FROM main.waf_cache.waf_controls_r\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_r\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "ORDER BY workspace_id, principle, waf_id"
       ],
@@ -1639,7 +1639,7 @@
       "queryLines": [
         "SELECT workspace_id, waf_id, principle, best_practice,\n",
         "  score_percentage, threshold_percentage, threshold_met, implemented\n",
-        "FROM main.waf_cache.waf_controls_p\n",
+        "FROM {{catalog}}.waf_cache.waf_controls_p\n",
         "WHERE (:workspace_id = '' OR workspace_id = :workspace_id)\n",
         "ORDER BY workspace_id, principle, waf_id"
       ],
