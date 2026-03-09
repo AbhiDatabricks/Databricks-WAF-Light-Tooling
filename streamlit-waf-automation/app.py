@@ -1712,11 +1712,12 @@ if _filter_active:
         icon="ℹ️",
     )
 
-# Native score cards — query waf_total_percentage_across_pillars filtered by workspace
+# Native score cards — always shown, filtered by workspace when selection is active
 if WAREHOUSE_ID:
     _sc_wc = _get_ws_client()
     if _sc_wc:
         try:
+            import time as _sc_t
             from databricks.sdk.service.sql import StatementState as _SS
             _ws_filter_sql = ""
             if _filter_active:
@@ -1731,12 +1732,26 @@ if WAREHOUSE_ID:
             _sc_r = _sc_wc.statement_execution.execute_statement(
                 statement=_sc_stmt,
                 warehouse_id=WAREHOUSE_ID,
-                wait_timeout="15s",
+                wait_timeout="50s",
             )
-            if (_sc_r.status and _sc_r.status.state == _SS.SUCCEEDED
+            # Poll if still pending (cold warehouse)
+            _sc_sid = _sc_r.statement_id
+            _sc_state = _sc_r.status.state if _sc_r.status else None
+            for _ in range(24):
+                if _sc_state in (_SS.SUCCEEDED, _SS.FAILED, _SS.CANCELED, _SS.CLOSED):
+                    break
+                _sc_t.sleep(5)
+                _sc_r = _sc_wc.statement_execution.get_statement(_sc_sid)
+                _sc_state = _sc_r.status.state if _sc_r.status else None
+            if (_sc_state == _SS.SUCCEEDED
                     and _sc_r.result and _sc_r.result.data_array):
                 _pillar_scores = {row[0]: int(row[1]) if row[1] is not None else 0
                                   for row in _sc_r.result.data_array}
+                _ws_label = (
+                    f"Filtered: {', '.join(_selected_ws_ids[:3])}{'...' if len(_selected_ws_ids) > 3 else ''}"
+                    if _filter_active else "All workspaces"
+                )
+                st.caption(f"📊 WAF Scores — {_ws_label}")
                 _sc1, _sc2, _sc3, _sc4, _sc5 = st.columns(5)
                 def _score_delta(s):
                     if s >= 80: return "Excellent"
