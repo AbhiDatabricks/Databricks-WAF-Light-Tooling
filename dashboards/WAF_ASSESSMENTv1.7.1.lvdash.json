@@ -2150,6 +2150,48 @@
       "layout": [
         {
           "widget": {
+            "name": "be056dc3",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Workspace ID"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
             "name": "2ca8f2ea",
             "queries": [
               {
@@ -2200,7 +2242,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 6,
             "height": 6
           }
@@ -2216,7 +2258,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 6,
             "height": 2
           }
@@ -2230,6 +2272,48 @@
       "layout": [
         {
           "widget": {
+            "name": "31b5c094",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Workspace ID"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
             "name": "ec3a56bc",
             "multilineTextboxSpec": {
               "lines": [
@@ -2239,7 +2323,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 12,
             "height": 2
           }
@@ -2294,7 +2378,7 @@
           },
           "position": {
             "x": 0,
-            "y": 16,
+            "y": 18,
             "width": 4,
             "height": 3
           }
@@ -2349,7 +2433,7 @@
           },
           "position": {
             "x": 4,
-            "y": 16,
+            "y": 18,
             "width": 4,
             "height": 3
           }
@@ -2403,7 +2487,7 @@
           },
           "position": {
             "x": 8,
-            "y": 16,
+            "y": 18,
             "width": 4,
             "height": 3
           }
@@ -2445,7 +2529,7 @@
           },
           "position": {
             "x": 0,
-            "y": 26,
+            "y": 28,
             "width": 4,
             "height": 3
           }
@@ -2501,7 +2585,7 @@
           },
           "position": {
             "x": 4,
-            "y": 26,
+            "y": 28,
             "width": 4,
             "height": 3
           }
@@ -2557,7 +2641,7 @@
           },
           "position": {
             "x": 8,
-            "y": 26,
+            "y": 28,
             "width": 4,
             "height": 3
           }
@@ -2599,7 +2683,7 @@
           },
           "position": {
             "x": 0,
-            "y": 36,
+            "y": 38,
             "width": 6,
             "height": 3
           }
@@ -2641,7 +2725,7 @@
           },
           "position": {
             "x": 6,
-            "y": 36,
+            "y": 38,
             "width": 6,
             "height": 3
           }
@@ -2703,7 +2787,7 @@
           },
           "position": {
             "x": 0,
-            "y": 29,
+            "y": 31,
             "width": 12,
             "height": 7
           }
@@ -2759,7 +2843,7 @@
           },
           "position": {
             "x": 0,
-            "y": 19,
+            "y": 21,
             "width": 12,
             "height": 7
           }
@@ -3006,7 +3090,7 @@
           },
           "position": {
             "x": 0,
-            "y": 10,
+            "y": 12,
             "width": 12,
             "height": 6
           }
@@ -3063,7 +3147,7 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
+            "y": 6,
             "width": 12,
             "height": 6
           }
@@ -3103,7 +3187,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 4,
             "width": 12,
             "height": 2
           }
@@ -3119,7 +3203,7 @@
           },
           "position": {
             "x": 0,
-            "y": 39,
+            "y": 41,
             "width": 2,
             "height": 1
           }
@@ -3135,7 +3219,7 @@
           },
           "position": {
             "x": 2,
-            "y": 39,
+            "y": 41,
             "width": 10,
             "height": 1
           }
@@ -3158,7 +3242,7 @@
           },
           "position": {
             "x": 0,
-            "y": 40,
+            "y": 42,
             "width": 2,
             "height": 6
           }
@@ -3229,7 +3313,7 @@
           },
           "position": {
             "x": 2,
-            "y": 40,
+            "y": 42,
             "width": 10,
             "height": 6
           }
@@ -3250,7 +3334,7 @@
           },
           "position": {
             "x": 0,
-            "y": 47,
+            "y": 49,
             "width": 2,
             "height": 6
           }
@@ -3266,7 +3350,7 @@
           },
           "position": {
             "x": 0,
-            "y": 46,
+            "y": 48,
             "width": 12,
             "height": 1
           }
@@ -3282,7 +3366,7 @@
           },
           "position": {
             "x": 0,
-            "y": 53,
+            "y": 55,
             "width": 12,
             "height": 1
           }
@@ -3303,7 +3387,7 @@
           },
           "position": {
             "x": 0,
-            "y": 54,
+            "y": 56,
             "width": 2,
             "height": 6
           }
@@ -3372,7 +3456,7 @@
           },
           "position": {
             "x": 2,
-            "y": 54,
+            "y": 56,
             "width": 4,
             "height": 6
           }
@@ -3448,7 +3532,7 @@
           },
           "position": {
             "x": 6,
-            "y": 54,
+            "y": 56,
             "width": 6,
             "height": 6
           }
@@ -3464,7 +3548,7 @@
           },
           "position": {
             "x": 0,
-            "y": 60,
+            "y": 62,
             "width": 12,
             "height": 1
           }
@@ -3487,7 +3571,7 @@
           },
           "position": {
             "x": 0,
-            "y": 61,
+            "y": 63,
             "width": 2,
             "height": 6
           }
@@ -3503,7 +3587,7 @@
           },
           "position": {
             "x": 0,
-            "y": 67,
+            "y": 69,
             "width": 12,
             "height": 1
           }
@@ -3526,7 +3610,7 @@
           },
           "position": {
             "x": 0,
-            "y": 68,
+            "y": 70,
             "width": 2,
             "height": 6
           }
@@ -3542,7 +3626,7 @@
           },
           "position": {
             "x": 0,
-            "y": 74,
+            "y": 76,
             "width": 12,
             "height": 1
           }
@@ -3565,7 +3649,7 @@
           },
           "position": {
             "x": 0,
-            "y": 75,
+            "y": 77,
             "width": 2,
             "height": 6
           }
@@ -3581,7 +3665,7 @@
           },
           "position": {
             "x": 0,
-            "y": 81,
+            "y": 83,
             "width": 12,
             "height": 1
           }
@@ -3604,7 +3688,7 @@
           },
           "position": {
             "x": 0,
-            "y": 82,
+            "y": 84,
             "width": 2,
             "height": 6
           }
@@ -3620,7 +3704,7 @@
           },
           "position": {
             "x": 0,
-            "y": 88,
+            "y": 90,
             "width": 12,
             "height": 1
           }
@@ -3642,7 +3726,7 @@
           },
           "position": {
             "x": 0,
-            "y": 89,
+            "y": 91,
             "width": 2,
             "height": 6
           }
@@ -3696,7 +3780,7 @@
           },
           "position": {
             "x": 2,
-            "y": 89,
+            "y": 91,
             "width": 4,
             "height": 6
           }
@@ -3782,7 +3866,7 @@
           },
           "position": {
             "x": 6,
-            "y": 89,
+            "y": 91,
             "width": 6,
             "height": 6
           }
@@ -3829,7 +3913,7 @@
           },
           "position": {
             "x": 2,
-            "y": 82,
+            "y": 84,
             "width": 4,
             "height": 3
           }
@@ -3876,7 +3960,7 @@
           },
           "position": {
             "x": 2,
-            "y": 85,
+            "y": 87,
             "width": 4,
             "height": 3
           }
@@ -3918,7 +4002,7 @@
           },
           "position": {
             "x": 6,
-            "y": 82,
+            "y": 84,
             "width": 6,
             "height": 6
           }
@@ -3957,7 +4041,7 @@
           },
           "position": {
             "x": 2,
-            "y": 75,
+            "y": 77,
             "width": 6,
             "height": 6
           }
@@ -4014,7 +4098,7 @@
           },
           "position": {
             "x": 2,
-            "y": 68,
+            "y": 70,
             "width": 6,
             "height": 6
           }
@@ -4082,7 +4166,7 @@
           },
           "position": {
             "x": 8,
-            "y": 68,
+            "y": 70,
             "width": 4,
             "height": 6
           }
@@ -4127,7 +4211,7 @@
           },
           "position": {
             "x": 2,
-            "y": 61,
+            "y": 63,
             "width": 4,
             "height": 6
           }
@@ -4195,7 +4279,7 @@
           },
           "position": {
             "x": 6,
-            "y": 61,
+            "y": 63,
             "width": 6,
             "height": 6
           }
@@ -4363,7 +4447,7 @@
           },
           "position": {
             "x": 2,
-            "y": 47,
+            "y": 49,
             "width": 10,
             "height": 6
           }
@@ -4378,6 +4462,48 @@
       "layout": [
         {
           "widget": {
+            "name": "352674d6",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Workspace ID"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
             "name": "96877a12",
             "multilineTextboxSpec": {
               "lines": [
@@ -4387,7 +4513,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 12,
             "height": 2
           }
@@ -4634,7 +4760,7 @@
           },
           "position": {
             "x": 0,
-            "y": 10,
+            "y": 12,
             "width": 12,
             "height": 7
           }
@@ -4691,7 +4817,7 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
+            "y": 6,
             "width": 12,
             "height": 6
           }
@@ -4731,7 +4857,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 4,
             "width": 12,
             "height": 2
           }
@@ -4747,7 +4873,7 @@
           },
           "position": {
             "x": 0,
-            "y": 17,
+            "y": 19,
             "width": 12,
             "height": 1
           }
@@ -4767,7 +4893,7 @@
           },
           "position": {
             "x": 0,
-            "y": 18,
+            "y": 20,
             "width": 12,
             "height": 1
           }
@@ -4826,7 +4952,7 @@
           },
           "position": {
             "x": 0,
-            "y": 21,
+            "y": 23,
             "width": 6,
             "height": 6
           }
@@ -4891,7 +5017,7 @@
           },
           "position": {
             "x": 6,
-            "y": 21,
+            "y": 23,
             "width": 6,
             "height": 6
           }
@@ -4907,7 +5033,7 @@
           },
           "position": {
             "x": 0,
-            "y": 41,
+            "y": 43,
             "width": 12,
             "height": 1
           }
@@ -4976,7 +5102,7 @@
           },
           "position": {
             "x": 0,
-            "y": 44,
+            "y": 46,
             "width": 6,
             "height": 6
           }
@@ -4992,7 +5118,7 @@
           },
           "position": {
             "x": 0,
-            "y": 50,
+            "y": 52,
             "width": 12,
             "height": 1
           }
@@ -5049,7 +5175,7 @@
           },
           "position": {
             "x": 0,
-            "y": 51,
+            "y": 53,
             "width": 12,
             "height": 6
           }
@@ -5065,7 +5191,7 @@
           },
           "position": {
             "x": 0,
-            "y": 57,
+            "y": 59,
             "width": 12,
             "height": 1
           }
@@ -5116,7 +5242,7 @@
           },
           "position": {
             "x": 0,
-            "y": 59,
+            "y": 61,
             "width": 12,
             "height": 3
           }
@@ -5132,7 +5258,7 @@
           },
           "position": {
             "x": 0,
-            "y": 62,
+            "y": 64,
             "width": 12,
             "height": 1
           }
@@ -5148,7 +5274,7 @@
           },
           "position": {
             "x": 0,
-            "y": 68,
+            "y": 70,
             "width": 12,
             "height": 1
           }
@@ -5166,7 +5292,7 @@
           },
           "position": {
             "x": 0,
-            "y": 69,
+            "y": 71,
             "width": 12,
             "height": 2
           }
@@ -5182,7 +5308,7 @@
           },
           "position": {
             "x": 0,
-            "y": 81,
+            "y": 83,
             "width": 12,
             "height": 1
           }
@@ -5233,7 +5359,7 @@
           },
           "position": {
             "x": 0,
-            "y": 82,
+            "y": 84,
             "width": 6,
             "height": 6
           }
@@ -5249,7 +5375,7 @@
           },
           "position": {
             "x": 0,
-            "y": 88,
+            "y": 90,
             "width": 12,
             "height": 1
           }
@@ -5265,7 +5391,7 @@
           },
           "position": {
             "x": 0,
-            "y": 89,
+            "y": 91,
             "width": 6,
             "height": 2
           }
@@ -5287,7 +5413,7 @@
           },
           "position": {
             "x": 0,
-            "y": 103,
+            "y": 105,
             "width": 12,
             "height": 2
           }
@@ -5304,7 +5430,7 @@
           },
           "position": {
             "x": 0,
-            "y": 105,
+            "y": 107,
             "width": 12,
             "height": 2
           }
@@ -5321,7 +5447,7 @@
           },
           "position": {
             "x": 0,
-            "y": 113,
+            "y": 115,
             "width": 12,
             "height": 2
           }
@@ -5364,7 +5490,7 @@
           },
           "position": {
             "x": 0,
-            "y": 115,
+            "y": 117,
             "width": 12,
             "height": 3
           }
@@ -5380,7 +5506,7 @@
           },
           "position": {
             "x": 0,
-            "y": 136,
+            "y": 138,
             "width": 12,
             "height": 1
           }
@@ -5440,7 +5566,7 @@
           },
           "position": {
             "x": 0,
-            "y": 165,
+            "y": 167,
             "width": 6,
             "height": 7
           }
@@ -5456,7 +5582,7 @@
           },
           "position": {
             "x": 0,
-            "y": 184,
+            "y": 186,
             "width": 12,
             "height": 1
           }
@@ -5472,7 +5598,7 @@
           },
           "position": {
             "x": 0,
-            "y": 192,
+            "y": 194,
             "width": 12,
             "height": 1
           }
@@ -5489,7 +5615,7 @@
           },
           "position": {
             "x": 0,
-            "y": 193,
+            "y": 195,
             "width": 12,
             "height": 2
           }
@@ -5505,7 +5631,7 @@
           },
           "position": {
             "x": 0,
-            "y": 214,
+            "y": 216,
             "width": 12,
             "height": 1
           }
@@ -5525,7 +5651,7 @@
           },
           "position": {
             "x": 0,
-            "y": 233,
+            "y": 235,
             "width": 12,
             "height": 2
           }
@@ -5557,7 +5683,7 @@
           },
           "position": {
             "x": 0,
-            "y": 247,
+            "y": 249,
             "width": 12,
             "height": 5
           }
@@ -5622,7 +5748,7 @@
           },
           "position": {
             "x": 0,
-            "y": 63,
+            "y": 65,
             "width": 6,
             "height": 5
           }
@@ -5677,7 +5803,7 @@
           },
           "position": {
             "x": 0,
-            "y": 252,
+            "y": 254,
             "width": 12,
             "height": 6
           }
@@ -5694,7 +5820,7 @@
           },
           "position": {
             "x": 0,
-            "y": 19,
+            "y": 21,
             "width": 6,
             "height": 2
           }
@@ -5710,7 +5836,7 @@
           },
           "position": {
             "x": 6,
-            "y": 19,
+            "y": 21,
             "width": 6,
             "height": 2
           }
@@ -5726,7 +5852,7 @@
           },
           "position": {
             "x": 0,
-            "y": 27,
+            "y": 29,
             "width": 6,
             "height": 2
           }
@@ -5742,7 +5868,7 @@
           },
           "position": {
             "x": 6,
-            "y": 27,
+            "y": 29,
             "width": 6,
             "height": 2
           }
@@ -5801,7 +5927,7 @@
           },
           "position": {
             "x": 0,
-            "y": 29,
+            "y": 31,
             "width": 6,
             "height": 6
           }
@@ -5842,7 +5968,7 @@
           },
           "position": {
             "x": 6,
-            "y": 29,
+            "y": 31,
             "width": 6,
             "height": 6
           }
@@ -5883,7 +6009,7 @@
           },
           "position": {
             "x": 0,
-            "y": 35,
+            "y": 37,
             "width": 6,
             "height": 6
           }
@@ -5899,7 +6025,7 @@
           },
           "position": {
             "x": 6,
-            "y": 35,
+            "y": 37,
             "width": 6,
             "height": 2
           }
@@ -5916,7 +6042,7 @@
           },
           "position": {
             "x": 0,
-            "y": 42,
+            "y": 44,
             "width": 6,
             "height": 2
           }
@@ -5932,7 +6058,7 @@
           },
           "position": {
             "x": 6,
-            "y": 42,
+            "y": 44,
             "width": 6,
             "height": 2
           }
@@ -6001,7 +6127,7 @@
           },
           "position": {
             "x": 6,
-            "y": 44,
+            "y": 46,
             "width": 6,
             "height": 6
           }
@@ -6017,7 +6143,7 @@
           },
           "position": {
             "x": 0,
-            "y": 58,
+            "y": 60,
             "width": 12,
             "height": 1
           }
@@ -6081,7 +6207,7 @@
           },
           "position": {
             "x": 6,
-            "y": 63,
+            "y": 65,
             "width": 6,
             "height": 5
           }
@@ -6134,7 +6260,7 @@
           },
           "position": {
             "x": 0,
-            "y": 71,
+            "y": 73,
             "width": 12,
             "height": 5
           }
@@ -6190,7 +6316,7 @@
           },
           "position": {
             "x": 0,
-            "y": 76,
+            "y": 78,
             "width": 12,
             "height": 5
           }
@@ -6206,7 +6332,7 @@
           },
           "position": {
             "x": 6,
-            "y": 89,
+            "y": 91,
             "width": 6,
             "height": 2
           }
@@ -6222,7 +6348,7 @@
           },
           "position": {
             "x": 6,
-            "y": 97,
+            "y": 99,
             "width": 6,
             "height": 2
           }
@@ -6285,7 +6411,7 @@
           },
           "position": {
             "x": 0,
-            "y": 91,
+            "y": 93,
             "width": 6,
             "height": 6
           }
@@ -6348,7 +6474,7 @@
           },
           "position": {
             "x": 6,
-            "y": 91,
+            "y": 93,
             "width": 6,
             "height": 6
           }
@@ -6411,7 +6537,7 @@
           },
           "position": {
             "x": 0,
-            "y": 97,
+            "y": 99,
             "width": 6,
             "height": 6
           }
@@ -6466,7 +6592,7 @@
           },
           "position": {
             "x": 0,
-            "y": 107,
+            "y": 109,
             "width": 12,
             "height": 6
           }
@@ -6482,7 +6608,7 @@
           },
           "position": {
             "x": 0,
-            "y": 124,
+            "y": 126,
             "width": 12,
             "height": 1
           }
@@ -6525,7 +6651,7 @@
           },
           "position": {
             "x": 0,
-            "y": 125,
+            "y": 127,
             "width": 12,
             "height": 3
           }
@@ -6580,7 +6706,7 @@
           },
           "position": {
             "x": 0,
-            "y": 118,
+            "y": 120,
             "width": 12,
             "height": 6
           }
@@ -6596,7 +6722,7 @@
           },
           "position": {
             "x": 0,
-            "y": 128,
+            "y": 130,
             "width": 12,
             "height": 1
           }
@@ -6639,7 +6765,7 @@
           },
           "position": {
             "x": 0,
-            "y": 129,
+            "y": 131,
             "width": 12,
             "height": 3
           }
@@ -6655,7 +6781,7 @@
           },
           "position": {
             "x": 0,
-            "y": 132,
+            "y": 134,
             "width": 12,
             "height": 1
           }
@@ -6698,7 +6824,7 @@
           },
           "position": {
             "x": 0,
-            "y": 133,
+            "y": 135,
             "width": 12,
             "height": 3
           }
@@ -6761,7 +6887,7 @@
           },
           "position": {
             "x": 0,
-            "y": 137,
+            "y": 139,
             "width": 6,
             "height": 6
           }
@@ -6824,7 +6950,7 @@
           },
           "position": {
             "x": 6,
-            "y": 137,
+            "y": 139,
             "width": 6,
             "height": 6
           }
@@ -6884,7 +7010,7 @@
           },
           "position": {
             "x": 0,
-            "y": 143,
+            "y": 145,
             "width": 12,
             "height": 6
           }
@@ -6939,7 +7065,7 @@
           },
           "position": {
             "x": 0,
-            "y": 149,
+            "y": 151,
             "width": 12,
             "height": 6
           }
@@ -6976,7 +7102,7 @@
           },
           "position": {
             "x": 0,
-            "y": 155,
+            "y": 157,
             "width": 6,
             "height": 6
           }
@@ -6992,7 +7118,7 @@
           },
           "position": {
             "x": 6,
-            "y": 155,
+            "y": 157,
             "width": 6,
             "height": 2
           }
@@ -7009,7 +7135,7 @@
           },
           "position": {
             "x": 6,
-            "y": 157,
+            "y": 159,
             "width": 6,
             "height": 2
           }
@@ -7025,7 +7151,7 @@
           },
           "position": {
             "x": 0,
-            "y": 161,
+            "y": 163,
             "width": 12,
             "height": 2
           }
@@ -7042,7 +7168,7 @@
           },
           "position": {
             "x": 0,
-            "y": 163,
+            "y": 165,
             "width": 6,
             "height": 2
           }
@@ -7102,7 +7228,7 @@
           },
           "position": {
             "x": 6,
-            "y": 165,
+            "y": 167,
             "width": 6,
             "height": 7
           }
@@ -7157,7 +7283,7 @@
           },
           "position": {
             "x": 0,
-            "y": 178,
+            "y": 180,
             "width": 12,
             "height": 6
           }
@@ -7212,7 +7338,7 @@
           },
           "position": {
             "x": 0,
-            "y": 172,
+            "y": 174,
             "width": 12,
             "height": 6
           }
@@ -7272,7 +7398,7 @@
           },
           "position": {
             "x": 0,
-            "y": 185,
+            "y": 187,
             "width": 6,
             "height": 7
           }
@@ -7313,7 +7439,7 @@
           },
           "position": {
             "x": 6,
-            "y": 185,
+            "y": 187,
             "width": 6,
             "height": 6
           }
@@ -7371,7 +7497,7 @@
           },
           "position": {
             "x": 0,
-            "y": 195,
+            "y": 197,
             "width": 6,
             "height": 6
           }
@@ -7429,7 +7555,7 @@
           },
           "position": {
             "x": 6,
-            "y": 195,
+            "y": 197,
             "width": 6,
             "height": 6
           }
@@ -7489,7 +7615,7 @@
           },
           "position": {
             "x": 0,
-            "y": 201,
+            "y": 203,
             "width": 12,
             "height": 6
           }
@@ -7544,7 +7670,7 @@
           },
           "position": {
             "x": 0,
-            "y": 207,
+            "y": 209,
             "width": 12,
             "height": 6
           }
@@ -7560,7 +7686,7 @@
           },
           "position": {
             "x": 0,
-            "y": 213,
+            "y": 215,
             "width": 12,
             "height": 1
           }
@@ -7618,7 +7744,7 @@
           },
           "position": {
             "x": 0,
-            "y": 215,
+            "y": 217,
             "width": 6,
             "height": 6
           }
@@ -7676,7 +7802,7 @@
           },
           "position": {
             "x": 6,
-            "y": 215,
+            "y": 217,
             "width": 6,
             "height": 6
           }
@@ -7731,7 +7857,7 @@
           },
           "position": {
             "x": 0,
-            "y": 221,
+            "y": 223,
             "width": 12,
             "height": 6
           }
@@ -7786,7 +7912,7 @@
           },
           "position": {
             "x": 0,
-            "y": 227,
+            "y": 229,
             "width": 12,
             "height": 6
           }
@@ -7834,7 +7960,7 @@
           },
           "position": {
             "x": 0,
-            "y": 235,
+            "y": 237,
             "width": 12,
             "height": 6
           }
@@ -7882,7 +8008,7 @@
           },
           "position": {
             "x": 0,
-            "y": 241,
+            "y": 243,
             "width": 12,
             "height": 6
           }
@@ -7937,7 +8063,7 @@
           },
           "position": {
             "x": 0,
-            "y": 258,
+            "y": 260,
             "width": 12,
             "height": 6
           }
@@ -7952,6 +8078,48 @@
       "layout": [
         {
           "widget": {
+            "name": "c7ca2b55",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Workspace ID"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
             "name": "a4858bf5",
             "multilineTextboxSpec": {
               "lines": [
@@ -7961,7 +8129,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 6,
             "height": 2
           }
@@ -8001,7 +8169,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 4,
             "width": 6,
             "height": 2
           }
@@ -8058,7 +8226,7 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
+            "y": 6,
             "width": 6,
             "height": 6
           }
@@ -8172,7 +8340,7 @@
           },
           "position": {
             "x": 0,
-            "y": 10,
+            "y": 12,
             "width": 6,
             "height": 5
           }
@@ -8188,7 +8356,7 @@
           },
           "position": {
             "x": 0,
-            "y": 15,
+            "y": 17,
             "width": 6,
             "height": 1
           }
@@ -8205,7 +8373,7 @@
           },
           "position": {
             "x": 0,
-            "y": 16,
+            "y": 18,
             "width": 6,
             "height": 1
           }
@@ -8302,7 +8470,7 @@
           },
           "position": {
             "x": 0,
-            "y": 17,
+            "y": 19,
             "width": 2,
             "height": 4
           }
@@ -8395,7 +8563,7 @@
           },
           "position": {
             "x": 2,
-            "y": 17,
+            "y": 19,
             "width": 4,
             "height": 4
           }
@@ -8411,7 +8579,7 @@
           },
           "position": {
             "x": 0,
-            "y": 21,
+            "y": 23,
             "width": 6,
             "height": 1
           }
@@ -8511,7 +8679,7 @@
           },
           "position": {
             "x": 0,
-            "y": 22,
+            "y": 24,
             "width": 2,
             "height": 4
           }
@@ -8607,7 +8775,7 @@
           },
           "position": {
             "x": 2,
-            "y": 22,
+            "y": 24,
             "width": 4,
             "height": 4
           }
@@ -8624,7 +8792,7 @@
           },
           "position": {
             "x": 0,
-            "y": 26,
+            "y": 28,
             "width": 2,
             "height": 2
           }
@@ -8640,7 +8808,7 @@
           },
           "position": {
             "x": 2,
-            "y": 26,
+            "y": 28,
             "width": 2,
             "height": 2
           }
@@ -8656,7 +8824,7 @@
           },
           "position": {
             "x": 4,
-            "y": 26,
+            "y": 28,
             "width": 2,
             "height": 2
           }
@@ -8753,7 +8921,7 @@
           },
           "position": {
             "x": 0,
-            "y": 28,
+            "y": 30,
             "width": 2,
             "height": 4
           }
@@ -8850,7 +9018,7 @@
           },
           "position": {
             "x": 2,
-            "y": 28,
+            "y": 30,
             "width": 2,
             "height": 4
           }
@@ -8914,7 +9082,7 @@
           },
           "position": {
             "x": 4,
-            "y": 28,
+            "y": 30,
             "width": 2,
             "height": 4
           }
@@ -8930,7 +9098,7 @@
           },
           "position": {
             "x": 0,
-            "y": 32,
+            "y": 34,
             "width": 6,
             "height": 1
           }
@@ -8946,7 +9114,7 @@
           },
           "position": {
             "x": 0,
-            "y": 33,
+            "y": 35,
             "width": 6,
             "height": 1
           }
@@ -9078,7 +9246,7 @@
           },
           "position": {
             "x": 0,
-            "y": 34,
+            "y": 36,
             "width": 6,
             "height": 5
           }
@@ -9224,7 +9392,7 @@
           },
           "position": {
             "x": 0,
-            "y": 40,
+            "y": 42,
             "width": 6,
             "height": 5
           }
@@ -9240,7 +9408,7 @@
           },
           "position": {
             "x": 0,
-            "y": 39,
+            "y": 41,
             "width": 6,
             "height": 1
           }
@@ -9256,7 +9424,7 @@
           },
           "position": {
             "x": 0,
-            "y": 45,
+            "y": 47,
             "width": 6,
             "height": 1
           }
@@ -9364,7 +9532,7 @@
           },
           "position": {
             "x": 0,
-            "y": 46,
+            "y": 48,
             "width": 6,
             "height": 5
           }
@@ -9380,7 +9548,7 @@
           },
           "position": {
             "x": 0,
-            "y": 51,
+            "y": 53,
             "width": 6,
             "height": 1
           }
@@ -9396,7 +9564,7 @@
           },
           "position": {
             "x": 0,
-            "y": 52,
+            "y": 54,
             "width": 3,
             "height": 2
           }
@@ -9412,7 +9580,7 @@
           },
           "position": {
             "x": 3,
-            "y": 52,
+            "y": 54,
             "width": 3,
             "height": 2
           }
@@ -9472,7 +9640,7 @@
           },
           "position": {
             "x": 0,
-            "y": 54,
+            "y": 56,
             "width": 3,
             "height": 4
           }
@@ -9525,7 +9693,7 @@
           },
           "position": {
             "x": 3,
-            "y": 54,
+            "y": 56,
             "width": 3,
             "height": 4
           }
@@ -9541,7 +9709,7 @@
           },
           "position": {
             "x": 0,
-            "y": 58,
+            "y": 60,
             "width": 3,
             "height": 1
           }
@@ -9557,7 +9725,7 @@
           },
           "position": {
             "x": 3,
-            "y": 58,
+            "y": 60,
             "width": 3,
             "height": 1
           }
@@ -9602,7 +9770,7 @@
           },
           "position": {
             "x": 0,
-            "y": 59,
+            "y": 61,
             "width": 3,
             "height": 2
           }
@@ -9647,7 +9815,7 @@
           },
           "position": {
             "x": 3,
-            "y": 59,
+            "y": 61,
             "width": 3,
             "height": 2
           }
@@ -9663,7 +9831,7 @@
           },
           "position": {
             "x": 0,
-            "y": 61,
+            "y": 63,
             "width": 6,
             "height": 1
           }
@@ -9680,7 +9848,7 @@
           },
           "position": {
             "x": 0,
-            "y": 62,
+            "y": 64,
             "width": 6,
             "height": 1
           }
@@ -9742,7 +9910,7 @@
           },
           "position": {
             "x": 0,
-            "y": 63,
+            "y": 65,
             "width": 2,
             "height": 4
           }
@@ -9838,7 +10006,7 @@
           },
           "position": {
             "x": 2,
-            "y": 63,
+            "y": 65,
             "width": 4,
             "height": 4
           }
@@ -9854,7 +10022,7 @@
           },
           "position": {
             "x": 0,
-            "y": 67,
+            "y": 69,
             "width": 6,
             "height": 1
           }
@@ -9870,7 +10038,7 @@
           },
           "position": {
             "x": 0,
-            "y": 68,
+            "y": 70,
             "width": 6,
             "height": 1
           }
@@ -9886,7 +10054,7 @@
           },
           "position": {
             "x": 0,
-            "y": 69,
+            "y": 71,
             "width": 6,
             "height": 1
           }
@@ -9902,7 +10070,7 @@
           },
           "position": {
             "x": 0,
-            "y": 70,
+            "y": 72,
             "width": 6,
             "height": 1
           }
@@ -9916,6 +10084,48 @@
       "layout": [
         {
           "widget": {
+            "name": "ef535ca7",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id",
+                "query": {
+                  "datasetName": "dbdc9433",
+                  "parameters": [
+                    {
+                      "name": "workspace_id",
+                      "keyword": "workspace_id"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "workspace_id",
+                    "queryName": "parameter_dashboards/01f11b6e333110e888b7a5ba13cdd901/datasets/dbdc9433_workspace_id"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Workspace ID"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
             "name": "e9309306",
             "multilineTextboxSpec": {
               "lines": [
@@ -9925,7 +10135,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 6,
             "height": 2
           }
@@ -10172,7 +10382,7 @@
           },
           "position": {
             "x": 0,
-            "y": 10,
+            "y": 12,
             "width": 6,
             "height": 8
           }
@@ -10229,7 +10439,7 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
+            "y": 6,
             "width": 6,
             "height": 6
           }
@@ -10269,7 +10479,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 4,
             "width": 6,
             "height": 2
           }
@@ -10285,7 +10495,7 @@
           },
           "position": {
             "x": 0,
-            "y": 18,
+            "y": 20,
             "width": 1,
             "height": 1
           }
@@ -10301,7 +10511,7 @@
           },
           "position": {
             "x": 1,
-            "y": 18,
+            "y": 20,
             "width": 5,
             "height": 1
           }
@@ -10324,7 +10534,7 @@
           },
           "position": {
             "x": 0,
-            "y": 19,
+            "y": 21,
             "width": 1,
             "height": 6
           }
@@ -10384,7 +10594,7 @@
           },
           "position": {
             "x": 1,
-            "y": 19,
+            "y": 21,
             "width": 5,
             "height": 6
           }
@@ -10403,7 +10613,7 @@
           },
           "position": {
             "x": 0,
-            "y": 43,
+            "y": 45,
             "width": 1,
             "height": 6
           }
@@ -10567,7 +10777,7 @@
           },
           "position": {
             "x": 1,
-            "y": 25,
+            "y": 27,
             "width": 5,
             "height": 6
           }
@@ -10586,7 +10796,7 @@
           },
           "position": {
             "x": 0,
-            "y": 37,
+            "y": 39,
             "width": 1,
             "height": 6
           }
@@ -10846,7 +11056,7 @@
           },
           "position": {
             "x": 1,
-            "y": 31,
+            "y": 33,
             "width": 5,
             "height": 6
           }
@@ -10865,7 +11075,7 @@
           },
           "position": {
             "x": 0,
-            "y": 25,
+            "y": 27,
             "width": 1,
             "height": 6
           }
@@ -11093,7 +11303,7 @@
           },
           "position": {
             "x": 1,
-            "y": 31,
+            "y": 33,
             "width": 5,
             "height": 6
           }
@@ -11112,7 +11322,7 @@
           },
           "position": {
             "x": 0,
-            "y": 31,
+            "y": 33,
             "width": 1,
             "height": 6
           }
@@ -11245,7 +11455,7 @@
           },
           "position": {
             "x": 1,
-            "y": 31,
+            "y": 33,
             "width": 5,
             "height": 6
           }
