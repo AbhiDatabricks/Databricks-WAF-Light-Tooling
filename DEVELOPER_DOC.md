@@ -386,6 +386,77 @@ FROM (
 
 ---
 
+## 📊 Per-Control Scoring Reference
+
+Each WAF control has a `score_percentage` derived from system tables, compared against a hardcoded `threshold_percentage` to determine `threshold_met` (Met / Not Met).
+
+> **Scope**: Governance (DG) controls are **account-wide** — they query Unity Catalog system tables without a workspace filter. All other pillars are **per-workspace**, cross-joined against workspaces active in the last 30 days from `system.billing.usage`.
+
+---
+
+### Data & AI Governance (DG)
+
+| waf_id | Best Practice | System Table(s) | Score Formula | Threshold |
+|--------|--------------|-----------------|---------------|-----------|
+| DG-01-03 | Track data and AI lineage | `system.access.table_lineage`, `system.information_schema.tables` | % of UC managed/external tables with a lineage entry (`target_table_full_name`) | 50% |
+| DG-01-04 | Add comments to metadata | `system.information_schema.tables` | % of UC managed/external tables with a non-null `COMMENT` | 50% |
+| DG-01-05 | Enable easy data discovery | `system.information_schema.table_tags`, `system.information_schema.tables` | % of UC managed/external tables with tags present (binary exists check; score = % tagged) | 50% |
+| DG-02-01 | Centralize access control (row/column level) | `system.information_schema.row_filters` | 100 if any row filters exist, 0 otherwise | 100% |
+| DG-02-02 | Configure audit logging | `system.access.audit` | 100 if audit system table is queryable, 0 otherwise | 100% |
+| DG-02-03 | Audit data platform events | `system.information_schema.tables` (marketplace) | 100 if `system.marketplace.listing_access_events` exists, 0 otherwise | 100% |
+| DG-03-02 | Use data quality tools and profiling | `system.information_schema.tables` | 100 if tables with suffix `_drift_metrics` or `_profile_metrics` exist, 0 otherwise | 100% |
+| DG-03-03 | Enforce standardized data formats | `system.information_schema.tables` | % of UC managed/external tables in DELTA / ICEBERG / DELTASHARING format | 80% |
+
+---
+
+### Cost Optimization (CO) — per workspace
+
+| waf_id | Best Practice | System Table(s) | Score Formula | Threshold |
+|--------|--------------|-----------------|---------------|-----------|
+| CO-01-01 | Prefer Managed table type over External | `system.information_schema.tables` | % of UC tables that are MANAGED | 80% |
+| CO-01-03 | Use SQL warehouse for SQL workloads | `system.query.history` | % of compute usage attributed to SQL warehouses (`compute.type = 'WAREHOUSE'`) | 50% |
+| CO-01-04 | Use up-to-date runtimes | `system.compute.clusters` | % of clusters running DBR major version ≥ 15 | 80% |
+| CO-01-06 | Use Serverless for workloads | `system.billing.usage` | % of compute usage on serverless SKUs (`sku_name LIKE '%SERVERLESS%'`) | 50% |
+| CO-01-09 | Evaluate performance optimized query engines | `system.billing.usage` | % of compute usage with Photon enabled (`product_features.is_photon = true`) | 80% |
+| CO-02-03 | Use compute policies to control costs | `system.compute.clusters` | % of active clusters attached to a compute policy (`policy_id IS NOT NULL`) | 80% |
+| CO-03-01 | Monitor costs | `system.query.history` | # of distinct days in last 30 days where `system.billing.usage` or `system.billing.list_prices` was queried | 10 days |
+| CO-03-02 | Tag clusters for cost attribution | `system.compute.clusters` | % of active clusters with at least one user-defined tag | 80% |
+
+---
+
+### Performance Efficiency (PE) — per workspace
+
+| waf_id | Best Practice | System Table(s) | Score Formula | Threshold |
+|--------|--------------|-----------------|---------------|-----------|
+| PE-01-01 | Use serverless architecture | `system.billing.usage` | % of compute usage on serverless SKUs | 50% |
+| PE-01-02 | Use an enterprise grade model serving service | `system.billing.usage` | 100 if any `sku_name LIKE '%SERVERLESS_REAL_TIME_INFERENCE%'` usage exists, 0 otherwise | 100% |
+| PE-02-02 | Use parallel computation | `system.compute.clusters` | % of active clusters with more than 1 worker | 80% |
+| PE-02-04 | Prefer larger clusters | `system.compute.clusters` | % of active clusters with more than 3 workers | 50% |
+| PE-02-06 | Use native platform engines (Photon) | `system.billing.usage` | % of compute usage with Photon enabled | 80% |
+| PE-02-07 | Use serverless compute for appropriate workloads | `system.billing.usage` | % of compute usage on serverless SKUs (higher bar than PE-01-01) | 80% |
+
+---
+
+### Reliability (R) — per workspace (R-01-01 is account-wide)
+
+| waf_id | Best Practice | System Table(s) | Score Formula | Threshold |
+|--------|--------------|-----------------|---------------|-----------|
+| R-01-01 | Use Delta/Iceberg format | `system.information_schema.tables` | % of UC tables in DELTA / ICEBERG format *(account-wide)* | 80% |
+| R-01-03 | Use DLT / Lakeflow Pipelines for ingestion | `system.billing.usage` | % of compute usage attributed to DLT pipelines (`billing_origin_product = 'DLT'`) | 30% |
+| R-01-05 | Use Mosaic AI Model Serving | `system.billing.usage` | % of ML compute usage attributed to Model Serving (`billing_origin_product = 'MODEL_SERVING'`) | 20% |
+| R-01-06 | Use Serverless / Managed compute | `system.billing.usage` | % of compute usage on serverless SKUs | 50% |
+| R-02-04 | Use DLT for data pipeline reliability | `system.billing.usage` | Same as R-01-03: % of compute on DLT pipelines | 30% |
+| R-03-01 | Auto-scale clusters | `system.compute.clusters` | % of active clusters configured with autoscaling (`max_autoscale_workers IS NOT NULL`) | 80% |
+| R-03-02 | Auto-scale SQL warehouses | `system.compute.warehouses` | % of active warehouses configured with autoscaling (`max_clusters > min_clusters`) | 80% |
+
+---
+
+### Source of Truth
+
+The thresholds and metric definitions above are sourced from `streamlit-waf-automation/waf_controls_with_recommendations.csv` (the `threshold_percentage` and `metric_definition` columns). This CSV is also loaded into `{catalog}.waf_cache.waf_controls_with_recommendations` during install and is the basis for recommendations shown in the Streamlit app.
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Issue: Summary score doesn't match individual pillar
