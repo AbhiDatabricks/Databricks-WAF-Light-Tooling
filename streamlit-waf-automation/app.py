@@ -1690,7 +1690,7 @@ st.markdown("---")
 
 # Dashboard access — Open Dashboard + Ask Genie (always show both; Genie URL from install)
 _dashboard_direct_url = f"{INSTANCE_URL}/sql/dashboardsv3/{DASHBOARD_ID}"
-_genie_url = GENIE_URL or f"{INSTANCE_URL}/genie"  # fallback to Genie home if not set by install
+_genie_url = GENIE_URL or f"{INSTANCE_URL}/genie?o={WORKSPACE_ID}"  # fallback to Genie home if not set by install
 _btn_col1, _btn_col2, _btn_col3, _btn_col4 = st.columns([1, 2, 2, 1])
 with _btn_col2:
     st.link_button(
