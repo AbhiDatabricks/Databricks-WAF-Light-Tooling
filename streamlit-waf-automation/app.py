@@ -24,11 +24,11 @@ if not st.session_state.get("_nav_by_user"):
     except Exception:
         pass
 
-# Dashboard configuration — values replaced at install time by install.ipynb
-INSTANCE_URL = "https://dbc-7545f99b-d884.cloud.databricks.com"
-DASHBOARD_ID = "01f10cbeacfb108dbae8bc34fb686707"
-WORKSPACE_ID = "7474648347311915"
-EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}"
+# Dashboard configuration — injected via app.yaml env vars at deploy time
+INSTANCE_URL = os.environ.get("WAF_INSTANCE_URL", "")
+DASHBOARD_ID = os.environ.get("WAF_DASHBOARD_ID", "")
+WORKSPACE_ID = os.environ.get("WAF_WORKSPACE_ID", "")
+EMBED_URL = f"{INSTANCE_URL}/embed/dashboardsv3/{DASHBOARD_ID}?o={WORKSPACE_ID}" if DASHBOARD_ID else ""
 
 # Reload job config — injected via app.yaml env vars at deploy time
 JOB_ID       = os.environ.get("WAF_JOB_ID", "")
@@ -64,7 +64,7 @@ def _load_run_info():
             _r = _wc.statement_execution.execute_statement(
                 statement=_stmt,
                 warehouse_id=WAREHOUSE_ID,
-                wait_timeout="10s",
+                wait_timeout="50s",
             )
             if (_r.status and _r.status.state == StatementState.SUCCEEDED
                     and _r.result and _r.result.data_array):
@@ -76,11 +76,7 @@ def _load_run_info():
                 }
         except Exception:
             pass
-    try:
-        with open("/tmp/waf_run_info.json", encoding="utf-8") as _f:
-            return _json.load(_f)
-    except Exception:
-        return {}
+    return {}
 
 
 # Sidebar with explanations

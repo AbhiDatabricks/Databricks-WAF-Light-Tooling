@@ -1,5 +1,5 @@
 # Project State Snapshot
-_Last updated: 2026-02-27_
+_Last updated: 2026-04-20_
 
 **Canonical location**: `DONOTCHECKIN/tasks/state.md` (check here first; root `tasks/` may be a stale copy.)
 
@@ -9,73 +9,52 @@ _Last updated: 2026-02-27_
 
 A single-notebook installer (`install.ipynb`) that deploys a full **WAF Assessment Tool** on Databricks:
 
-1. **Lakeview Dashboard** — real-time WAF scores across 4 pillars from `waf_cache` Delta tables; Genie AI Assistant tab embedded
+1. **Lakeview Dashboard** — WAF scores across 4 pillars, always reading from `waf_cache` Delta tables
 2. **Databricks App** (Streamlit) — central hub: embedded dashboard, Reload Data, Recommendations (Not Met), View Progress, Ask Genie
-3. **Genie Space** — AI chat pre-loaded with 15 WAF tables, instructions, 6 SQL examples; linked to dashboard via `uiSettings.overrideId`
+3. **Genie Space** — AI chat pre-loaded with 15 WAF tables, instructions, 6 SQL examples; linked to dashboard
 4. **WAF Reload Job** — Spark notebook job that refreshes all `waf_cache` tables on demand
+
+---
+
+## Architecture Invariant
+
+**ALL queries (dashboard + app) must read from `{catalog}.waf_cache.*` — never directly from system tables.**
+See `DONOTCHECKIN/CLAUDE.md` → Architecture Invariants for enforcement rules.
 
 ---
 
 ## Current Implementation Status
 
-### Branch: `main` | Latest commit: `d69e920` — demo video added
-
-### Validated: Full greenfield install confirmed working (2026-02-27)
+### Branch: `main` | Changes pending commit (6 files)
 
 | Component | Status | Detail |
 |---|---|---|
-| 145 waf_cache tables | ✅ | All tables in `{catalog}.waf_cache` |
-| waf_recommendations_not_met view | ✅ | Populated after first reload |
-| Dashboard deployed + published | ✅ | Warehouse attached, embed enabled |
-| Genie space created + linked | ✅ | `uiSettings.genieSpace.overrideId` + `enablementMode: ENABLED` |
-| WAF Reload job | ✅ | Created per install, initial reload triggered |
-| App deployed (ACTIVE) | ✅ | app.yaml: WAF_CATALOG, WAF_JOB_ID, WAF_WAREHOUSE_ID, WAF_GENIE_URL |
-| DASHBOARD_ID in app.py | ✅ | Patched in-memory at install time (Cell 8) |
+| Dashboard → waf_cache | ✅ | All 73 active datasets read from waf_cache; 10 ToDo placeholders unchanged |
+| PE-02-05 scoring | ✅ | Binary score in waf_controls_p + CSV row added |
+| PE-02-07 formula | ✅ | Cluster policy adoption % (was duplicate of PE-01-01) |
+| Dashboard config via env vars | ✅ | WAF_INSTANCE_URL, WAF_DASHBOARD_ID, WAF_WORKSPACE_ID in app.yaml |
+| _load_run_info timeout | ✅ | 10s → 50s (cold warehouse fix) |
+| fevm app deployed | ✅ | wafauto-20260324-0756, all fixes live |
+| fevm dashboard patched | ✅ | 01f1267860331f0a8d6cbde05503fc97, republished |
+| Git push | ❌ | 6 files changed, not yet committed |
 
 ---
 
-## Architecture
+## install.ipynb Cell Map
 
 ```
-install.ipynb (15 cells, run-all in Databricks workspace)
-  Cell 1:  User sets catalog = "<your_catalog>" (only cell to edit)
-  Cell 2:  Setup (api_url, token, ctx, notebook_dir) + greenfield UC/system-table checks
-  Cell 3:  Ingest waf_controls_with_recommendations.csv → Delta
-  Cell 4:  Create Genie Space (15 tables, instructions, 6 SQL examples)
-  Cell 5:  Deploy Lakeview dashboard (embeds genie_space_id via uiSettings.overrideId)
-  Cell 6:  Publish dashboard with SQL warehouse
-  Cell 7:  Configure embedding domains (*.databricksapps.com)
-  Cell 8:  Patch app.py in-memory (DASHBOARD_ID, INSTANCE_URL, WORKSPACE_ID)
-  Cell 9:  Upload app files + create WAF Reload job + deploy Databricks App
-  Cell 10: Grant SP permissions (waf_cache + system.*) + trigger initial reload
-  Cell 11: Installation summary (per-step ✅/❌ + direct links + post-install access guide)
-  Cell 14: Finalize Genie (SP permission, app.yaml WAF_GENIE_URL, redeploy)
-
-streamlit-waf-automation/app.py
-  - Embedded Lakeview dashboard (iframe, st.components.v1.html)
-  - Reload Data → triggers WAF Reload job
-  - View Recommendations (Not Met) → waf_recommendations_not_met view
-  - View Progress → score trend chart across reload runs
-  - Ask Genie → deep-link to Genie Space
-  - WAF Guide sidebar
-  - Navigation via _nav_by_user session flag + st.query_params.clear()
-
-waf_cache tables in {CATALOG}.waf_cache:
-  145 tables total:
-  waf_controls_c/p/g/r                    (+ _hist)
-  waf_principal_percentage_c/p/g/r        (+ _hist)
-  waf_total_percentage_c/p/g/r            (+ _hist)
-  waf_total_percentage_across_pillars     (+ _hist)
-  waf_controls_with_recommendations       (Delta from CSV)
-  waf_recommendations_not_met             (VIEW: join controls + CSV, filter Not Met)
-  _run_log                                (auto-increment INT run_id)
-  ~60+ individual metric tables           (+ _hist each)
-
-docs/ (MkDocs Material site → GitHub Pages)
-  index.md   — hero + Demo video + feature cards
-  WAF2.0Demo.mp4 — 13MB demo video (converted from 54MB .mov, no audio, faststart)
-  Live at: https://abhidatabricks.github.io/Databricks-WAF-Light-Tooling/
-  GitHub Actions: .github/workflows/docs.yml → auto-deploys on push to main
+Cell 1:  User sets catalog = "<your_catalog>"
+Cell 2:  Setup (api_url, token, ctx, notebook_dir) + greenfield checks
+Cell 3:  Ingest waf_controls_with_recommendations.csv → Delta
+Cell 4:  Create Genie Space (⚠️ known issue: fails if waf_cache tables don't exist yet)
+Cell 5:  Deploy Lakeview dashboard
+Cell 6:  Publish dashboard with SQL warehouse
+Cell 7:  Configure embedding domains
+Cell 8:  Patch app.py in-memory (NO LONGER patches DASHBOARD_ID/INSTANCE_URL/WORKSPACE_ID — now env vars)
+Cell 9:  Upload app files + build app.yaml (with WAF_INSTANCE_URL, WAF_DASHBOARD_ID, WAF_WORKSPACE_ID) + create WAF Reload job + deploy App
+Cell 10: Grant SP permissions + trigger initial reload
+Cell 11: Installation summary
+Cell 14: Finalize Genie (SP permission, app.yaml WAF_GENIE_URL, redeploy)
 ```
 
 ---
@@ -84,17 +63,15 @@ docs/ (MkDocs Material site → GitHub Pages)
 
 | Decision | Reason |
 |---|---|
-| `uiSettings.genieSpace.overrideId` + `enablementMode: ENABLED` | Reverse-engineered by diffing manually-linked dashboard JSON; `spaceId` and `PAGE_TYPE_GENIE` fail silently |
-| `notebook_dir` from `ctx.notebookPath()` | `os.getcwd()` = `/databricks/driver/` when not in Repo; context path is always correct |
-| Genie created before dashboard (Cell 4 before Cell 5) | `genie_space_id` must exist to embed in dashboard template at creation time |
-| `nbformat_minor: 5` + cell `id` fields | Databricks notebook loader requires this format |
-| Append model: `{table}_hist` + views | Preserves run history; dashboard unchanged (reads views) |
+| `uiSettings.genieSpace.overrideId` + `enablementMode: ENABLED` | Reverse-engineered; `spaceId` and `PAGE_TYPE_GENIE` fail silently |
+| `notebook_dir` from `ctx.notebookPath()` | `os.getcwd()` = `/databricks/driver/` when not in Repo |
+| Dashboard config via env vars (not regex-patched into app.py) | Uploading local app.py clobbered workspace-specific values |
+| `wait_timeout="50s"` in `_load_run_info()` | Cold warehouse takes 30–60s; 10s caused "No data yet" on fresh load |
+| All dashboard datasets → waf_cache | Single source of truth; prevents score mismatch between dashboard and app |
+| `{{catalog}}` placeholder in dashboard JSON | Replaced at install time via `raw.replace("{{catalog}}", CATALOG)` |
+| Append model: `{table}_hist` + views pointing to latest run_id | Preserves history; dashboard/app always see latest snapshot |
 | INT auto-increment `run_id` | Human-readable; UUID was opaque |
-| `subprocess.run(env=os.environ.copy())` | Databricks Apps sandboxing can block env var inheritance |
-| Poll `compute_status.state == ACTIVE` before `/deployments` | Databricks compute init takes 2.5+ min on fresh app; retry-on-error was timing out |
-| `st.components.v1.html()` with raw `<iframe>` | Matches Databricks recommended embed format (`frameborder="0"`) |
-| Dashboard output path: `/Users/{user}/waf-dashboards` | Storing in repo's `dashboards/` caused timestamped files to accumulate and be picked up as templates |
-| `_nav_by_user` session flag | Prevents `st.query_params` from re-overriding navigation on rerun |
+| `_nav_by_user` session flag | Prevents `st.query_params` from re-overriding page on rerun |
 
 ---
 
@@ -102,65 +79,21 @@ docs/ (MkDocs Material site → GitHub Pages)
 
 | File | Purpose |
 |---|---|
-| `install.ipynb` | Main installer — 15 cells, run-all in Databricks |
-| `streamlit-waf-automation/app.py` | Databricks App (Streamlit) — central hub |
-| `streamlit-waf-automation/app.yaml` | App config — WAF_CATALOG, WAF_JOB_ID, WAF_WAREHOUSE_ID, WAF_GENIE_URL |
-| `streamlit-waf-automation/waf_reload.py` | Notebook run as job to refresh waf_cache |
-| `streamlit-waf-automation/dashboard_queries.yaml` | All WAF SQL queries (source of truth) |
-| `streamlit-waf-automation/redeploy_app.py` | Redeploy app from local: `python redeploy_app.py <app_name> [path]` |
-| `streamlit-waf-automation/genie` | Manual Genie setup instructions (paste into Genie Space UI if needed) |
+| `install.ipynb` | Main installer — run-all in Databricks |
+| `streamlit-waf-automation/app.py` | Databricks App (Streamlit) |
+| `streamlit-waf-automation/app.yaml` | App config — WAF_CATALOG, WAF_JOB_ID, WAF_WAREHOUSE_ID, WAF_GENIE_URL, WAF_INSTANCE_URL, WAF_DASHBOARD_ID, WAF_WORKSPACE_ID |
+| `streamlit-waf-automation/waf_reload.py` | Notebook job to refresh waf_cache |
+| `streamlit-waf-automation/dashboard_queries.yaml` | All WAF SQL (source of truth for waf_reload.py) |
 | `dashboards/WAF_ASSESSMENTv1.7.1.lvdash.json` | Lakeview dashboard template |
-| `docs/WAF2.0Demo.mp4` | Demo video (13MB MP4, no audio, web-optimised) |
-| `DONOTCHECKIN/.creds` | Host, token, catalog, workspace_id for dev use |
-| `DONOTCHECKIN/tasks/state.md` | THIS FILE — canonical project state |
-| `DONOTCHECKIN/tasks/lessons.md` | Lessons learned (L0–L13) |
-| `DONOTCHECKIN/tasks/decisions.md` | Decision log (D1–D10) |
+| `DONOTCHECKIN/CLAUDE.md` | Project guidelines + Architecture Invariants |
+| `DONOTCHECKIN/tasks/state.md` | Canonical state (this file in DONOTCHECKIN is the real one) |
+| `DONOTCHECKIN/tasks/lessons.md` | Lessons learned |
 
 ---
 
-## Credentials & Infrastructure
+## Pending / Open Issues
 
-| Item | Value |
-|---|---|
-| Databricks host | `https://dbc-7545f99b-d884.cloud.databricks.com` |
-| Workspace ID | `7474648347311915` |
-| Catalog (dev) | `useast1` |
-| SQL Warehouse | `1418991aeb011909` (Serverless Starter Warehouse) |
-| App URL (dev) | `https://waf-automation-tool-7474648347311915.aws.databricksapps.com` |
-| Databricks CLI | Configured — DEFAULT profile → host above |
-
-## Active Constraints
-
-- Install must run inside Databricks (uses Spark, dbutils, workspace APIs)
-- Unity Catalog required; system tables must be enabled by workspace admin
-- SQL Warehouse required — install raises if none found
-- Databricks Apps feature must be enabled in the workspace
-- Custom/dev code stays in `DONOTCHECKIN/` until tested and promoted to root
-- Never add "co-authored by Claude" in commit messages
-- Control view columns: `waf_controls_g` has `description`; c/p/r have `best_practice` — UNION uses `description AS best_practice` for g
-
----
-
-## Completed (lifetime)
-
-- [x] Fixed notebook format (nbformat_minor: 5, cell ids, stream output names)
-- [x] Fixed path resolution: `os.getcwd()` → `notebook_dir` from `ctx.notebookPath()`
-- [x] Fixed Genie linking: diff-based discovery of `uiSettings.genieSpace.overrideId` + `enablementMode: ENABLED`
-- [x] Added greenfield checks (UC availability + system table accessibility)
-- [x] Rewrote Cell 11 summary with per-step ✅/❌, all links, post-install access guide
-- [x] Fixed "Back to Dashboard" navigation bug (`_nav_by_user` flag)
-- [x] Append model with `_hist` tables + views (history preserved across reloads)
-- [x] Auto-increment INT run_id (human-readable, replaces UUID)
-- [x] Credentials: env vars only in app (no .creds fallback)
-- [x] Dashboard output to `/Users/{user}/waf-dashboards` (not repo folder)
-- [x] Poll compute ACTIVE before /deployments (not retry-on-error)
-- [x] Added MkDocs Material docs site with GitHub Actions auto-deploy
-- [x] Added WAF2.0Demo.mp4 to docs homepage and README (54MB .mov → 13MB .mp4)
-- [x] Full greenfield install validated end-to-end (2026-02-27, ~4 min)
-
----
-
-## Next Actions
-
-1. Enable GitHub Pages if not already: Settings → Pages → Source: gh-pages branch
-2. Share demo message + docs link with team
+1. **Git push** — 6 files changed, not committed yet
+2. **install.ipynb — Genie creation timing** (Cell 4/Cell 14): Genie Space creation fails if waf_cache tables don't exist; tables only exist after first reload job runs (triggered in Cell 10). Known issue, not yet fixed.
+3. **install.ipynb — SP grant error messages**: `GRANT USE CATALOG ON CATALOG system` and `system.billing` grants fail with PERMISSION_DENIED for non-metastore/account admins — error message should give clear manual-grant instructions instead of misleading green summary.
+4. **PE-02-02 / PE-02-04 drill-down** (Albert feedback): only high-level guidance, no resource-level detail. By design for now.

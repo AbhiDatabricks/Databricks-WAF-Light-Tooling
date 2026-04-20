@@ -53,6 +53,12 @@ nav:
     - Databricks App: features/app.md
     - Genie AI Space: features/genie.md
   - Architecture: architecture.md
+  - Scoring Methodology:
+    - Overview: scoring/index.md
+    - Cost Optimization: scoring/cost-optimization.md
+    - Performance Efficiency: scoring/performance.md
+    - Governance: scoring/governance.md
+    - Reliability: scoring/reliability.md
   - Troubleshooting: troubleshooting.md
 
 plugins:

@@ -181,6 +181,10 @@ PE-02-04,06 - Performance efficiency,Design workloads for performance,Prefer lar
 - Compute configuration (workers, autoscaling): https://docs.databricks.com/aws/en/compute/configure
 - Use workload-specific policy families (ETL-large, BI-large) and enforce minimums.
 - Track saturation symptoms (spill, long GC, queueing) and iterate."
+PE-02-05,06 - Performance efficiency,Design workloads for performance,Use native Spark operations,Apache Spark,"Apache Spark provides highly optimized native operations for data processing. Using Python UDFs (User Defined Functions) instead of native Spark SQL functions introduces serialization overhead and prevents the Catalyst optimizer from optimizing execution plans. Native Spark SQL functions and DataFrame operations leverage Tungsten execution and code generation for maximum performance.",waf_controls_p,100,Score = 100 if no Python UDFs found in information_schema.routines; 0 if any Python UDFs exist.,"Migrate Python UDFs to native Spark SQL functions or Spark DataFrame operations.
+- Use Spark SQL built-in functions wherever possible: https://spark.apache.org/docs/latest/api/sql/
+- Where UDFs are necessary, prefer pandas UDFs (vectorized) over row-based Python UDFs.
+- Review existing Python UDFs: SELECT routine_catalog, routine_schema, routine_name FROM system.information_schema.routines WHERE external_language = 'Python'"
 PE-02-06,06 - Performance efficiency,Design workloads for performance,Use native platform engines,Photon,"Photon is the engine on Databricks that provides fast query performance at low cost – from data ingestion, ETL, streaming, data science, and interactive queries – directly on your data lake. Photon is compatible with Apache Spark APIs, so getting started is as easy as turning it on – no code changes and no lock-in.
 
 Photon is part of a high-performance runtime that runs your existing SQL and DataFrame API calls faster and reduces your total cost per workload. Photon is used by default in Databricks SQL warehouses. 
@@ -193,10 +197,10 @@ PE-02-07,06 - Performance efficiency,Design workloads for performance,Understand
 
 AWS | Azure | GCP
 
-Please note - Serverless compute manages clusters automatically, so this is not needed for serverless compute.",waf_controls_p,80,% of compute usage on serverless (higher bar than PE-01-01).,"Raise the serverless adoption bar (80%+) by making serverless the default for SQL + pipelines.
-- Serverless SQL warehouses: https://docs.databricks.com/aws/en/admin/sql/serverless
-- Serverless pipelines: https://docs.databricks.com/aws/en/ldp/serverless
-- Use an exceptions process for workloads needing classic compute (custom networking, special libs)."
+Please note - Serverless compute manages clusters automatically, so this is not needed for serverless compute.",waf_controls_p,50,% of active interactive clusters (cluster_source IN API/UI) that have a cluster policy attached.,"Attach cluster policies to interactive clusters to enforce hardware selection and workload guidelines.
+- Cluster policy overview: https://docs.databricks.com/aws/en/compute/clusters-manage#cluster-policy
+- Create policies per workload type (ETL, BI, ML) with appropriate instance families and sizes.
+- Policies help ensure appropriate hardware is selected for each workload type."
 CO-01-01,07 - Cost Optimization,Choose optimal resources,Use performance optimized data formats,Delta Lake,"Delta Lake is an open-source storage layer that enhances data lakes by providing ACID transactions, scalable metadata handling, and schema enforcement, primarily built on Apache Spark and Parquet. It supports a lakehouse architecture, allowing integration with various compute engines and programming languages. Delta Lake offers significant performance optimizations such as data skipping, indexing, and file management techniques like compaction and Z-Ordering. Additionally, it includes features like time travel for data versioning and Delta Live Tables for managing batch and streaming data pipelines efficiently. These capabilities make Delta Lake suitable for handling large-scale, transactional workloads and real-time analytics, ensuring data integrity and consistency across diverse data management scenarios
 Blog",waf_controls_c,80,% of UC tables that are MANAGED vs EXTERNAL (managed percentage).,"Prefer managed tables where practical to reduce operational overhead and improve governance.
 - For externally-managed locations, still use UC external locations + governed access.

@@ -12,3 +12,9 @@ env:
     value: "<<set_by_installer>>"
   - name: WAF_GENIE_URL
     value: "<<set_by_installer>>"
+  - name: WAF_INSTANCE_URL
+    value: "<<set_by_installer>>"
+  - name: WAF_DASHBOARD_ID
+    value: "<<set_by_installer>>"
+  - name: WAF_WORKSPACE_ID
+    value: "<<set_by_installer>>"
