@@ -678,7 +678,7 @@ datasets:
   is_coming_soon: false
 
 - name: waf_co_01_02_ba132837
-  display_name: CO-01-02: Job vs All-Purpose Cluster Usage
+  display_name: "CO-01-02: Job vs All-Purpose Cluster Usage"
   sql: "SELECT CASE WHEN cluster_type = 'JOB' THEN 'Job Clusters (Cost Effective)' WHEN cluster_type = 'ALL_PURPOSE' THEN 'All-Purpose (Expensive)' ELSE 'Other' END as cluster_category, COUNT(*) as usage_count, ROUND(SUM(usage_quantity * list_price), 2) as total_cost FROM system.billing.usage WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY AND usage_type LIKE '%COMPUTE%' GROUP BY cluster_category ORDER BY total_cost DESC"
   parameters: []
   pillar: cost_optimization
@@ -686,7 +686,7 @@ datasets:
   is_coming_soon: false
   is_control_query: false
 - name: waf_co_01_06_f6a7b684
-  display_name: CO-01-06: Serverless Cost Efficiency
+  display_name: "CO-01-06: Serverless Cost Efficiency"
   sql: "SELECT CASE WHEN usage_type LIKE '%SERVERLESS%' THEN 'Serverless' ELSE 'Traditional' END as compute_type, ROUND(SUM(usage_quantity * list_price), 2) as total_cost, ROUND(AVG(usage_quantity * list_price), 2) as avg_cost_per_workload FROM system.billing.usage WHERE usage_start_time >= CURRENT_DATE - INTERVAL '30' DAY AND usage_type LIKE '%COMPUTE%' GROUP BY compute_type"
   parameters: []
   pillar: cost_optimization
@@ -694,7 +694,7 @@ datasets:
   is_coming_soon: false
   is_control_query: false
 - name: waf_co_01_09_4d154e61
-  display_name: CO-01-09: Photon vs Standard Performance Cost
+  display_name: "CO-01-09: Photon vs Standard Performance Cost"
   sql: "SELECT CASE WHEN photon_enabled = true THEN 'Photon (3x Faster)' ELSE 'Standard Engine' END as engine_type, COUNT(*) as query_count, AVG(execution_duration_ms / 1000.0) as avg_duration_seconds, ROUND(SUM(usage_quantity * list_price), 2) as total_cost FROM system.query.history q JOIN system.billing.usage u ON q.workspace_id = u.workspace_id WHERE q.start_time >= CURRENT_DATE - INTERVAL '7' DAY AND u.usage_start_time >= CURRENT_DATE - INTERVAL '7' DAY GROUP BY engine_type"
   parameters: []
   pillar: cost_optimization
@@ -702,7 +702,7 @@ datasets:
   is_coming_soon: false
   is_control_query: false
 - name: waf_co_02_01_e3330123
-  display_name: CO-02-01: Auto-Termination Savings
+  display_name: "CO-02-01: Auto-Termination Savings"
   sql: "SELECT CASE WHEN auto_termination_minutes > 0 THEN 'Auto-Terminate Enabled' ELSE 'No Auto-Terminate' END as termination_status, COUNT(DISTINCT cluster_id) as cluster_count, AVG(DATEDIFF(MINUTE, start_time, end_time)) as avg_runtime_minutes, ROUND(SUM(CASE WHEN state = 'RUNNING' AND DATEDIFF(MINUTE, start_time, CURRENT_TIMESTAMP) > 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as idle_cluster_percent FROM system.compute.clusters WHERE start_time >= CURRENT_TIMESTAMP - INTERVAL '7' DAY GROUP BY termination_status"
   parameters: []
   pillar: cost_optimization
