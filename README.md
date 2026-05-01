@@ -98,7 +98,6 @@ Before running `install.ipynb`, ensure the person running it has:
 | **Workspace Admin** or **Apps Admin** | Required to deploy Databricks Apps |
 | **CREATE CATALOG** on the metastore | Only needed if the target catalog does not exist yet |
 | **CREATE SCHEMA** on the target catalog | To create the `waf_cache` schema |
-| **SELECT on `system.*`** | WAF queries read `system.billing`, `system.compute`, `system.access`, etc. |
 | **An existing SQL Warehouse** | Installer attaches it to publish the dashboard |
 | **Workspace files access** | To upload app source files via Workspace API |
 
