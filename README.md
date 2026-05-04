@@ -121,6 +121,10 @@ Before running `install.ipynb`, ensure the person running it has:
 
 - **Full Installation** (`install.ipynb`): Complete setup including dashboard, app, Genie Space, and reload job
 
+#### Telemetry
+
+> **Note**: During installation, `install.ipynb` collects a masked email address (first 5 characters only) and workspace hostname for usage analytics. This is a one-time call at install time only — no data is collected during normal use. To skip telemetry, set `ENABLE_TELEMETRY = False` in Cell 5 of `install.ipynb` before running.
+
 **WAF Assessment App — main dashboard view:**
 
 ![WAF Assessment App Dashboard](assets/waf-app-dashboard.png?raw=true)
