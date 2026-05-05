@@ -119,6 +119,7 @@ Before running `install.ipynb`, ensure the person running it has:
 #### Installation Options
 
 - **Full Installation** (`install.ipynb`): Complete setup including dashboard, app, Genie Space, and reload job
+- **Uninstall** (`uninstall.ipynb`): Tear down everything an install deployed; reads the state manifest written at install time.
 
 #### Telemetry
 
